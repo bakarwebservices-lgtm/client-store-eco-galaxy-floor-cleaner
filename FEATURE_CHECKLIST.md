@@ -24,6 +24,13 @@ This document tracks every UI element, intended action, route handler, and its e
 | **Products (Admin)** | Product Create Form (`src/app/(admin)/admin/products/new/page.tsx`) | Validate via Zod, create Product + ProductVariant[] + ProductImage[] + Categories | `POST /api/products` | `Connected` |
 | **Products (Admin)** | Product Edit Form (`src/app/(admin)/admin/products/[id]/page.tsx`) | Update product fields, manage variants matrix, image gallery, SEO metadata | `PUT /api/products/[id]` | `Connected` |
 | **Products (Admin)** | Product Soft Delete | Soft delete product via `deletedAt` timestamp and `ARCHIVED` status (never hard delete) | `DELETE /api/products/[id]` | `Connected` |
+| **Media Management** | Storage Adapter Abstraction (`src/lib/storage/*`) | Interface `IStorageAdapter`, `LocalStorageAdapter`, and `StorageRegistry` singleton | Storage Layer | `Connected` |
+| **Media Management** | File Upload API (`src/app/api/upload/route.ts`) | Accept image file & mandatory `altText`, validate MIME/size, upload via adapter, create `MediaAsset` | `POST /api/upload` | `Connected` |
+| **Media Management** | Media Library API (`src/app/api/media/route.ts`) | Paginated, searchable media asset queries for admin library & pickers | `GET /api/media` | `Connected` |
+| **Media Management** | Media Item API (`src/app/api/media/[id]/route.ts`) | Edit `altText` metadata or delete asset and purge physical file via adapter | `PATCH/DELETE /api/media/[id]` | `Connected` |
+| **Media Management** | Media Upload & Picker Modal (`src/components/admin/MediaUploadModal.tsx`) | Reusable dialog for choosing from library or uploading with mandatory `altText` | Client modal component | `Connected` |
+| **Media Management** | Admin Media Page (`src/app/(admin)/admin/media/page.tsx`) | Full media browser, search, copy URL, edit alt text, delete asset, trigger upload modal | `GET /admin/media` | `Connected` |
+| **Products (Retrofit)** | Image Manager in Product Form (`src/components/admin/ProductForm.tsx`) | Integrated with `MediaUploadModal`, enforcing altText and cover image selection | Admin Product Form | `Connected` |
 
 ---
 
