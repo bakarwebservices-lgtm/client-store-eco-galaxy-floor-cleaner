@@ -36,8 +36,14 @@ This document tracks every UI element, intended action, route handler, and its e
 | **Shopping Cart** | Dedicated Cart Page (`src/app/(store)/cart/page.tsx`) | Full cart view with free shipping progress bar and order summary breakdown | `GET /cart` | `Connected` |
 | **Shopping Cart** | Cart API Route (`src/app/api/cart/route.ts`) | Dual guest/customer cart resolution, add item with inventory cap, clear cart | `GET/POST/DELETE /api/cart` | `Connected` |
 | **Shopping Cart** | Cart Item API (`src/app/api/cart/items/[id]/route.ts`) | Update quantity with stock validation or delete item | `PATCH/DELETE /api/cart/items/[id]` | `Connected` |
-| **Shopping Cart** | Cart Merge API (`src/app/api/cart/merge/route.ts`) | Merge guest session items into customer account cart without loss | `POST /api/cart/merge` | `Connected` |
+| **Shopping Cart** | Cart Merge API (`src/app/api/cart/merge/route.ts`) | Merge guest session items into customer account cart with live stock clamp | `POST /api/cart/merge` | `Connected` |
 | **Shopping Cart** | AddToCart Tracking Hook (`src/lib/tracking/events.ts`) | Non-blocking analytics dispatcher (`track('AddToCart', ...)`) on item addition | Analytics Dispatcher | `Connected` |
+| **Checkout & Payments** | Payment Gateway Abstraction (`src/lib/payments/*`) | Interface `IPaymentGateway`, `CodPaymentGateway`, and `PaymentGatewayRegistry` | Payment Layer | `Connected` |
+| **Checkout & Payments** | Coupon Validation API (`src/app/api/coupons/validate/route.ts`) | Validate code, min order amount, max uses, and calculate discount percentage/fixed | `POST /api/coupons/validate` | `Connected` |
+| **Checkout & Payments** | Order Creation API (`src/app/api/checkout/route.ts`) | Atomic transaction: inventory deduction, immutable snapshot OrderItem, guest linking | `POST /api/checkout` | `Connected` |
+| **Checkout & Payments** | Order Query API (`src/app/api/orders/[id]/route.ts`) | Query complete order by UUID or orderNumber with snapshot lines & shipping address | `GET /api/orders/[id]` | `Connected` |
+| **Checkout & Payments** | Storefront Checkout Page (`src/app/(store)/checkout/page.tsx`) | Shipping address form, coupon code validation box, COD selector, InitiateCheckout hook | `GET /checkout` | `Connected` |
+| **Checkout & Payments** | Order Confirmation View (`src/app/(store)/checkout/success/[id]/page.tsx`) | Order confirmation receipt, snapshot summary, Purchase tracking hook trigger | `GET /checkout/success/[id]` | `Connected` |
 
 ---
 

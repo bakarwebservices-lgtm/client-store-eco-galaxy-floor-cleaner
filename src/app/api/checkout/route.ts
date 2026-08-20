@@ -1,0 +1,244 @@
+import { NextRequest, NextResponse } from 'next/server';
+import { db } from '@/lib/db';
+import { getActiveCart } from '@/lib/cart/session';
+import { checkoutSchema } from '@/lib/validation/checkout';
+import { getSetting } from '@/lib/settings';
+import { getPaymentGateway } from '@/lib/payments/registry';
+import { DiscountType, PaymentStatus, FulfillmentStatus, ProductStatus } from '@prisma/client';
+
+export const dynamic = 'force-dynamic';
+
+function generateOrderNumber(): string {
+  const dateStr = new Date().toISOString().slice(2, 10).replace(/-/g, '');
+  const randomSuffix = Math.floor(1000 + Math.random() * 9000);
+  return `ORD-${dateStr}-${randomSuffix}`;
+}
+
+export async function POST(req: NextRequest) {
+  try {
+    const body = await req.json();
+    const parsed = checkoutSchema.safeParse(body);
+    if (!parsed.success) {
+      return NextResponse.json({ error: parsed.error.errors[0]?.message || 'Invalid checkout details' }, { status: 400 });
+    }
+
+    const { shippingAddress, paymentMethod, couponCode, notes } = parsed.data;
+
+    // 1. Fetch active cart
+    const cart = await getActiveCart();
+    if (!cart || cart.items.length === 0) {
+      return NextResponse.json({ error: 'Your cart is empty.' }, { status: 400 });
+    }
+
+    // 2. Fetch Store Settings (currency, country, shipping rules)
+    const currency = await getSetting<string>('store.currency', 'PKR');
+    const defaultCountry = await getSetting<string>('store.country', 'Pakistan');
+    const freeShippingThreshold = await getSetting<number>('shipping.free_threshold', 5000);
+    const standardShippingCost = await getSetting<number>('shipping.standard_cost', 250);
+
+    const fullCountry = shippingAddress.country || defaultCountry;
+
+    // 3. Re-verify items, pricing, and stock atomically in transaction
+    const orderResult = await db.$transaction(async (tx) => {
+      let liveSubtotal = 0;
+      const orderItemsToCreate = [];
+
+      for (const item of cart.items) {
+        // Fetch live product
+        const product = await tx.product.findUnique({
+          where: { id: item.productId, deletedAt: null },
+          include: { variants: true },
+        });
+
+        if (!product || product.status !== ProductStatus.ACTIVE) {
+          throw new Error(`Product "${product?.name || item.productId}" is no longer available.`);
+        }
+
+        let unitPrice = product.price;
+        let variantTitle: string | null = null;
+        let sku = product.slug;
+
+        if (item.variantId) {
+          const variant = product.variants.find((v) => v.id === item.variantId && v.isActive);
+          if (!variant) {
+            throw new Error(`Option for "${product.name}" is no longer available.`);
+          }
+
+          // Strict race-condition inventory check
+          if (variant.inventoryQty < item.quantity) {
+            throw new Error(
+              `Stock conflict: "${product.name} (${variant.title})" only has ${variant.inventoryQty} units remaining in stock. Please adjust your bag.`
+            );
+          }
+
+          if (variant.price) unitPrice = variant.price;
+          variantTitle = variant.title;
+          sku = variant.sku;
+
+          // Atomically decrement variant stock
+          await tx.productVariant.update({
+            where: { id: variant.id },
+            data: { inventoryQty: { decrement: item.quantity } },
+          });
+        }
+
+        const lineTotal = unitPrice * item.quantity;
+        liveSubtotal += lineTotal;
+
+        // Snapshot immutable item data per BUILD_STANDARDS 2.6
+        orderItemsToCreate.push({
+          productId: product.id,
+          variantId: item.variantId || null,
+          productTitle: product.name,
+          variantTitle,
+          sku,
+          quantity: item.quantity,
+          unitPrice,
+          totalPrice: lineTotal,
+        });
+      }
+
+      // 4. Validate & apply coupon if provided
+      let discountAmount = 0;
+      let appliedCouponCode: string | null = null;
+
+      if (couponCode) {
+        const coupon = await tx.coupon.findUnique({
+          where: { code: couponCode.toUpperCase().trim() },
+        });
+
+        if (coupon && coupon.isActive) {
+          const now = new Date();
+          const isStarted = !coupon.startsAt || now >= coupon.startsAt;
+          const isNotExpired = !coupon.expiresAt || now <= coupon.expiresAt;
+          const hasUsesLeft = !coupon.maxUses || coupon.usedCount < coupon.maxUses;
+          const meetsMin = !coupon.minOrderAmount || liveSubtotal >= coupon.minOrderAmount;
+
+          if (isStarted && isNotExpired && hasUsesLeft && meetsMin) {
+            appliedCouponCode = coupon.code;
+            if (coupon.discountType === DiscountType.PERCENTAGE) {
+              discountAmount = (liveSubtotal * coupon.discountValue) / 100;
+            } else if (coupon.discountType === DiscountType.FIXED) {
+              discountAmount = Math.min(liveSubtotal, coupon.discountValue);
+            }
+
+            // Increment coupon usage count
+            await tx.coupon.update({
+              where: { id: coupon.id },
+              data: { usedCount: { increment: 1 } },
+            });
+          }
+        }
+      }
+
+      // 5. Calculate Shipping & Tax
+      const shippingAmount = liveSubtotal >= freeShippingThreshold ? 0 : standardShippingCost;
+      const taxAmount = 0;
+      const totalPrice = Math.max(0, liveSubtotal - discountAmount + shippingAmount + taxAmount);
+
+      // 6. Customer & Guest Email Match Resolution per BUILD_STANDARDS 2.4
+      const normalizedEmail = shippingAddress.email.toLowerCase().trim();
+      let customer = await tx.customer.findUnique({
+        where: { email: normalizedEmail },
+      });
+
+      let guestOrderPossiblyLinked = false;
+
+      if (!customer) {
+        // Create passwordless guest customer record
+        customer = await tx.customer.create({
+          data: {
+            email: normalizedEmail,
+            firstName: shippingAddress.firstName.trim(),
+            lastName: shippingAddress.lastName.trim(),
+            phone: shippingAddress.phone.trim(),
+            passwordHash: null,
+          },
+        });
+      } else {
+        // Email matches an existing customer account
+        if (!cart.customerId || cart.customerId !== customer.id) {
+          guestOrderPossiblyLinked = true;
+          // Follow-up: link order email stub
+          console.log(`[Email Service Stub] Guest checkout matched existing account (${normalizedEmail}). Flagged guestOrderPossiblyLinked for post-purchase link invitation.`);
+        }
+      }
+
+      // 7. Initiate Payment via Gateway Abstraction
+      const gateway = getPaymentGateway(paymentMethod || 'COD');
+      const orderNumber = generateOrderNumber();
+
+      const paymentInit = await gateway.initiatePayment({
+        orderId: 'pending',
+        orderNumber,
+        amount: totalPrice,
+        currency,
+        customerEmail: normalizedEmail,
+        customerName: `${shippingAddress.firstName} ${shippingAddress.lastName}`,
+        customerPhone: shippingAddress.phone,
+      });
+
+      // 8. Snapshot address
+      const shippingAddressSnapshot = {
+        name: `${shippingAddress.firstName} ${shippingAddress.lastName}`.trim(),
+        email: normalizedEmail,
+        phone: shippingAddress.phone.trim(),
+        address: shippingAddress.address.trim(),
+        apartment: shippingAddress.apartment?.trim() || null,
+        city: shippingAddress.city.trim(),
+        province: shippingAddress.province?.trim() || null,
+        postalCode: shippingAddress.postalCode?.trim() || null,
+        country: fullCountry,
+      };
+
+      // 9. Create Order
+      const newOrder = await tx.order.create({
+        data: {
+          orderNumber,
+          customerId: customer.id,
+          paymentStatus: PaymentStatus.UNPAID,
+          fulfillmentStatus: FulfillmentStatus.UNFULFILLED,
+          paymentMethod: gateway.name,
+          paymentMeta: paymentInit.meta || {},
+          subtotal: liveSubtotal,
+          discountAmount,
+          shippingAmount,
+          taxAmount,
+          totalPrice,
+          currency,
+          couponCode: appliedCouponCode,
+          shippingAddress: shippingAddressSnapshot,
+          guestOrderPossiblyLinked,
+          notes: notes?.trim() || null,
+          items: {
+            create: orderItemsToCreate,
+          },
+        },
+        include: {
+          items: true,
+        },
+      });
+
+      // 10. Purge Cart Items
+      await tx.cartItem.deleteMany({
+        where: { cartId: cart.id },
+      });
+
+      return newOrder;
+    });
+
+    return NextResponse.json({
+      success: true,
+      orderId: orderResult.id,
+      orderNumber: orderResult.orderNumber,
+      totalPrice: orderResult.totalPrice,
+      currency: orderResult.currency,
+    });
+  } catch (error: any) {
+    console.error('Checkout creation error:', error);
+    return NextResponse.json(
+      { error: error.message || 'An error occurred during checkout processing.' },
+      { status: 400 }
+    );
+  }
+}
