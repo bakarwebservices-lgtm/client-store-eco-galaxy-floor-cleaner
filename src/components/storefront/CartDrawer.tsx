@@ -1,7 +1,7 @@
 'use client';
 import { formatCurrency } from '@/lib/format';
 
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { X, Trash2, ShoppingBag, ArrowRight, ShieldCheck } from 'lucide-react';
@@ -9,6 +9,51 @@ import { useCart } from '@/context/CartContext';
 
 export function CartDrawer() {
   const { isOpen, closeCart, items, totalItems, subtotal, updateQuantity, removeItem } = useCart();
+  const drawerRef = useRef<HTMLDivElement>(null);
+  const closeButtonRef = useRef<HTMLButtonElement>(null);
+
+  // Focus trap & Escape key listener (BUILD_STANDARDS 4.6)
+  useEffect(() => {
+    if (!isOpen) return;
+
+    // Focus close button on mount
+    const timer = setTimeout(() => {
+      closeButtonRef.current?.focus();
+    }, 50);
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        closeCart();
+        return;
+      }
+
+      if (e.key === 'Tab' && drawerRef.current) {
+        const focusableElements = drawerRef.current.querySelectorAll<HTMLElement>(
+          'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+        );
+        const firstElement = focusableElements[0];
+        const lastElement = focusableElements[focusableElements.length - 1];
+
+        if (e.shiftKey) {
+          if (document.activeElement === firstElement) {
+            e.preventDefault();
+            lastElement?.focus();
+          }
+        } else {
+          if (document.activeElement === lastElement) {
+            e.preventDefault();
+            firstElement?.focus();
+          }
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => {
+      clearTimeout(timer);
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [isOpen, closeCart]);
 
   if (!isOpen) return null;
 
@@ -21,19 +66,26 @@ export function CartDrawer() {
       />
 
       <div className="fixed inset-y-0 right-0 flex max-w-full pl-10">
-        <div className="relative w-screen max-w-md bg-card text-card-foreground shadow-2xl border-l border-border flex flex-col animate-in slide-in-from-right duration-300">
+        <div
+          ref={drawerRef}
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="cart-drawer-title"
+          className="relative w-screen max-w-md bg-card text-card-foreground shadow-2xl border-l border-border flex flex-col animate-in slide-in-from-right duration-300"
+        >
           {/* Drawer Header */}
           <div className="flex items-center justify-between border-b border-border px-5 py-4 bg-muted/20">
             <div className="flex items-center gap-2">
               <ShoppingBag className="h-5 w-5 text-primary" />
-              <h2 className="text-base font-bold text-foreground">
+              <h2 id="cart-drawer-title" className="text-base font-bold text-foreground">
                 Your Shopping Bag ({totalItems})
               </h2>
             </div>
             <button
+              ref={closeButtonRef}
               type="button"
               onClick={closeCart}
-              className="rounded-lg p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+              className="rounded-lg p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none transition-colors"
               aria-label="Close cart drawer"
             >
               <X className="h-5 w-5" />

@@ -1,7 +1,7 @@
 'use client';
 import { formatCurrency } from '@/lib/format';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { ArrowLeft, Check, AlertTriangle, Truck, User, MapPin, Package, Clock, ShieldCheck, RotateCcw, XCircle, Loader2 } from 'lucide-react';
@@ -42,6 +42,43 @@ export default function AdminOrderDetailPage() {
       setLoading(false);
     }
   };
+
+  const returnModalRef = useRef<HTMLDivElement>(null);
+
+  // RMA Modal Focus trap & Escape listener (BUILD_STANDARDS 4.6)
+  useEffect(() => {
+    if (!showReturnModal) return;
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setShowReturnModal(false);
+        return;
+      }
+
+      if (e.key === 'Tab' && returnModalRef.current) {
+        const focusableElements = returnModalRef.current.querySelectorAll<HTMLElement>(
+          'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+        );
+        const firstElement = focusableElements[0];
+        const lastElement = focusableElements[focusableElements.length - 1];
+
+        if (e.shiftKey) {
+          if (document.activeElement === firstElement) {
+            e.preventDefault();
+            lastElement?.focus();
+          }
+        } else {
+          if (document.activeElement === lastElement) {
+            e.preventDefault();
+            firstElement?.focus();
+          }
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [showReturnModal]);
 
   useEffect(() => {
     fetchOrder();
@@ -202,13 +239,28 @@ export default function AdminOrderDetailPage() {
       {/* Return Dialog / Modal */}
       {showReturnModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm">
-          <div className="w-full max-w-md rounded-2xl border border-border bg-card p-6 shadow-2xl space-y-4">
+          <div
+            ref={returnModalRef}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="rma-dialog-title"
+            className="w-full max-w-md rounded-2xl border border-border bg-card p-6 shadow-2xl space-y-4"
+          >
             <div className="flex items-center justify-between border-b border-border pb-3">
               <div className="flex items-center gap-2">
                 <RotateCcw className="h-4 w-4 text-warning" />
-                <h3 className="text-sm font-bold text-foreground">Process Return for Order {order.orderNumber}</h3>
+                <h3 id="rma-dialog-title" className="text-sm font-bold text-foreground">
+                  Process Return for Order {order.orderNumber}
+                </h3>
               </div>
-              <button onClick={() => setShowReturnModal(false)} className="text-xs text-muted-foreground hover:text-foreground">✕</button>
+              <button
+                type="button"
+                onClick={() => setShowReturnModal(false)}
+                className="rounded p-1 text-xs text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none"
+                aria-label="Close return dialog"
+              >
+                ✕
+              </button>
             </div>
 
             <form onSubmit={handleProcessReturn} className="space-y-4">
