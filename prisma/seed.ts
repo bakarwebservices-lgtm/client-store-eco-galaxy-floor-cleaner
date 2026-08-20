@@ -47,6 +47,29 @@ async function main() {
     });
   }
 
+  // Seed Default System Settings (BUILD_STANDARDS 1.6 & 2.7)
+  const defaultSettings = [
+    { key: 'store.currency', value: 'PKR', description: 'Store base currency code' },
+    { key: 'store.country', value: 'Pakistan', description: 'Store country' },
+    { key: 'shipping.free_threshold', value: 5000, description: 'Free shipping qualifying order subtotal' },
+    { key: 'shipping.standard_cost', value: 250, description: 'Standard flat rate shipping fee' },
+    { key: 'store.name', value: 'AWWeb SaaS Template Store', description: 'Store name' },
+    { key: 'tax.rate', value: 0, description: 'Default sales tax percentage' },
+  ];
+
+  console.log('⚙️  Seeding Default Store Settings...');
+  for (const setting of defaultSettings) {
+    await prisma.setting.upsert({
+      where: { key: setting.key },
+      update: { value: setting.value },
+      create: {
+        key: setting.key,
+        value: setting.value,
+      },
+    });
+    console.log(`   ✓ ${setting.key}: ${JSON.stringify(setting.value)}`);
+  }
+
   console.log('\n-----------------------------------------------------------------------------');
   console.log('🔑 INITIAL ADMIN CREDENTIALS');
   console.log('-----------------------------------------------------------------------------');
