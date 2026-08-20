@@ -1,4 +1,5 @@
 'use client';
+import { formatCurrency } from '@/lib/format';
 
 import React, { useState } from 'react';
 import { ProductGallery } from '@/components/storefront/ProductGallery';
@@ -59,11 +60,11 @@ export function ProductDetailClient({ product }: { product: any }) {
           {/* Pricing */}
           <div className="flex items-baseline gap-3 pt-2">
             <span className="text-2xl sm:text-3xl font-extrabold text-foreground">
-              Rs. {currentPrice.toLocaleString()}
+              {formatCurrency(currentPrice)}
             </span>
             {hasDiscount && (
               <span className="text-base text-muted-foreground line-through">
-                Rs. {currentComparePrice?.toLocaleString()}
+                {formatCurrency(currentComparePrice)}
               </span>
             )}
           </div>

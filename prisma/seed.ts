@@ -47,14 +47,18 @@ async function main() {
     });
   }
 
-  // Seed Default System Settings (BUILD_STANDARDS 1.6 & 2.7)
+  /**
+   * CRITICAL DEPLOYMENT NOTE (BUILD_STANDARDS 1.6 & 2.7):
+   * Default store settings below (store.currency, store.country, shipping thresholds)
+   * MUST be reviewed and adjusted for each new client deployment before running seed.
+   */
   const defaultSettings = [
-    { key: 'store.currency', value: 'PKR', description: 'Store base currency code' },
-    { key: 'store.country', value: 'Pakistan', description: 'Store country' },
-    { key: 'shipping.free_threshold', value: 5000, description: 'Free shipping qualifying order subtotal' },
-    { key: 'shipping.standard_cost', value: 250, description: 'Standard flat rate shipping fee' },
-    { key: 'store.name', value: 'AWWeb SaaS Template Store', description: 'Store name' },
-    { key: 'tax.rate', value: 0, description: 'Default sales tax percentage' },
+    { key: 'store.currency', value: process.env.INITIAL_STORE_CURRENCY || 'PKR', description: 'Store base currency code (e.g. PKR, USD, EUR, GBP)' },
+    { key: 'store.country', value: process.env.INITIAL_STORE_COUNTRY || 'Pakistan', description: 'Store operating country' },
+    { key: 'shipping.free_threshold', value: Number(process.env.INITIAL_FREE_SHIPPING_THRESHOLD) || 5000, description: 'Free shipping qualifying order subtotal' },
+    { key: 'shipping.standard_cost', value: Number(process.env.INITIAL_STANDARD_SHIPPING_COST) || 250, description: 'Standard flat rate shipping fee' },
+    { key: 'store.name', value: process.env.INITIAL_STORE_NAME || 'AWWeb SaaS Template Store', description: 'Store display name' },
+    { key: 'tax.rate', value: Number(process.env.INITIAL_TAX_RATE) || 0, description: 'Default sales tax percentage' },
   ];
 
   console.log('⚙️  Seeding Default Store Settings...');

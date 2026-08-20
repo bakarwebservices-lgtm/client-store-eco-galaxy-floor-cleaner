@@ -1,4 +1,5 @@
 'use client';
+import { formatCurrency } from '@/lib/format';
 
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
@@ -177,7 +178,7 @@ export default function AdminProductsPage() {
                           </span>
                         </td>
                         <td className="py-3 px-4 font-medium text-foreground">
-                          Rs. {p.price.toLocaleString()}
+                          {formatCurrency(p.price)}
                         </td>
                         <td className="py-3 px-4 text-muted-foreground">
                           {p.hasVariants ? `${p.variants.length} variations` : 'Single SKU'}

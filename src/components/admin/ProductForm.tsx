@@ -1,4 +1,5 @@
 'use client';
+import { formatCurrency } from '@/lib/format';
 
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
@@ -262,7 +263,7 @@ export function ProductForm({
 
             {/* Pricing */}
             <div className="rounded-xl border border-border bg-card p-5 space-y-4 shadow-sm">
-              <h2 className="text-sm font-bold uppercase tracking-wider text-foreground">Pricing (PKR)</h2>
+              <h2 className="text-sm font-bold uppercase tracking-wider text-foreground">Pricing & Valuation</h2>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-1.5">
                   <label className="block text-xs font-semibold text-muted-foreground">Retail Price *</label>

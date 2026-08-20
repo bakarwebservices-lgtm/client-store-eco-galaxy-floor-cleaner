@@ -2,8 +2,15 @@ import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { requireAdminAuth } from '@/lib/auth/admin';
 import { FulfillmentStatus, PaymentStatus } from '@prisma/client';
+import { z } from 'zod';
 
 export const dynamic = 'force-dynamic';
+
+const returnOrderSchema = z.object({
+  reason: z.string().min(1, 'Reason is required').max(500).default('Customer Return'),
+  restockInventory: z.boolean().default(true),
+  refundPayment: z.boolean().default(true),
+});
 
 /**
  * Process Return (RMA) for Dispatched / Fulfilled Orders
@@ -21,11 +28,15 @@ export async function POST(
     const { id } = await params;
     const body = await req.json();
 
-    const {
-      reason = 'Customer Return',
-      restockInventory = true,
-      refundPayment = true,
-    } = body;
+    const parsed = returnOrderSchema.safeParse(body);
+    if (!parsed.success) {
+      return NextResponse.json(
+        { error: 'Invalid return request data', details: parsed.error.format() },
+        { status: 400 }
+      );
+    }
+
+    const { reason, restockInventory, refundPayment } = parsed.data;
 
     const order = await db.order.findUnique({
       where: { id },

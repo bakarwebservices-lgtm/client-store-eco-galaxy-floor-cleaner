@@ -1,4 +1,5 @@
 'use client';
+import { formatCurrency } from '@/lib/format';
 
 import React from 'react';
 import Link from 'next/link';
@@ -35,7 +36,7 @@ export default function CartPage() {
                 <Truck className="h-4 w-4 text-primary" />
                 {remainingForFreeShipping > 0 ? (
                   <span>
-                    Add <strong className="text-primary">Rs. {remainingForFreeShipping.toLocaleString()}</strong> more to unlock <strong>FREE Shipping</strong> (Threshold: Rs. {freeShippingThreshold.toLocaleString()})!
+                    Add <strong className="text-primary">{formatCurrency(remainingForFreeShipping)}</strong> more to unlock <strong>FREE Shipping</strong> (Threshold: {formatCurrency(freeShippingThreshold)})!
                   </span>
                 ) : (
                   <span className="text-success font-bold">🎉 You unlocked FREE Shipping!</span>
@@ -77,7 +78,7 @@ export default function CartPage() {
                         </p>
                       )}
                       <p className="text-xs font-bold text-foreground sm:hidden">
-                        Rs. {item.price.toLocaleString()}
+                        {formatCurrency(item.price)}
                       </p>
                     </div>
                   </div>
@@ -110,7 +111,7 @@ export default function CartPage() {
                     {/* Total Item Price */}
                     <div className="text-right min-w-[100px]">
                       <p className="text-sm font-bold text-foreground">
-                        Rs. {item.totalItemPrice.toLocaleString()}
+                        {formatCurrency(item.totalItemPrice)}
                       </p>
                       <button
                         type="button"
@@ -135,7 +136,7 @@ export default function CartPage() {
               <div className="space-y-3 text-xs text-muted-foreground border-b border-border pb-4">
                 <div className="flex justify-between">
                   <span>Subtotal</span>
-                  <span className="font-bold text-foreground">Rs. {subtotal.toLocaleString()}</span>
+                  <span className="font-bold text-foreground">{formatCurrency(subtotal)}</span>
                 </div>
                 <div className="flex justify-between">
                   <span>Estimated Shipping</span>
@@ -148,7 +149,7 @@ export default function CartPage() {
               <div className="flex items-baseline justify-between text-base font-bold text-foreground">
                 <span>Total</span>
                 <span className="text-lg font-extrabold text-primary">
-                  Rs. {subtotal.toLocaleString()}
+                  {formatCurrency(subtotal)}
                 </span>
               </div>
 

@@ -1,6 +1,7 @@
 import React from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
+import { formatCurrency } from '@/lib/format';
 
 export interface ProductCardProps {
   id: string;
@@ -68,11 +69,11 @@ export function ProductCard({ product }: { product: ProductCardProps }) {
         {/* Price display */}
         <div className="flex items-baseline gap-1.5 mt-auto">
           <span className="text-sm sm:text-base font-bold text-foreground">
-            Rs. {product.price.toLocaleString()}
+            {formatCurrency(product.price)}
           </span>
           {hasDiscount && (
             <span className="text-xs text-muted-foreground line-through">
-              Rs. {product.comparePrice?.toLocaleString()}
+              {formatCurrency(product.comparePrice)}
             </span>
           )}
         </div>

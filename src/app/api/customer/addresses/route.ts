@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { getCustomerSession } from '@/lib/auth/customer';
 import { customerAddressSchema } from '@/lib/validation/customer';
+import { getSetting } from '@/lib/settings';
 
 export const dynamic = 'force-dynamic';
 
@@ -37,6 +38,8 @@ export async function POST(req: NextRequest) {
       });
     }
 
+    const defaultCountry = await getSetting<string>('store.country', 'Default');
+
     const newAddress = await db.customerAddress.create({
       data: {
         customerId: session.customerId,
@@ -48,7 +51,7 @@ export async function POST(req: NextRequest) {
         city,
         province: province || null,
         postalCode: postalCode || null,
-        country: country || 'Pakistan',
+        country: country || defaultCountry,
         isDefault,
       },
     });

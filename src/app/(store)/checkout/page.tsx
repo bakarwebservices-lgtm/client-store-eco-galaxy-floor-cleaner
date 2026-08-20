@@ -1,4 +1,5 @@
 'use client';
+import { formatCurrency } from '@/lib/format';
 
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
@@ -394,7 +395,7 @@ export default function CheckoutPage() {
                     </div>
                   </div>
                   <span className="text-xs font-bold text-foreground whitespace-nowrap">
-                    Rs. {item.totalItemPrice.toLocaleString()}
+                    {formatCurrency(item.totalItemPrice)}
                   </span>
                 </div>
               ))}
@@ -434,7 +435,7 @@ export default function CheckoutPage() {
               {appliedCoupon && (
                 <div className="flex items-center gap-1.5 text-xs text-success font-medium">
                   <Check className="h-3.5 w-3.5" />
-                  <span>Coupon {appliedCoupon.code} applied! (-Rs. {appliedCoupon.discountAmount.toLocaleString()})</span>
+                  <span>Coupon {appliedCoupon.code} applied! (-{formatCurrency(appliedCoupon.discountAmount)})</span>
                 </div>
               )}
 
@@ -447,27 +448,27 @@ export default function CheckoutPage() {
             <div className="border-t border-border pt-4 space-y-2 text-xs text-muted-foreground">
               <div className="flex justify-between">
                 <span>Subtotal</span>
-                <span className="font-semibold text-foreground">Rs. {subtotal.toLocaleString()}</span>
+                <span className="font-semibold text-foreground">{formatCurrency(subtotal)}</span>
               </div>
 
               {discountAmount > 0 && (
                 <div className="flex justify-between text-success font-medium">
                   <span>Coupon Discount</span>
-                  <span>- Rs. {discountAmount.toLocaleString()}</span>
+                  <span>- {formatCurrency(discountAmount)}</span>
                 </div>
               )}
 
               <div className="flex justify-between">
                 <span>Delivery Charges</span>
                 <span className="font-semibold text-foreground">
-                  {shippingCost === 0 ? <span className="text-success font-bold">FREE</span> : `Rs. ${shippingCost.toLocaleString()}`}
+                  {shippingCost === 0 ? <span className="text-success font-bold">FREE</span> : formatCurrency(shippingCost)}
                 </span>
               </div>
 
               <div className="flex items-baseline justify-between border-t border-border pt-3 text-base font-bold text-foreground">
                 <span>Grand Total</span>
                 <span className="text-xl font-extrabold text-primary">
-                  Rs. {grandTotal.toLocaleString()}
+                  {formatCurrency(grandTotal)}
                 </span>
               </div>
             </div>

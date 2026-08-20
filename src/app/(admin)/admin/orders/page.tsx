@@ -1,4 +1,5 @@
 'use client';
+import { formatCurrency } from '@/lib/format';
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
@@ -188,7 +189,7 @@ export default function AdminOrdersPage() {
                         {order.items?.length || 0}
                       </td>
                       <td className="p-3.5 text-right font-bold text-foreground">
-                        Rs. {order.totalPrice.toLocaleString()}
+                        {formatCurrency(order.totalPrice, order.currency)}
                       </td>
                       <td className="p-3.5 text-center">
                         <Link

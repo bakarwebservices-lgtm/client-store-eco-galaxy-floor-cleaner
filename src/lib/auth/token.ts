@@ -1,7 +1,24 @@
 import { SignJWT, jwtVerify } from 'jose';
 
-const JWT_SECRET_STRING = process.env.JWT_SECRET || 'super-secret-jwt-key-minimum-32-characters-long!';
-const SECRET_KEY = new TextEncoder().encode(JWT_SECRET_STRING);
+// Separate Admin and Customer JWT secrets (BUILD_STANDARDS 2.2)
+const ADMIN_JWT_SECRET_STRING =
+  process.env.ADMIN_JWT_SECRET ||
+  (process.env.NODE_ENV === 'production'
+    ? (() => {
+        throw new Error('ADMIN_JWT_SECRET environment variable is missing in production!');
+      })()
+    : 'dev-admin-jwt-secret-key-min-32-chars!!');
+
+const CUSTOMER_JWT_SECRET_STRING =
+  process.env.CUSTOMER_JWT_SECRET ||
+  (process.env.NODE_ENV === 'production'
+    ? (() => {
+        throw new Error('CUSTOMER_JWT_SECRET environment variable is missing in production!');
+      })()
+    : 'dev-customer-jwt-secret-key-min-32-chars!!');
+
+const ADMIN_SECRET_KEY = new TextEncoder().encode(ADMIN_JWT_SECRET_STRING);
+const CUSTOMER_SECRET_KEY = new TextEncoder().encode(CUSTOMER_JWT_SECRET_STRING);
 
 export const ADMIN_COOKIE_NAME = 'admin_session';
 export const CUSTOMER_COOKIE_NAME = 'customer_session';
@@ -37,12 +54,12 @@ export async function signAdminToken(payload: AdminTokenPayload): Promise<string
     .setProtectedHeader({ alg: 'HS256' })
     .setIssuedAt()
     .setExpirationTime('7d')
-    .sign(SECRET_KEY);
+    .sign(ADMIN_SECRET_KEY);
 }
 
 export async function verifyAdminToken(token: string): Promise<AdminTokenPayload | null> {
   try {
-    const { payload } = await jwtVerify(token, SECRET_KEY);
+    const { payload } = await jwtVerify(token, ADMIN_SECRET_KEY);
     return payload as unknown as AdminTokenPayload;
   } catch (error) {
     return null;
@@ -54,12 +71,12 @@ export async function signCustomerToken(payload: CustomerTokenPayload): Promise<
     .setProtectedHeader({ alg: 'HS256' })
     .setIssuedAt()
     .setExpirationTime('30d')
-    .sign(SECRET_KEY);
+    .sign(CUSTOMER_SECRET_KEY);
 }
 
 export async function verifyCustomerToken(token: string): Promise<CustomerTokenPayload | null> {
   try {
-    const { payload } = await jwtVerify(token, SECRET_KEY);
+    const { payload } = await jwtVerify(token, CUSTOMER_SECRET_KEY);
     return payload as unknown as CustomerTokenPayload;
   } catch (error) {
     return null;
@@ -71,12 +88,12 @@ export async function signEmailVerificationToken(payload: EmailVerificationToken
     .setProtectedHeader({ alg: 'HS256' })
     .setIssuedAt()
     .setExpirationTime('24h')
-    .sign(SECRET_KEY);
+    .sign(CUSTOMER_SECRET_KEY);
 }
 
 export async function verifyEmailVerificationToken(token: string): Promise<EmailVerificationTokenPayload | null> {
   try {
-    const { payload } = await jwtVerify(token, SECRET_KEY);
+    const { payload } = await jwtVerify(token, CUSTOMER_SECRET_KEY);
     return payload as unknown as EmailVerificationTokenPayload;
   } catch (error) {
     return null;
@@ -88,12 +105,12 @@ export async function signOrderAccessToken(orderId: string, orderNumber: string)
     .setProtectedHeader({ alg: 'HS256' })
     .setIssuedAt()
     .setExpirationTime('24h')
-    .sign(SECRET_KEY);
+    .sign(CUSTOMER_SECRET_KEY);
 }
 
 export async function verifyOrderAccessToken(token: string): Promise<OrderAccessTokenPayload | null> {
   try {
-    const { payload } = await jwtVerify(token, SECRET_KEY);
+    const { payload } = await jwtVerify(token, CUSTOMER_SECRET_KEY);
     return payload as unknown as OrderAccessTokenPayload;
   } catch (error) {
     return null;

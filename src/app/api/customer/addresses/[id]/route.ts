@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { getCustomerSession } from '@/lib/auth/customer';
 import { customerAddressSchema } from '@/lib/validation/customer';
+import { getSetting } from '@/lib/settings';
 
 export const dynamic = 'force-dynamic';
 
@@ -11,13 +12,19 @@ export async function PUT(
 ) {
   try {
     const session = await getCustomerSession();
-    if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    const { id } = await params;
+    if (!session?.customerId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
 
+    const { id } = await params;
     const body = await req.json();
     const parsed = customerAddressSchema.safeParse(body);
+
     if (!parsed.success) {
-      return NextResponse.json({ error: parsed.error.errors[0]?.message || 'Invalid address' }, { status: 400 });
+      return NextResponse.json(
+        { error: 'Invalid address data', details: parsed.error.format() },
+        { status: 400 }
+      );
     }
 
     const { firstName, lastName, label, phone, address, city, province, postalCode, country, isDefault } = parsed.data;
@@ -35,6 +42,8 @@ export async function PUT(
       });
     }
 
+    const defaultCountry = await getSetting<string>('store.country', 'Pakistan');
+
     const updated = await db.customerAddress.update({
       where: { id },
       data: {
@@ -46,7 +55,7 @@ export async function PUT(
         city,
         province: province || null,
         postalCode: postalCode || null,
-        country: country || 'Pakistan',
+        country: country || defaultCountry,
         isDefault,
       },
     });

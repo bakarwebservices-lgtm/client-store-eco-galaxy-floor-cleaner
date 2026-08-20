@@ -28,6 +28,6 @@ export const customerAddressSchema = z.object({
   city: z.string().min(1, 'City is required').max(100),
   province: z.string().max(100).optional().nullable(),
   postalCode: z.string().max(20).optional().nullable(),
-  country: z.string().default('Pakistan'),
+  country: z.string().min(1).optional(),
   isDefault: z.boolean().default(false),
 });

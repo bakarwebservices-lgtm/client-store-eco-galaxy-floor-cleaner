@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getCurrentCustomer } from '@/lib/auth/customer';
 import { signEmailVerificationToken } from '@/lib/auth/token';
 import { checkRateLimit } from '@/lib/security/rateLimit';
+import { sendVerificationEmail } from '@/lib/email';
 
 export const dynamic = 'force-dynamic';
 
@@ -24,7 +25,7 @@ export async function POST(req: NextRequest) {
 
     const verificationUrl = `${req.nextUrl.origin}/api/auth/customer/verify-email?token=${verificationToken}`;
 
-    console.log(`[Email Service Simulation] Sent email verification to ${customer.email}: ${verificationUrl}`);
+    await sendVerificationEmail(customer.email, verificationUrl);
 
     return NextResponse.json({
       success: true,

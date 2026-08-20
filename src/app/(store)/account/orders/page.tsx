@@ -1,4 +1,5 @@
 'use client';
+import { formatCurrency } from '@/lib/format';
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
@@ -67,7 +68,7 @@ export default function CustomerOrdersHistoryPage() {
 
               <div className="flex items-center justify-between sm:justify-end gap-4">
                 <span className="text-xs font-bold text-foreground">
-                  Rs. {order.totalPrice.toLocaleString()}
+                  {formatCurrency(order.totalPrice, order.currency)}
                 </span>
                 <Link
                   href={`/account/orders/${order.id}`}

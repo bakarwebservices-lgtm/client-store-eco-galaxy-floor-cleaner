@@ -1,4 +1,5 @@
 'use client';
+import { formatCurrency } from '@/lib/format';
 
 import React from 'react';
 import Image from 'next/image';
@@ -111,11 +112,11 @@ export function CartDrawer() {
                       {/* Price */}
                       <div className="text-right">
                         <p className="text-xs font-bold text-foreground">
-                          Rs. {item.totalItemPrice.toLocaleString()}
+                          {formatCurrency(item.totalItemPrice)}
                         </p>
                         {item.quantity > 1 && (
                           <p className="text-[10px] text-muted-foreground">
-                            Rs. {item.price.toLocaleString()} each
+                            {formatCurrency(item.price)} each
                           </p>
                         )}
                       </div>
@@ -149,7 +150,7 @@ export function CartDrawer() {
               <div className="flex items-center justify-between text-sm">
                 <span className="text-muted-foreground">Subtotal</span>
                 <span className="font-bold text-foreground text-base">
-                  Rs. {subtotal.toLocaleString()}
+                  {formatCurrency(subtotal)}
                 </span>
               </div>
               <p className="text-[11px] text-muted-foreground">

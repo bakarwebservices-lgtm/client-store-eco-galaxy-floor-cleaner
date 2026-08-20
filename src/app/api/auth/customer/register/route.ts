@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { checkRateLimit } from '@/lib/security/rateLimit';
+import { sendVerificationEmail } from '@/lib/email';
 import { customerRegisterSchema } from '@/lib/validation/customer';
 import { signCustomerToken, signEmailVerificationToken, CUSTOMER_COOKIE_NAME } from '@/lib/auth/token';
 import bcrypt from 'bcryptjs';
@@ -67,7 +68,9 @@ export async function POST(req: NextRequest) {
       email: customer.email!,
     });
     const verificationUrl = `${req.nextUrl.origin}/api/auth/customer/verify-email?token=${verificationToken}`;
-    console.log(`[Registration Verification Link] Sent to ${customer.email}: ${verificationUrl}`);
+    
+    // Dispatch Verification Email
+    await sendVerificationEmail(customer.email!, verificationUrl);
 
     // Sign Token
     const token = await signCustomerToken({

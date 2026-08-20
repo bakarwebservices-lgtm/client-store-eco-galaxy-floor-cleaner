@@ -1,4 +1,5 @@
 import React from 'react';
+import { formatCurrency } from '@/lib/format';
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import Image from 'next/image';
@@ -145,7 +146,7 @@ export default async function OrderSuccessPage({
                   </div>
                 </div>
                 <span className="text-xs font-bold text-foreground whitespace-nowrap">
-                  Rs. {item.totalPrice.toLocaleString()}
+                  {formatCurrency(item.totalPrice, order.currency)}
                 </span>
               </div>
             ))}
@@ -155,24 +156,24 @@ export default async function OrderSuccessPage({
           <div className="border-t border-border pt-3 space-y-1.5 text-xs text-muted-foreground">
             <div className="flex justify-between">
               <span>Subtotal</span>
-              <span className="font-medium text-foreground">Rs. {order.subtotal.toLocaleString()}</span>
+              <span className="font-medium text-foreground">{formatCurrency(order.subtotal, order.currency)}</span>
             </div>
             {order.discountAmount > 0 && (
               <div className="flex justify-between text-success">
                 <span>Coupon Discount ({order.couponCode})</span>
-                <span>- Rs. {order.discountAmount.toLocaleString()}</span>
+                <span>- {formatCurrency(order.discountAmount, order.currency)}</span>
               </div>
             )}
             <div className="flex justify-between">
               <span>Shipping</span>
               <span className="font-medium text-foreground">
-                {order.shippingAmount === 0 ? 'FREE' : `Rs. ${order.shippingAmount.toLocaleString()}`}
+                {order.shippingAmount === 0 ? 'FREE' : formatCurrency(order.shippingAmount, order.currency)}
               </span>
             </div>
             <div className="flex justify-between border-t border-border pt-2 text-sm font-bold text-foreground">
               <span>Total Amount</span>
               <span className="text-base font-extrabold text-primary">
-                Rs. {order.totalPrice.toLocaleString()}
+                {formatCurrency(order.totalPrice, order.currency)}
               </span>
             </div>
           </div>
