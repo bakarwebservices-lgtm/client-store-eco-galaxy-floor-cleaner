@@ -122,10 +122,10 @@ export function CartDrawer() {
                         <button
                           type="button"
                           onClick={() => removeItem(item.id)}
-                          className="text-muted-foreground hover:text-destructive transition-colors p-0.5"
+                          className="min-h-[44px] min-w-[44px] flex items-center justify-center text-muted-foreground hover:text-destructive transition-colors"
                           aria-label={`Remove ${item.productName}`}
                         >
-                          <Trash2 className="h-3.5 w-3.5" />
+                          <Trash2 className="h-4 w-4" />
                         </button>
                       </div>
 
@@ -142,19 +142,19 @@ export function CartDrawer() {
                         <button
                           type="button"
                           onClick={() => updateQuantity(item.id, item.quantity - 1)}
-                          className="px-2 py-1 text-xs text-muted-foreground hover:text-foreground"
+                          className="min-h-[44px] min-w-[44px] flex items-center justify-center text-xs text-muted-foreground hover:text-foreground active:bg-muted/50"
                           aria-label="Decrease quantity"
                         >
                           -
                         </button>
-                        <span className="px-2 text-xs font-semibold text-foreground min-w-[20px] text-center">
+                        <span className="px-1 text-xs font-semibold text-foreground min-w-[20px] text-center">
                           {item.quantity}
                         </span>
                         <button
                           type="button"
                           disabled={item.quantity >= item.availableStock}
                           onClick={() => updateQuantity(item.id, item.quantity + 1)}
-                          className="px-2 py-1 text-xs text-muted-foreground hover:text-foreground disabled:opacity-30"
+                          className="min-h-[44px] min-w-[44px] flex items-center justify-center text-xs text-muted-foreground hover:text-foreground disabled:opacity-30 active:bg-muted/50"
                           aria-label="Increase quantity"
                         >
                           +

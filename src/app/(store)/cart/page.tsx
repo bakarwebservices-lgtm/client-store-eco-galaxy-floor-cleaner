@@ -89,7 +89,7 @@ export default function CartPage() {
                       <button
                         type="button"
                         onClick={() => updateQuantity(item.id, item.quantity - 1)}
-                        className="px-3 py-1.5 text-xs text-muted-foreground hover:text-foreground"
+                        className="min-h-[44px] min-w-[44px] flex items-center justify-center text-xs text-muted-foreground hover:text-foreground active:bg-muted/50"
                         aria-label="Decrease quantity"
                       >
                         -
@@ -101,7 +101,7 @@ export default function CartPage() {
                         type="button"
                         disabled={item.quantity >= item.availableStock}
                         onClick={() => updateQuantity(item.id, item.quantity + 1)}
-                        className="px-3 py-1.5 text-xs text-muted-foreground hover:text-foreground disabled:opacity-30"
+                        className="min-h-[44px] min-w-[44px] flex items-center justify-center text-xs text-muted-foreground hover:text-foreground disabled:opacity-30 active:bg-muted/50"
                         aria-label="Increase quantity"
                       >
                         +
@@ -116,9 +116,9 @@ export default function CartPage() {
                       <button
                         type="button"
                         onClick={() => removeItem(item.id)}
-                        className="text-[11px] text-muted-foreground hover:text-destructive transition-colors mt-0.5 inline-flex items-center gap-1"
+                        className="min-h-[44px] px-2 text-[11px] text-muted-foreground hover:text-destructive transition-colors mt-0.5 inline-flex items-center gap-1"
                       >
-                        <Trash2 className="h-3 w-3" />
+                        <Trash2 className="h-3.5 w-3.5" />
                         <span>Remove</span>
                       </button>
                     </div>
