@@ -115,7 +115,28 @@ function CustomerLoginForm() {
 
 export default function CustomerLoginPage() {
   return (
-    <Suspense fallback={<div className="p-12 text-center text-xs text-muted-foreground">Loading login...</div>}>
+    <Suspense
+      fallback={
+        <main className="mx-auto max-w-md px-4 py-16 space-y-6 min-h-[580px]" aria-busy="true">
+          <div className="text-center space-y-2">
+            <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-muted animate-pulse" />
+            <div className="h-8 w-48 bg-muted rounded mx-auto animate-pulse" />
+            <div className="h-4 w-64 bg-muted rounded mx-auto animate-pulse" />
+          </div>
+          <div className="rounded-2xl border border-border bg-card p-6 shadow-sm space-y-4 min-h-[220px]">
+            <div className="space-y-2">
+              <div className="h-4 w-20 bg-muted rounded animate-pulse" />
+              <div className="h-10 w-full bg-muted/50 rounded-lg animate-pulse" />
+            </div>
+            <div className="space-y-2">
+              <div className="h-4 w-20 bg-muted rounded animate-pulse" />
+              <div className="h-10 w-full bg-muted/50 rounded-lg animate-pulse" />
+            </div>
+            <div className="h-10 w-full bg-muted rounded-lg animate-pulse" />
+          </div>
+        </main>
+      }
+    >
       <CustomerLoginForm />
     </Suspense>
   );

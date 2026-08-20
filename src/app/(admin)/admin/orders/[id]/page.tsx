@@ -249,9 +249,9 @@ export default function AdminOrderDetailPage() {
             <div className="flex items-center justify-between border-b border-border pb-3">
               <div className="flex items-center gap-2">
                 <RotateCcw className="h-4 w-4 text-warning" />
-                <h3 id="rma-dialog-title" className="text-sm font-bold text-foreground">
+                <h2 id="rma-dialog-title" className="text-sm font-bold text-foreground">
                   Process Return for Order {order.orderNumber}
-                </h3>
+                </h2>
               </div>
               <button
                 type="button"
