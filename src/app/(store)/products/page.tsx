@@ -54,25 +54,39 @@ export default async function ProductsCatalogPage({
   else if (sort === 'name-asc') orderBy = { name: 'asc' };
   else if (sort === 'name-desc') orderBy = { name: 'desc' };
 
-  const [products, total, categories] = await Promise.all([
-    db.product.findMany({
-      where,
-      skip,
-      take: limit,
-      orderBy,
-      include: {
-        images: {
-          orderBy: [{ isPrimary: 'desc' }, { position: 'asc' }],
+  let products: any[] = [];
+  let total = 0;
+  let categories: any[] = [];
+  let dbError = false;
+
+  try {
+    const [fetchedProducts, fetchedTotal, fetchedCategories] = await Promise.all([
+      db.product.findMany({
+        where,
+        skip,
+        take: limit,
+        orderBy,
+        include: {
+          images: {
+            orderBy: [{ isPrimary: 'desc' }, { position: 'asc' }],
+          },
         },
-      },
-    }),
-    db.product.count({ where }),
-    db.category.findMany({
-      where: { isActive: true },
-      orderBy: { sortOrder: 'asc' },
-      select: { id: true, name: true, slug: true },
-    }),
-  ]);
+      }),
+      db.product.count({ where }),
+      db.category.findMany({
+        where: { isActive: true },
+        orderBy: { sortOrder: 'asc' },
+        select: { id: true, name: true, slug: true },
+      }),
+    ]);
+
+    products = fetchedProducts;
+    total = fetchedTotal;
+    categories = fetchedCategories;
+  } catch (err) {
+    console.error('Failed to load products from database:', err);
+    dbError = true;
+  }
 
   const totalPages = Math.ceil(total / limit);
 
@@ -161,6 +175,17 @@ export default async function ProductsCatalogPage({
           {products.map((product) => (
             <ProductCard key={product.id} product={product} />
           ))}
+        </div>
+      ) : dbError ? (
+        <div className="rounded-2xl border border-destructive/20 bg-destructive/5 p-8 text-center space-y-3">
+          <p className="text-sm font-semibold text-foreground">Catalog is temporarily offline for maintenance.</p>
+          <p className="text-xs text-muted-foreground">Please check back in a few moments.</p>
+          <Link
+            href="/"
+            className="inline-block rounded-lg bg-primary px-4 py-2 text-xs font-semibold text-primary-foreground shadow"
+          >
+            Return to Home
+          </Link>
         </div>
       ) : (
         <div className="rounded-2xl border border-dashed border-border py-16 text-center space-y-3">
