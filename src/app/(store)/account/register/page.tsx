@@ -69,10 +69,13 @@ function CustomerRegisterForm() {
       <form onSubmit={handleSubmit} className="rounded-2xl border border-border bg-card p-6 shadow-sm space-y-4">
         <div className="grid grid-cols-2 gap-3">
           <div className="space-y-1.5">
-            <label className="block text-xs font-semibold text-foreground">First Name *</label>
+            <label htmlFor="reg-first-name" className="block text-xs font-semibold text-foreground">First Name *</label>
             <input
+              id="reg-first-name"
               type="text"
               required
+              aria-required="true"
+              autoComplete="given-name"
               value={firstName}
               onChange={(e) => setFirstName(e.target.value)}
               placeholder="Ahmad"
@@ -81,10 +84,13 @@ function CustomerRegisterForm() {
           </div>
 
           <div className="space-y-1.5">
-            <label className="block text-xs font-semibold text-foreground">Last Name *</label>
+            <label htmlFor="reg-last-name" className="block text-xs font-semibold text-foreground">Last Name *</label>
             <input
+              id="reg-last-name"
               type="text"
               required
+              aria-required="true"
+              autoComplete="family-name"
               value={lastName}
               onChange={(e) => setLastName(e.target.value)}
               placeholder="Khan"
@@ -94,10 +100,13 @@ function CustomerRegisterForm() {
         </div>
 
         <div className="space-y-1.5">
-          <label className="block text-xs font-semibold text-foreground">Email Address *</label>
+          <label htmlFor="reg-email" className="block text-xs font-semibold text-foreground">Email Address *</label>
           <input
+            id="reg-email"
             type="email"
             required
+            aria-required="true"
+            autoComplete="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             placeholder="name@example.com"
@@ -106,9 +115,11 @@ function CustomerRegisterForm() {
         </div>
 
         <div className="space-y-1.5">
-          <label className="block text-xs font-semibold text-foreground">Phone Number</label>
+          <label htmlFor="reg-phone" className="block text-xs font-semibold text-foreground">Phone Number</label>
           <input
+            id="reg-phone"
             type="tel"
+            autoComplete="tel"
             value={phone}
             onChange={(e) => setPhone(e.target.value)}
             placeholder="03001234567"
@@ -117,10 +128,13 @@ function CustomerRegisterForm() {
         </div>
 
         <div className="space-y-1.5">
-          <label className="block text-xs font-semibold text-foreground">Password *</label>
+          <label htmlFor="reg-password" className="block text-xs font-semibold text-foreground">Password *</label>
           <input
+            id="reg-password"
             type="password"
             required
+            aria-required="true"
+            autoComplete="new-password"
             minLength={6}
             value={password}
             onChange={(e) => setPassword(e.target.value)}

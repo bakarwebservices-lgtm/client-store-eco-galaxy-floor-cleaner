@@ -225,10 +225,12 @@ export function ProductForm({
               <h2 className="text-sm font-bold uppercase tracking-wider text-foreground">Basic Information</h2>
 
               <div className="space-y-1.5">
-                <label className="block text-xs font-semibold text-muted-foreground">Product Name *</label>
+                <label htmlFor="prod-name" className="block text-xs font-semibold text-muted-foreground">Product Name *</label>
                 <input
+                  id="prod-name"
                   type="text"
                   required
+                  aria-required="true"
                   value={name}
                   onChange={(e) => handleNameChange(e.target.value)}
                   placeholder="e.g. Classic Oxford Leather Shoes"
@@ -237,10 +239,12 @@ export function ProductForm({
               </div>
 
               <div className="space-y-1.5">
-                <label className="block text-xs font-semibold text-muted-foreground">Slug (URL Handle) *</label>
+                <label htmlFor="prod-slug" className="block text-xs font-semibold text-muted-foreground">Slug (URL Handle) *</label>
                 <input
+                  id="prod-slug"
                   type="text"
                   required
+                  aria-required="true"
                   value={slug}
                   onChange={(e) => setSlug(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ''))}
                   placeholder="classic-oxford-leather-shoes"
@@ -249,9 +253,11 @@ export function ProductForm({
               </div>
 
               <div className="space-y-1.5">
-                <label className="block text-xs font-semibold text-muted-foreground">Description *</label>
+                <label htmlFor="prod-description" className="block text-xs font-semibold text-muted-foreground">Description *</label>
                 <textarea
+                  id="prod-description"
                   required
+                  aria-required="true"
                   rows={5}
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
@@ -266,11 +272,13 @@ export function ProductForm({
               <h2 className="text-sm font-bold uppercase tracking-wider text-foreground">Pricing & Valuation</h2>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-1.5">
-                  <label className="block text-xs font-semibold text-muted-foreground">Retail Price *</label>
+                  <label htmlFor="prod-price" className="block text-xs font-semibold text-muted-foreground">Retail Price *</label>
                   <input
+                    id="prod-price"
                     type="number"
                     step="0.01"
                     required
+                    aria-required="true"
                     value={price}
                     onChange={(e) => setPrice(e.target.value)}
                     placeholder="4500"
@@ -279,8 +287,9 @@ export function ProductForm({
                 </div>
 
                 <div className="space-y-1.5">
-                  <label className="block text-xs font-semibold text-muted-foreground">Compare Price (Original / Strike-through)</label>
+                  <label htmlFor="prod-compare-price" className="block text-xs font-semibold text-muted-foreground">Compare Price (Original / Strike-through)</label>
                   <input
+                    id="prod-compare-price"
                     type="number"
                     step="0.01"
                     value={comparePrice}
@@ -507,8 +516,9 @@ export function ProductForm({
               <h2 className="text-sm font-bold uppercase tracking-wider text-foreground">Publishing Status</h2>
 
               <div className="space-y-1.5">
-                <label className="block text-xs font-semibold text-muted-foreground">Status</label>
+                <label htmlFor="prod-status" className="block text-xs font-semibold text-muted-foreground">Status</label>
                 <select
+                  id="prod-status"
                   value={status}
                   onChange={(e) => setStatus(e.target.value)}
                   className="w-full rounded-lg border border-input bg-background p-2.5 text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20"
@@ -565,8 +575,9 @@ export function ProductForm({
             <div className="rounded-xl border border-border bg-card p-5 space-y-4 shadow-sm">
               <h2 className="text-sm font-bold uppercase tracking-wider text-foreground">SEO Metadata</h2>
               <div className="space-y-1.5">
-                <label className="block text-xs font-semibold text-muted-foreground">SEO Title Tag</label>
+                <label htmlFor="prod-seo-title" className="block text-xs font-semibold text-muted-foreground">SEO Title Tag</label>
                 <input
+                  id="prod-seo-title"
                   type="text"
                   value={seoTitle}
                   onChange={(e) => setSeoTitle(e.target.value)}
@@ -575,8 +586,9 @@ export function ProductForm({
                 />
               </div>
               <div className="space-y-1.5">
-                <label className="block text-xs font-semibold text-muted-foreground">Meta Description</label>
+                <label htmlFor="prod-seo-desc" className="block text-xs font-semibold text-muted-foreground">Meta Description</label>
                 <textarea
+                  id="prod-seo-desc"
                   rows={3}
                   value={seoDescription}
                   onChange={(e) => setSeoDescription(e.target.value)}

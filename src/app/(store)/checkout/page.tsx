@@ -195,10 +195,13 @@ export default function CheckoutPage() {
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="space-y-1">
-                <label className="block text-[11px] font-semibold text-muted-foreground">Email Address *</label>
+                <label htmlFor="checkout-email" className="block text-[11px] font-semibold text-muted-foreground">Email Address *</label>
                 <input
+                  id="checkout-email"
                   type="email"
                   required
+                  aria-required="true"
+                  autoComplete="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="name@example.com"
@@ -207,10 +210,13 @@ export default function CheckoutPage() {
               </div>
 
               <div className="space-y-1">
-                <label className="block text-[11px] font-semibold text-muted-foreground">Phone Number *</label>
+                <label htmlFor="checkout-phone" className="block text-[11px] font-semibold text-muted-foreground">Phone Number *</label>
                 <input
+                  id="checkout-phone"
                   type="tel"
                   required
+                  aria-required="true"
+                  autoComplete="tel"
                   value={phone}
                   onChange={(e) => setPhone(e.target.value)}
                   placeholder="03001234567"
@@ -228,10 +234,13 @@ export default function CheckoutPage() {
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="space-y-1">
-                <label className="block text-[11px] font-semibold text-muted-foreground">First Name *</label>
+                <label htmlFor="checkout-first-name" className="block text-[11px] font-semibold text-muted-foreground">First Name *</label>
                 <input
+                  id="checkout-first-name"
                   type="text"
                   required
+                  aria-required="true"
+                  autoComplete="given-name"
                   value={firstName}
                   onChange={(e) => setFirstName(e.target.value)}
                   placeholder="Ahmad"
@@ -240,10 +249,13 @@ export default function CheckoutPage() {
               </div>
 
               <div className="space-y-1">
-                <label className="block text-[11px] font-semibold text-muted-foreground">Last Name *</label>
+                <label htmlFor="checkout-last-name" className="block text-[11px] font-semibold text-muted-foreground">Last Name *</label>
                 <input
+                  id="checkout-last-name"
                   type="text"
                   required
+                  aria-required="true"
+                  autoComplete="family-name"
                   value={lastName}
                   onChange={(e) => setLastName(e.target.value)}
                   placeholder="Khan"
@@ -253,10 +265,13 @@ export default function CheckoutPage() {
             </div>
 
             <div className="space-y-1">
-              <label className="block text-[11px] font-semibold text-muted-foreground">Street Address *</label>
+              <label htmlFor="checkout-address" className="block text-[11px] font-semibold text-muted-foreground">Street Address *</label>
               <input
+                id="checkout-address"
                 type="text"
                 required
+                aria-required="true"
+                autoComplete="street-address"
                 value={address}
                 onChange={(e) => setAddress(e.target.value)}
                 placeholder="House #, Street name, Sector/Area"
@@ -266,10 +281,13 @@ export default function CheckoutPage() {
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <div className="space-y-1">
-                <label className="block text-[11px] font-semibold text-muted-foreground">City *</label>
+                <label htmlFor="checkout-city" className="block text-[11px] font-semibold text-muted-foreground">City *</label>
                 <input
+                  id="checkout-city"
                   type="text"
                   required
+                  aria-required="true"
+                  autoComplete="address-level2"
                   value={city}
                   onChange={(e) => setCity(e.target.value)}
                   placeholder="Lahore"
@@ -278,9 +296,11 @@ export default function CheckoutPage() {
               </div>
 
               <div className="space-y-1">
-                <label className="block text-[11px] font-semibold text-muted-foreground">Province / State</label>
+                <label htmlFor="checkout-province" className="block text-[11px] font-semibold text-muted-foreground">Province / State</label>
                 <input
+                  id="checkout-province"
                   type="text"
+                  autoComplete="address-level1"
                   value={province}
                   onChange={(e) => setProvince(e.target.value)}
                   placeholder="Punjab"
@@ -289,9 +309,11 @@ export default function CheckoutPage() {
               </div>
 
               <div className="space-y-1">
-                <label className="block text-[11px] font-semibold text-muted-foreground">Postal Code</label>
+                <label htmlFor="checkout-postal-code" className="block text-[11px] font-semibold text-muted-foreground">Postal Code</label>
                 <input
+                  id="checkout-postal-code"
                   type="text"
+                  autoComplete="postal-code"
                   value={postalCode}
                   onChange={(e) => setPostalCode(e.target.value)}
                   placeholder="54000"
@@ -301,8 +323,9 @@ export default function CheckoutPage() {
             </div>
 
             <div className="space-y-1">
-              <label className="block text-[11px] font-semibold text-muted-foreground">Delivery Notes (Optional)</label>
+              <label htmlFor="checkout-notes" className="block text-[11px] font-semibold text-muted-foreground">Delivery Notes (Optional)</label>
               <textarea
+                id="checkout-notes"
                 rows={2}
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}

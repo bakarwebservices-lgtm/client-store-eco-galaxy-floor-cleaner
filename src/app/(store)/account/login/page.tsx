@@ -65,10 +65,13 @@ function CustomerLoginForm() {
 
       <form onSubmit={handleSubmit} className="rounded-2xl border border-border bg-card p-6 shadow-sm space-y-4">
         <div className="space-y-1.5">
-          <label className="block text-xs font-semibold text-foreground">Email Address</label>
+          <label htmlFor="login-email" className="block text-xs font-semibold text-foreground">Email Address</label>
           <input
+            id="login-email"
             type="email"
             required
+            aria-required="true"
+            autoComplete="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             placeholder="name@example.com"
@@ -77,10 +80,13 @@ function CustomerLoginForm() {
         </div>
 
         <div className="space-y-1.5">
-          <label className="block text-xs font-semibold text-foreground">Password</label>
+          <label htmlFor="login-password" className="block text-xs font-semibold text-foreground">Password</label>
           <input
+            id="login-password"
             type="password"
             required
+            aria-required="true"
+            autoComplete="current-password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             placeholder="••••••••"

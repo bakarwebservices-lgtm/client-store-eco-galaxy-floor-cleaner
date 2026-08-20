@@ -118,10 +118,13 @@ export default function CustomerAddressesPage() {
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="space-y-1">
-              <label className="block text-[11px] font-semibold text-muted-foreground">First Name *</label>
+              <label htmlFor="addr-first-name" className="block text-[11px] font-semibold text-muted-foreground">First Name *</label>
               <input
+                id="addr-first-name"
                 type="text"
                 required
+                aria-required="true"
+                autoComplete="given-name"
                 value={firstName}
                 onChange={(e) => setFirstName(e.target.value)}
                 placeholder="Ahmad"
@@ -130,10 +133,13 @@ export default function CustomerAddressesPage() {
             </div>
 
             <div className="space-y-1">
-              <label className="block text-[11px] font-semibold text-muted-foreground">Last Name *</label>
+              <label htmlFor="addr-last-name" className="block text-[11px] font-semibold text-muted-foreground">Last Name *</label>
               <input
+                id="addr-last-name"
                 type="text"
                 required
+                aria-required="true"
+                autoComplete="family-name"
                 value={lastName}
                 onChange={(e) => setLastName(e.target.value)}
                 placeholder="Khan"
@@ -144,8 +150,9 @@ export default function CustomerAddressesPage() {
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="space-y-1">
-              <label className="block text-[11px] font-semibold text-muted-foreground">Label (Optional)</label>
+              <label htmlFor="addr-label" className="block text-[11px] font-semibold text-muted-foreground">Label (Optional)</label>
               <input
+                id="addr-label"
                 type="text"
                 value={label}
                 onChange={(e) => setLabel(e.target.value)}
@@ -155,10 +162,13 @@ export default function CustomerAddressesPage() {
             </div>
 
             <div className="space-y-1">
-              <label className="block text-[11px] font-semibold text-muted-foreground">Phone Number *</label>
+              <label htmlFor="addr-phone" className="block text-[11px] font-semibold text-muted-foreground">Phone Number *</label>
               <input
+                id="addr-phone"
                 type="tel"
                 required
+                aria-required="true"
+                autoComplete="tel"
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
                 placeholder="03001234567"
@@ -168,10 +178,13 @@ export default function CustomerAddressesPage() {
           </div>
 
           <div className="space-y-1">
-            <label className="block text-[11px] font-semibold text-muted-foreground">Street Address *</label>
+            <label htmlFor="addr-street" className="block text-[11px] font-semibold text-muted-foreground">Street Address *</label>
             <input
+              id="addr-street"
               type="text"
               required
+              aria-required="true"
+              autoComplete="street-address"
               value={address}
               onChange={(e) => setAddress(e.target.value)}
               placeholder="House #, Street, Block/Sector"
@@ -181,10 +194,13 @@ export default function CustomerAddressesPage() {
 
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <div className="space-y-1">
-              <label className="block text-[11px] font-semibold text-muted-foreground">City *</label>
+              <label htmlFor="addr-city" className="block text-[11px] font-semibold text-muted-foreground">City *</label>
               <input
+                id="addr-city"
                 type="text"
                 required
+                aria-required="true"
+                autoComplete="address-level2"
                 value={city}
                 onChange={(e) => setCity(e.target.value)}
                 placeholder="Lahore"
@@ -193,9 +209,11 @@ export default function CustomerAddressesPage() {
             </div>
 
             <div className="space-y-1">
-              <label className="block text-[11px] font-semibold text-muted-foreground">Province</label>
+              <label htmlFor="addr-province" className="block text-[11px] font-semibold text-muted-foreground">Province</label>
               <input
+                id="addr-province"
                 type="text"
+                autoComplete="address-level1"
                 value={province}
                 onChange={(e) => setProvince(e.target.value)}
                 placeholder="Punjab"
@@ -204,9 +222,11 @@ export default function CustomerAddressesPage() {
             </div>
 
             <div className="space-y-1">
-              <label className="block text-[11px] font-semibold text-muted-foreground">Postal Code</label>
+              <label htmlFor="addr-postal-code" className="block text-[11px] font-semibold text-muted-foreground">Postal Code</label>
               <input
+                id="addr-postal-code"
                 type="text"
+                autoComplete="postal-code"
                 value={postalCode}
                 onChange={(e) => setPostalCode(e.target.value)}
                 placeholder="54000"
