@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { ShoppingBag, MapPin, User, LogOut, Package, ArrowRight, ShieldCheck } from 'lucide-react';
+import { ShoppingBag, MapPin, User, LogOut, Package, ArrowRight, AlertTriangle, CheckCircle, Mail } from 'lucide-react';
 
 export const dynamic = 'force-dynamic';
 
@@ -12,6 +12,8 @@ export default function CustomerAccountDashboard() {
   const [customer, setCustomer] = useState<any | null>(null);
   const [orders, setOrders] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [resending, setResending] = useState(false);
+  const [resendMsg, setResendMsg] = useState<string | null>(null);
 
   useEffect(() => {
     async function loadData() {
@@ -45,6 +47,21 @@ export default function CustomerAccountDashboard() {
     router.push('/account/login');
   };
 
+  const handleResendVerification = async () => {
+    setResending(true);
+    setResendMsg(null);
+    try {
+      const res = await fetch('/api/auth/customer/resend-verification', { method: 'POST' });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed to send verification link');
+      setResendMsg('Verification email sent! Please check your inbox.');
+    } catch (err: any) {
+      setResendMsg(err.message);
+    } finally {
+      setResending(false);
+    }
+  };
+
   if (loading) {
     return <div className="p-12 text-center text-xs text-muted-foreground">Loading account overview...</div>;
   }
@@ -53,6 +70,35 @@ export default function CustomerAccountDashboard() {
 
   return (
     <main className="mx-auto max-w-5xl px-4 py-10 sm:px-6 lg:px-8 space-y-8">
+      {/* Verification Notice Banner */}
+      {!customer.isEmailVerified && (
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-xl border border-warning/30 bg-warning/10 p-4 text-xs text-warning">
+          <div className="flex items-center gap-2.5">
+            <AlertTriangle className="h-5 w-5 shrink-0" />
+            <div>
+              <p className="font-bold">Please verify your email address ({customer.email})</p>
+              <p className="text-[11px] opacity-90">
+                To protect customer privacy, past guest orders and saved addresses are only unlocked once your email is confirmed.
+              </p>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={handleResendVerification}
+            disabled={resending}
+            className="shrink-0 rounded-lg bg-warning/20 px-3 py-1.5 text-xs font-bold text-warning hover:bg-warning/30 transition-colors disabled:opacity-50"
+          >
+            {resending ? 'Sending...' : 'Resend Verification Email'}
+          </button>
+        </div>
+      )}
+
+      {resendMsg && (
+        <div className="rounded-xl border border-primary/30 bg-primary/10 p-3 text-xs text-primary font-medium">
+          {resendMsg}
+        </div>
+      )}
+
       {/* Welcome Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-border pb-5">
         <div>
@@ -61,6 +107,15 @@ export default function CustomerAccountDashboard() {
           </h1>
           <p className="text-xs text-muted-foreground mt-0.5">
             Logged in as <strong className="text-foreground">{customer.email}</strong>
+            {customer.isEmailVerified ? (
+              <span className="ml-2 inline-flex items-center gap-1 rounded bg-success/10 px-1.5 py-0.5 text-[10px] font-bold text-success">
+                <CheckCircle className="h-3 w-3" /> Verified
+              </span>
+            ) : (
+              <span className="ml-2 inline-flex items-center gap-1 rounded bg-warning/10 px-1.5 py-0.5 text-[10px] font-bold text-warning">
+                Unverified
+              </span>
+            )}
           </p>
         </div>
 
@@ -175,8 +230,12 @@ export default function CustomerAccountDashboard() {
           </div>
         ) : (
           <div className="rounded-xl border border-dashed border-border py-12 text-center space-y-2">
-            <p className="text-xs font-semibold text-foreground">No orders placed yet</p>
-            <p className="text-[11px] text-muted-foreground">When you purchase products, they will show up here.</p>
+            <p className="text-xs font-semibold text-foreground">No orders found</p>
+            <p className="text-[11px] text-muted-foreground">
+              {!customer.isEmailVerified
+                ? 'Verify your email address above to view and link past guest orders.'
+                : 'When you purchase products, they will show up here.'}
+            </p>
             <Link
               href="/products"
               className="inline-block rounded-lg bg-primary px-4 py-2 text-xs font-bold text-primary-foreground shadow hover:bg-primary-hover transition-colors mt-2"

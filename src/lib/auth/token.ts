@@ -27,6 +27,11 @@ export interface OrderAccessTokenPayload {
   orderNumber: string;
 }
 
+export interface EmailVerificationTokenPayload {
+  customerId: string;
+  email: string;
+}
+
 export async function signAdminToken(payload: AdminTokenPayload): Promise<string> {
   return new SignJWT({ ...payload })
     .setProtectedHeader({ alg: 'HS256' })
@@ -56,6 +61,23 @@ export async function verifyCustomerToken(token: string): Promise<CustomerTokenP
   try {
     const { payload } = await jwtVerify(token, SECRET_KEY);
     return payload as unknown as CustomerTokenPayload;
+  } catch (error) {
+    return null;
+  }
+}
+
+export async function signEmailVerificationToken(payload: EmailVerificationTokenPayload): Promise<string> {
+  return new SignJWT({ ...payload })
+    .setProtectedHeader({ alg: 'HS256' })
+    .setIssuedAt()
+    .setExpirationTime('24h')
+    .sign(SECRET_KEY);
+}
+
+export async function verifyEmailVerificationToken(token: string): Promise<EmailVerificationTokenPayload | null> {
+  try {
+    const { payload } = await jwtVerify(token, SECRET_KEY);
+    return payload as unknown as EmailVerificationTokenPayload;
   } catch (error) {
     return null;
   }

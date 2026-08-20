@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { checkRateLimit } from '@/lib/security/rateLimit';
 import { customerRegisterSchema } from '@/lib/validation/customer';
-import { signCustomerToken, CUSTOMER_COOKIE_NAME } from '@/lib/auth/token';
+import { signCustomerToken, signEmailVerificationToken, CUSTOMER_COOKIE_NAME } from '@/lib/auth/token';
 import bcrypt from 'bcryptjs';
 
 export const dynamic = 'force-dynamic';
@@ -37,7 +37,7 @@ export async function POST(req: NextRequest) {
       if (existing.passwordHash) {
         return NextResponse.json({ error: 'An account with this email already exists. Please log in.' }, { status: 400 });
       }
-      // Upgrade guest customer to registered account
+      // Guest account exists: attach passwordHash but keep isEmailVerified = false until verified
       customer = await db.customer.update({
         where: { id: existing.id },
         data: {
@@ -45,6 +45,7 @@ export async function POST(req: NextRequest) {
           lastName,
           phone: phone || existing.phone,
           passwordHash,
+          isEmailVerified: false,
         },
       });
     } else {
@@ -55,9 +56,18 @@ export async function POST(req: NextRequest) {
           email: normalizedEmail,
           phone: phone || null,
           passwordHash,
+          isEmailVerified: false,
         },
       });
     }
+
+    // Generate Email Verification Token
+    const verificationToken = await signEmailVerificationToken({
+      customerId: customer.id,
+      email: customer.email!,
+    });
+    const verificationUrl = `${req.nextUrl.origin}/api/auth/customer/verify-email?token=${verificationToken}`;
+    console.log(`[Registration Verification Link] Sent to ${customer.email}: ${verificationUrl}`);
 
     // Sign Token
     const token = await signCustomerToken({
@@ -74,7 +84,9 @@ export async function POST(req: NextRequest) {
         email: customer.email,
         firstName: customer.firstName,
         lastName: customer.lastName,
+        isEmailVerified: customer.isEmailVerified,
       },
+      verificationUrl: process.env.NODE_ENV !== 'production' ? verificationUrl : undefined,
     });
 
     response.cookies.set({

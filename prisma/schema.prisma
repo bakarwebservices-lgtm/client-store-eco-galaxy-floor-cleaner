@@ -110,9 +110,10 @@ model Customer {
   phone        String?   @unique
   firstName    String?   @map("first_name")
   lastName     String?   @map("last_name")
-  passwordHash String?   @map("password_hash") // null = guest (no login yet)
-  isActive     Boolean   @default(true) @map("is_active")
-  lastLogin    DateTime? @map("last_login")
+  passwordHash    String?   @map("password_hash") // null = guest (no login yet)
+  isEmailVerified Boolean   @default(false) @map("is_email_verified")
+  isActive        Boolean   @default(true) @map("is_active")
+  lastLogin       DateTime? @map("last_login")
   createdAt    DateTime  @default(now()) @map("created_at")
   updatedAt    DateTime  @updatedAt @map("updated_at")
   deletedAt    DateTime? @map("deleted_at") // soft delete

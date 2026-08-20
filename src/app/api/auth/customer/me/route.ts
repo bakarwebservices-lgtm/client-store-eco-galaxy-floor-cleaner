@@ -17,6 +17,7 @@ export async function GET() {
       firstName: customer.firstName,
       lastName: customer.lastName,
       phone: customer.phone,
+      isEmailVerified: customer.isEmailVerified,
       addresses: customer.addresses,
     },
   });

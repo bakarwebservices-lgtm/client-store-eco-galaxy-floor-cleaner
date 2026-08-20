@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { ArrowLeft, Check, AlertTriangle, Truck, User, MapPin, Package, Clock, ShieldCheck, Loader2 } from 'lucide-react';
+import { ArrowLeft, Check, AlertTriangle, Truck, User, MapPin, Package, Clock, ShieldCheck, RotateCcw, XCircle, Loader2 } from 'lucide-react';
 
 export const dynamic = 'force-dynamic';
 
@@ -16,8 +16,14 @@ export default function AdminOrderDetailPage() {
   const [fulfillmentStatus, setFulfillmentStatus] = useState('');
   const [notes, setNotes] = useState('');
   const [saving, setSaving] = useState(false);
-  const [cancelling, setCancelling] = useState(false);
+  const [actionLoading, setActionLoading] = useState(false);
   const [msg, setMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+
+  // Return Dialog state
+  const [showReturnModal, setShowReturnModal] = useState(false);
+  const [returnReason, setReturnReason] = useState('Customer Return');
+  const [restockInventory, setRestockInventory] = useState(true);
+  const [refundPayment, setRefundPayment] = useState(true);
 
   const fetchOrder = async () => {
     setLoading(true);
@@ -59,17 +65,16 @@ export default function AdminOrderDetailPage() {
     }
   };
 
+  // Pre-fulfillment Cancellation
   const handleCancelOrder = async () => {
-    if (!confirm('Are you sure you want to cancel this order? This will permanently mark the order cancelled and automatically reverse item quantities back to stock inventory.')) {
+    if (!confirm('Are you sure you want to cancel this order? Since this order has not been fulfilled, all items will be automatically restocked back to inventory.')) {
       return;
     }
 
-    setCancelling(true);
+    setActionLoading(true);
     setMsg(null);
     try {
-      const res = await fetch(`/api/admin/orders/${id}/cancel`, {
-        method: 'POST',
-      });
+      const res = await fetch(`/api/admin/orders/${id}/cancel`, { method: 'POST' });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Failed to cancel order');
       setMsg({ type: 'success', text: 'Order cancelled and stock inventory reversed back to catalog.' });
@@ -77,7 +82,34 @@ export default function AdminOrderDetailPage() {
     } catch (err: any) {
       setMsg({ type: 'error', text: err.message });
     } finally {
-      setCancelling(false);
+      setActionLoading(false);
+    }
+  };
+
+  // Post-fulfillment Return
+  const handleProcessReturn = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setActionLoading(true);
+    setMsg(null);
+    try {
+      const res = await fetch(`/api/admin/orders/${id}/return`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          reason: returnReason,
+          restockInventory,
+          refundPayment,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed to process return');
+      setMsg({ type: 'success', text: data.message });
+      setShowReturnModal(false);
+      await fetchOrder();
+    } catch (err: any) {
+      setMsg({ type: 'error', text: err.message });
+    } finally {
+      setActionLoading(false);
     }
   };
 
@@ -91,6 +123,8 @@ export default function AdminOrderDetailPage() {
 
   const shippingAddr: any = order.shippingAddress;
   const isCancelled = Boolean(order.cancelledAt);
+  const isFulfilled = order.fulfillmentStatus === 'FULFILLED';
+  const isReturned = order.fulfillmentStatus === 'RETURNED';
 
   return (
     <div className="space-y-6 max-w-5xl mx-auto">
@@ -113,6 +147,11 @@ export default function AdminOrderDetailPage() {
                   CANCELLED ON {new Date(order.cancelledAt).toLocaleDateString()}
                 </span>
               )}
+              {isReturned && (
+                <span className="rounded bg-destructive/10 px-2 py-0.5 text-[10px] font-bold text-destructive">
+                  RETURNED (RMA)
+                </span>
+              )}
             </div>
             <p className="text-xs text-muted-foreground">
               Placed on {new Date(order.createdAt).toLocaleString()}
@@ -120,16 +159,31 @@ export default function AdminOrderDetailPage() {
           </div>
         </div>
 
-        {!isCancelled && (
-          <button
-            type="button"
-            onClick={handleCancelOrder}
-            disabled={cancelling}
-            className="rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-1.5 text-xs font-semibold text-destructive hover:bg-destructive/20 transition-colors disabled:opacity-50"
-          >
-            {cancelling ? 'Cancelling...' : 'Cancel Order & Reverse Stock'}
-          </button>
-        )}
+        {/* Action Buttons: Cancel vs Process Return */}
+        <div className="flex gap-2">
+          {!isCancelled && !isReturned && (
+            isFulfilled ? (
+              <button
+                type="button"
+                onClick={() => setShowReturnModal(true)}
+                className="flex items-center gap-1.5 rounded-lg border border-border bg-card px-3 py-1.5 text-xs font-bold text-foreground hover:bg-muted transition-colors"
+              >
+                <RotateCcw className="h-3.5 w-3.5 text-warning" />
+                <span>Process Return (RMA)</span>
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={handleCancelOrder}
+                disabled={actionLoading}
+                className="flex items-center gap-1.5 rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-1.5 text-xs font-semibold text-destructive hover:bg-destructive/20 transition-colors disabled:opacity-50"
+              >
+                <XCircle className="h-3.5 w-3.5" />
+                <span>{actionLoading ? 'Cancelling...' : 'Cancel Order (Pre-Dispatch)'}</span>
+              </button>
+            )
+          )}
+        </div>
       </div>
 
       {msg && (
@@ -141,6 +195,79 @@ export default function AdminOrderDetailPage() {
           }`}
         >
           {msg.text}
+        </div>
+      )}
+
+      {/* Return Dialog / Modal */}
+      {showReturnModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm">
+          <div className="w-full max-w-md rounded-2xl border border-border bg-card p-6 shadow-2xl space-y-4">
+            <div className="flex items-center justify-between border-b border-border pb-3">
+              <div className="flex items-center gap-2">
+                <RotateCcw className="h-4 w-4 text-warning" />
+                <h3 className="text-sm font-bold text-foreground">Process Return for Order {order.orderNumber}</h3>
+              </div>
+              <button onClick={() => setShowReturnModal(false)} className="text-xs text-muted-foreground hover:text-foreground">✕</button>
+            </div>
+
+            <form onSubmit={handleProcessReturn} className="space-y-4">
+              <div className="space-y-1.5">
+                <label className="block text-xs font-semibold text-foreground">Return Reason</label>
+                <input
+                  type="text"
+                  required
+                  value={returnReason}
+                  onChange={(e) => setReturnReason(e.target.value)}
+                  placeholder="Defective item, incorrect size, customer remorse..."
+                  className="w-full rounded-lg border border-input bg-background p-2.5 text-xs text-foreground focus:outline-none"
+                />
+              </div>
+
+              <div className="space-y-2 pt-1">
+                <label className="flex items-center gap-2 text-xs font-semibold text-foreground cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={restockInventory}
+                    onChange={(e) => setRestockInventory(e.target.checked)}
+                    className="rounded text-primary focus:ring-primary"
+                  />
+                  <span>Restock physical inventory back to ProductVariant stock</span>
+                </label>
+                <p className="text-[11px] text-muted-foreground pl-6">
+                  Uncheck if item is damaged/unsellable and cannot be returned to shelf stock.
+                </p>
+              </div>
+
+              <div className="space-y-2 pt-1">
+                <label className="flex items-center gap-2 text-xs font-semibold text-foreground cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={refundPayment}
+                    onChange={(e) => setRefundPayment(e.target.checked)}
+                    className="rounded text-primary focus:ring-primary"
+                  />
+                  <span>Mark payment status as REFUNDED</span>
+                </label>
+              </div>
+
+              <div className="flex justify-end gap-2 border-t border-border pt-4">
+                <button
+                  type="button"
+                  onClick={() => setShowReturnModal(false)}
+                  className="rounded-lg border border-border px-3 py-1.5 text-xs font-semibold text-foreground hover:bg-muted"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={actionLoading}
+                  className="rounded-lg bg-primary px-4 py-1.5 text-xs font-bold text-primary-foreground shadow hover:bg-primary-hover disabled:opacity-50"
+                >
+                  {actionLoading ? 'Processing...' : 'Confirm Return'}
+                </button>
+              </div>
+            </form>
+          </div>
         </div>
       )}
 
@@ -184,13 +311,13 @@ export default function AdminOrderDetailPage() {
             </div>
 
             <div className="space-y-1.5 pt-2">
-              <label className="block text-[11px] font-semibold text-muted-foreground">Internal Notes</label>
+              <label className="block text-[11px] font-semibold text-muted-foreground">Internal Notes & Audit Log</label>
               <textarea
-                rows={2}
+                rows={4}
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
-                placeholder="Customer request notes, courier tracking number, internal flags..."
-                className="w-full rounded-lg border border-input bg-background p-2.5 text-xs text-foreground focus:outline-none"
+                placeholder="Customer request notes, courier tracking number, return inspection notes..."
+                className="w-full rounded-lg border border-input bg-background p-2.5 text-xs text-foreground focus:outline-none font-mono text-[11px]"
               />
             </div>
 
