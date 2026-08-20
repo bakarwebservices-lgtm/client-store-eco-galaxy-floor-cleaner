@@ -44,16 +44,22 @@ export async function POST(req: NextRequest) {
 
     const fullCountry = shippingAddress.country || defaultCountry;
 
-    // 3. Atomically verify items, pricing, stock, create order, and clear cart
-    const orderResult = await db.$transaction(async (tx) => {
-      // Re-verify cart is still not empty within transaction (double-click / race protection)
-      const currentCartItems = await tx.cartItem.findMany({
-        where: { cartId: cart.id },
-      });
+    // 3. Atomically verify items, pricing, stock, create order, and clear cart (with collision retry loop)
+    const MAX_RETRIES = 3;
+    let orderResult: any = null;
+    let lastError: any = null;
 
-      if (currentCartItems.length === 0) {
-        throw new Error('This order has already been submitted and processed.');
-      }
+    for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+      try {
+        orderResult = await db.$transaction(async (tx) => {
+          // Re-verify cart is still not empty within transaction (double-click / race protection)
+          const currentCartItems = await tx.cartItem.findMany({
+            where: { cartId: cart.id },
+          });
+
+          if (currentCartItems.length === 0) {
+            throw new Error('This order has already been submitted and processed.');
+          }
 
       let liveSubtotal = 0;
       const orderItemsToCreate = [];
@@ -236,8 +242,33 @@ export async function POST(req: NextRequest) {
       return newOrder;
     });
 
-    // Generate signed Order Access Token to authorize access to confirmation page
-    const orderAccessToken = await signOrderAccessToken(orderResult.id, orderResult.orderNumber);
+    // Successfully completed transaction without collision
+    break;
+  } catch (err: any) {
+    lastError = err;
+    const isUniqueCollision =
+      err?.code === 'P2002' &&
+      (JSON.stringify(err?.meta?.target || '').includes('order_number') ||
+        JSON.stringify(err?.meta?.target || '').includes('orderNumber') ||
+        err?.message?.includes('order_number') ||
+        err?.message?.includes('orderNumber'));
+
+    if (isUniqueCollision && attempt < MAX_RETRIES) {
+      console.warn(`[Checkout] Order number collision on attempt ${attempt}. Retrying with fresh order number...`);
+      continue;
+    }
+
+    // Immediately throw other errors (e.g. stock conflicts, invalid coupon)
+    throw err;
+  }
+}
+
+if (!orderResult) {
+  throw lastError || new Error('Failed to process checkout after multiple attempts.');
+}
+
+// Generate signed Order Access Token to authorize access to confirmation page
+const orderAccessToken = await signOrderAccessToken(orderResult.id, orderResult.orderNumber);
 
     const response = NextResponse.json({
       success: true,

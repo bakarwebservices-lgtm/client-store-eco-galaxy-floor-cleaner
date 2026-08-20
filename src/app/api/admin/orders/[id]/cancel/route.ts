@@ -6,7 +6,7 @@ import { z } from 'zod';
 export const dynamic = 'force-dynamic';
 
 const cancelParamsSchema = z.object({
-  id: z.string().min(1, 'Order ID is required'),
+  id: z.string().uuid('Invalid order ID format, must be a valid UUID'),
 });
 
 /**
