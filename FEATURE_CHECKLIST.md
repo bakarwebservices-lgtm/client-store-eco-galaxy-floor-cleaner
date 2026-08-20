@@ -10,7 +10,12 @@ This document tracks every UI element, intended action, route handler, and its e
 
 | Feature Domain | Element / Component | Intended Action | Route / Handler | Status |
 | :--- | :--- | :--- | :--- | :--- |
-| *Scaffold* | Project Base | Initialize Next.js, Prisma client, theme tokens & env | N/A | `Connected` |
+| **Scaffold** | Project Base | Initialize Next.js, Prisma client, theme tokens & env | N/A | `Connected` |
+| **Admin Auth** | Login Form (`src/app/(admin)/admin/login/page.tsx`) | Submit credentials, rate-limit, authenticate against AdminUser, issue HTTP-only JWT cookie | `POST /api/auth/admin/login` | `Connected` |
+| **Admin Auth** | Route Protection (`src/middleware.ts`) | Verify JWT cookie on all `/admin/*` routes; redirect unauthenticated requests to `/admin/login` | Middleware | `Connected` |
+| **Admin Auth** | Session Inspector | Verify active admin session from cookies and return staff payload | `GET /api/auth/admin/me` | `Connected` |
+| **Admin Auth** | Logout Button (`src/app/(admin)/admin/page.tsx`) | Clear HTTP-only session cookie and redirect to login | `POST /api/auth/admin/logout` | `Connected` |
+| **Admin Auth** | Seed Script (`prisma/seed.ts`) | Create / reset initial `AdminUser` (`admin@store.com` / `AdminRole.ADMIN`) | Database Seeder | `Connected` |
 
 ---
 
