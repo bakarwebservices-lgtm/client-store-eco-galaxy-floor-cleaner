@@ -1,8 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { requireAdminAuth } from '@/lib/auth/admin';
+import { z } from 'zod';
 
 export const dynamic = 'force-dynamic';
+
+const cancelParamsSchema = z.object({
+  id: z.string().min(1, 'Order ID is required'),
+});
 
 /**
  * Cancel Order & Reverse Inventory
@@ -15,7 +20,17 @@ export async function POST(
 ) {
   try {
     await requireAdminAuth();
-    const { id } = await params;
+    const rawParams = await params;
+    const parsedParams = cancelParamsSchema.safeParse(rawParams);
+
+    if (!parsedParams.success) {
+      return NextResponse.json(
+        { error: 'Invalid order ID', details: parsedParams.error.format() },
+        { status: 400 }
+      );
+    }
+
+    const { id } = parsedParams.data;
 
     const order = await db.order.findUnique({
       where: { id },

@@ -6,8 +6,9 @@ import { ProductGallery } from '@/components/storefront/ProductGallery';
 import { VariantSelector, VariantOption } from '@/components/storefront/VariantSelector';
 import { ShoppingBag, Heart, ShieldCheck, Truck, RotateCcw, Loader2 } from 'lucide-react';
 import { useCart } from '@/context/CartContext';
+import { ProductWithRelations } from '@/types';
 
-export function ProductDetailClient({ product }: { product: any }) {
+export function ProductDetailClient({ product }: { product: ProductWithRelations }) {
   const { addItem, isLoading } = useCart();
   const variants: VariantOption[] = product.variants || [];
   const [selectedVariant, setSelectedVariant] = useState<VariantOption | null>(

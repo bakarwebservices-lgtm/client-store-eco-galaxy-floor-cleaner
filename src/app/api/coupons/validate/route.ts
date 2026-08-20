@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { validateCouponSchema } from '@/lib/validation/checkout';
 import { DiscountType } from '@prisma/client';
+import { formatCurrency } from '@/lib/format';
+import { getSetting } from '@/lib/settings';
 
 export const dynamic = 'force-dynamic';
 
@@ -37,8 +39,9 @@ export async function POST(req: NextRequest) {
     }
 
     if (coupon.minOrderAmount && subtotal < coupon.minOrderAmount) {
+      const currency = await getSetting<string>('store.currency', 'PKR');
       return NextResponse.json(
-        { error: `Minimum order amount of Rs. ${coupon.minOrderAmount.toLocaleString()} required for this coupon.` },
+        { error: `Minimum order amount of ${formatCurrency(coupon.minOrderAmount, currency)} required for this coupon.` },
         { status: 400 }
       );
     }

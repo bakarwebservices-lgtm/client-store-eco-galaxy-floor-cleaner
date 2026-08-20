@@ -11,8 +11,9 @@ export async function GET() {
   try {
     const cart = await getActiveCart();
 
-    // Read dynamic shipping threshold from Setting model (BUILD_STANDARDS 2.7)
+    // Read dynamic settings from Setting model (BUILD_STANDARDS 2.7)
     const freeShippingThreshold = await getSetting<number>('shipping.free_threshold', 5000);
+    const currency = await getSetting<string>('store.currency', 'PKR');
 
     const formattedItems = cart.items.map((item) => {
       const price = item.variant?.price ?? item.product.price;
@@ -46,6 +47,7 @@ export async function GET() {
       totalItems,
       subtotal,
       freeShippingThreshold,
+      currency,
     });
   } catch (error) {
     console.error('Failed to get cart:', error);

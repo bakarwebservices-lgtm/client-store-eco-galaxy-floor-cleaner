@@ -7,11 +7,13 @@ import { getPaymentGateway } from '@/lib/payments/registry';
 import { signOrderAccessToken } from '@/lib/auth/token';
 import { DiscountType, PaymentStatus, FulfillmentStatus, ProductStatus } from '@prisma/client';
 
+import crypto from 'crypto';
+
 export const dynamic = 'force-dynamic';
 
 function generateOrderNumber(): string {
   const dateStr = new Date().toISOString().slice(2, 10).replace(/-/g, '');
-  const randomSuffix = Math.floor(1000 + Math.random() * 9000);
+  const randomSuffix = crypto.randomBytes(3).toString('hex').toUpperCase();
   return `ORD-${dateStr}-${randomSuffix}`;
 }
 

@@ -25,6 +25,7 @@ interface CartContextType {
   totalItems: number;
   subtotal: number;
   freeShippingThreshold: number;
+  currency: string;
   isOpen: boolean;
   isLoading: boolean;
   openCart: () => void;
@@ -49,6 +50,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   const [totalItems, setTotalItems] = useState(0);
   const [subtotal, setSubtotal] = useState(0);
   const [freeShippingThreshold, setFreeShippingThreshold] = useState(5000);
+  const [currency, setCurrency] = useState('PKR');
   const [isOpen, setIsOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
@@ -62,6 +64,9 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         setSubtotal(data.subtotal || 0);
         if (typeof data.freeShippingThreshold === 'number') {
           setFreeShippingThreshold(data.freeShippingThreshold);
+        }
+        if (data.currency) {
+          setCurrency(data.currency);
         }
       }
     } catch (err) {
@@ -114,7 +119,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         content_name: productName,
         content_ids: [variantId || productId],
         value: price * quantity,
-        currency: 'PKR',
+        currency,
         quantity,
       });
 
@@ -163,6 +168,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         totalItems,
         subtotal,
         freeShippingThreshold,
+        currency,
         isOpen,
         isLoading,
         openCart,

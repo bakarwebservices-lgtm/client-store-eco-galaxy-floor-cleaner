@@ -3,7 +3,21 @@
 import { useEffect } from 'react';
 import { track } from '@/lib/tracking/events';
 
-export function OrderSuccessTracker({ order }: { order: any }) {
+export interface OrderSuccessTrackerProps {
+  order: {
+    orderNumber?: string;
+    id?: string;
+    totalPrice: number;
+    currency?: string;
+    items?: Array<{
+      quantity: number;
+      variantId?: string | null;
+      productId: string;
+    }>;
+  };
+}
+
+export function OrderSuccessTracker({ order }: OrderSuccessTrackerProps) {
   useEffect(() => {
     if (!order || typeof window === 'undefined') return;
 

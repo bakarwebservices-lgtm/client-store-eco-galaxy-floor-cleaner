@@ -5,6 +5,7 @@ import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { db } from '@/lib/db';
 import { ProductStatus } from '@prisma/client';
+import { getSetting } from '@/lib/settings';
 import { Breadcrumbs } from '@/components/storefront/Breadcrumbs';
 import { ProductDetailClient } from './ProductDetailClient';
 
@@ -73,6 +74,7 @@ export default async function ProductDetailPage({
   }
 
   const primaryCategory = product.categories[0]?.category;
+  const currency = await getSetting<string>('store.currency', 'PKR');
 
   return (
     <main className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8 space-y-6">
@@ -98,7 +100,7 @@ export default async function ProductDetailPage({
             sku: product.variants[0]?.sku || product.slug,
             offers: {
               '@type': 'Offer',
-              priceCurrency: 'PKR',
+              priceCurrency: currency,
               price: product.price,
               availability: 'https://schema.org/InStock',
             },

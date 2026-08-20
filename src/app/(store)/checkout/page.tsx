@@ -14,7 +14,7 @@ export const dynamic = 'force-dynamic';
 
 export default function CheckoutPage() {
   const router = useRouter();
-  const { items, totalItems, subtotal, freeShippingThreshold, refreshCart } = useCart();
+  const { items, totalItems, subtotal, freeShippingThreshold, currency, refreshCart } = useCart();
 
   // Address form fields
   const [firstName, setFirstName] = useState('');
@@ -46,12 +46,12 @@ export default function CheckoutPage() {
     if (items.length > 0) {
       track('InitiateCheckout', {
         value: subtotal,
-        currency: 'PKR',
+        currency: currency || 'PKR',
         quantity: totalItems,
         content_ids: items.map((i) => i.variantId || i.productId),
       });
     }
-  }, [items, subtotal, totalItems]);
+  }, [items, subtotal, totalItems, currency]);
 
   const shippingCost = subtotal >= freeShippingThreshold ? 0 : 250;
   const discountAmount = appliedCoupon?.discountAmount || 0;
