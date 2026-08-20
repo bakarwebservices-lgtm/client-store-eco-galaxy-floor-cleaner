@@ -31,6 +31,13 @@ This document tracks every UI element, intended action, route handler, and its e
 | **Media Management** | Media Upload & Picker Modal (`src/components/admin/MediaUploadModal.tsx`) | Reusable dialog for choosing from library or uploading with mandatory `altText` | Client modal component | `Connected` |
 | **Media Management** | Admin Media Page (`src/app/(admin)/admin/media/page.tsx`) | Full media browser, search, copy URL, edit alt text, delete asset, trigger upload modal | `GET /admin/media` | `Connected` |
 | **Products (Retrofit)** | Image Manager in Product Form (`src/components/admin/ProductForm.tsx`) | Integrated with `MediaUploadModal`, enforcing altText and cover image selection | Admin Product Form | `Connected` |
+| **Shopping Cart** | Cart Context & Hook (`src/context/CartContext.tsx`) | Manage global cart state, item quantities, total calculation, and drawer toggle | Client Context | `Connected` |
+| **Shopping Cart** | Cart Drawer (`src/components/storefront/CartDrawer.tsx`) | Slide-out cart overlay with live steppers, remove triggers, and checkout CTA | Storefront Drawer | `Connected` |
+| **Shopping Cart** | Dedicated Cart Page (`src/app/(store)/cart/page.tsx`) | Full cart view with free shipping progress bar and order summary breakdown | `GET /cart` | `Connected` |
+| **Shopping Cart** | Cart API Route (`src/app/api/cart/route.ts`) | Dual guest/customer cart resolution, add item with inventory cap, clear cart | `GET/POST/DELETE /api/cart` | `Connected` |
+| **Shopping Cart** | Cart Item API (`src/app/api/cart/items/[id]/route.ts`) | Update quantity with stock validation or delete item | `PATCH/DELETE /api/cart/items/[id]` | `Connected` |
+| **Shopping Cart** | Cart Merge API (`src/app/api/cart/merge/route.ts`) | Merge guest session items into customer account cart without loss | `POST /api/cart/merge` | `Connected` |
+| **Shopping Cart** | AddToCart Tracking Hook (`src/lib/tracking/events.ts`) | Non-blocking analytics dispatcher (`track('AddToCart', ...)`) on item addition | Analytics Dispatcher | `Connected` |
 
 ---
 

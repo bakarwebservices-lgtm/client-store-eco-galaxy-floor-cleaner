@@ -3,25 +3,36 @@
 import React, { useState } from 'react';
 import { ProductGallery } from '@/components/storefront/ProductGallery';
 import { VariantSelector, VariantOption } from '@/components/storefront/VariantSelector';
-import { ShoppingBag, Heart, ShieldCheck, Truck, RotateCcw } from 'lucide-react';
+import { ShoppingBag, Heart, ShieldCheck, Truck, RotateCcw, Loader2 } from 'lucide-react';
+import { useCart } from '@/context/CartContext';
 
 export function ProductDetailClient({ product }: { product: any }) {
+  const { addItem, isLoading } = useCart();
   const variants: VariantOption[] = product.variants || [];
   const [selectedVariant, setSelectedVariant] = useState<VariantOption | null>(
     variants.length > 0 ? variants[0] : null
   );
   const [quantity, setQuantity] = useState(1);
-  const [isAdded, setIsAdded] = useState(false);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
-  // Price calculates variant price override if set
   const currentPrice = selectedVariant?.price ?? product.price;
   const currentComparePrice = selectedVariant?.comparePrice ?? product.comparePrice;
   const hasDiscount = currentComparePrice && currentComparePrice > currentPrice;
   const isOutOfStock = selectedVariant ? selectedVariant.inventoryQty <= 0 : false;
 
-  const handleAddToCart = () => {
-    setIsAdded(true);
-    setTimeout(() => setIsAdded(false), 2000);
+  const handleAddToCart = async () => {
+    setErrorMsg(null);
+    const res = await addItem({
+      productId: product.id,
+      variantId: selectedVariant?.id || null,
+      quantity,
+      productName: product.name,
+      price: currentPrice,
+    });
+
+    if (!res.success && res.error) {
+      setErrorMsg(res.error);
+    }
   };
 
   return (
@@ -64,8 +75,17 @@ export function ProductDetailClient({ product }: { product: any }) {
             <VariantSelector
               variants={variants}
               selectedVariant={selectedVariant}
-              onSelectVariant={(v) => setSelectedVariant(v)}
+              onSelectVariant={(v) => {
+                setSelectedVariant(v);
+                setErrorMsg(null);
+              }}
             />
+          </div>
+        )}
+
+        {errorMsg && (
+          <div className="rounded-lg border border-destructive/30 bg-destructive/10 p-3 text-xs text-destructive">
+            {errorMsg}
           </div>
         )}
 
@@ -98,12 +118,16 @@ export function ProductDetailClient({ product }: { product: any }) {
             {/* Add to Cart Button */}
             <button
               type="button"
-              disabled={isOutOfStock}
+              disabled={isOutOfStock || isLoading}
               onClick={handleAddToCart}
               className="flex flex-1 items-center justify-center gap-2 rounded-lg bg-primary py-3 text-sm font-bold text-primary-foreground shadow transition-transform active:scale-[0.98] hover:bg-primary-hover disabled:pointer-events-none disabled:opacity-50"
             >
-              <ShoppingBag className="h-4 w-4" />
-              <span>{isAdded ? 'Added to Cart ✓' : isOutOfStock ? 'Out of Stock' : 'Add to Bag'}</span>
+              {isLoading ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <ShoppingBag className="h-4 w-4" />
+              )}
+              <span>{isOutOfStock ? 'Out of Stock' : 'Add to Bag'}</span>
             </button>
 
             {/* Wishlist Button */}

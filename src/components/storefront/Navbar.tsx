@@ -3,9 +3,11 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import { ShoppingBag, Menu, X, Search, User } from 'lucide-react';
+import { useCart } from '@/context/CartContext';
 
 export function Navbar() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const { totalItems, toggleCart } = useCart();
 
   return (
     <header className="sticky top-0 z-40 border-b border-border bg-card/90 backdrop-blur">
@@ -54,14 +56,21 @@ export function Navbar() {
             <User className="h-4 w-4" />
           </Link>
 
-          <Link
-            href="/cart"
-            className="flex items-center gap-2 rounded-full bg-primary px-3.5 py-1.5 text-xs font-semibold text-primary-foreground transition-transform active:scale-95 shadow-sm"
-            aria-label="Cart"
+          {/* Cart Drawer Trigger Button with Live Counter Badge */}
+          <button
+            type="button"
+            onClick={toggleCart}
+            className="relative flex items-center gap-2 rounded-full bg-primary px-3.5 py-1.5 text-xs font-semibold text-primary-foreground transition-transform active:scale-95 shadow-sm hover:bg-primary-hover"
+            aria-label="Open shopping cart"
           >
             <ShoppingBag className="h-3.5 w-3.5" />
-            <span className="hidden sm:inline">Cart</span>
-          </Link>
+            <span className="hidden sm:inline">Bag</span>
+            {totalItems > 0 && (
+              <span className="flex h-4 min-w-[16px] items-center justify-center rounded-full bg-destructive px-1 text-[10px] font-extrabold text-white">
+                {totalItems}
+              </span>
+            )}
+          </button>
 
           {/* Mobile Menu Toggle */}
           <button
