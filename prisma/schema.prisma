@@ -1,0 +1,793 @@
+// =============================================================================
+// schema.prisma
+// AWWeb Merged SaaS Template
+//
+// All decisions per:
+//   - BUILD_STANDARDS.md (project root)
+//   - awweb-saas-merger-plan.md sections 6 & 6.1
+//
+// Rules enforced here:
+//   - UUIDs on every model (BUILD_STANDARDS 2.1)
+//   - AdminUser fully separate from Customer (2.2)
+//   - Customer supports guest + registered on same record via nullable passwordHash (2.3)
+//   - Dual order status: paymentStatus + fulfillmentStatus (2.5)
+//   - OrderItem snapshots product/variant title & SKU at purchase time (2.6)
+//   - Setting is a flexible key-value store (2.7)
+//   - ProductImage is its own table with altText (2.8)
+//   - Collection + CollectionProduct junction (2.9)
+//   - SEO fields on Product, Page, Category, Collection, BlogArticle (2.10)
+//   - Payment abstracted via paymentMeta: Json? on Order (2.11)
+//   - No hardcoded client values — all via Setting (2.12)
+//   - Excluded: accounting tables, courier/shipment tables, AnalyticsEvent, LegalContent (2.13)
+// =============================================================================
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// =============================================================================
+// ENUMS
+// =============================================================================
+
+enum AdminRole {
+  ADMIN
+  MANAGER
+  SUPPORT
+}
+
+enum PaymentStatus {
+  UNPAID
+  PAID
+  REFUNDED
+}
+
+enum FulfillmentStatus {
+  UNFULFILLED
+  FULFILLED
+  RETURNED
+}
+
+enum DiscountType {
+  PERCENTAGE
+  FIXED
+}
+
+enum CollectionType {
+  MANUAL
+  SMART
+}
+
+enum ProductStatus {
+  ACTIVE
+  DRAFT
+  ARCHIVED
+}
+
+enum BlogStatus {
+  DRAFT
+  PUBLISHED
+}
+
+enum PageStatus {
+  ACTIVE
+  HIDDEN
+}
+
+// =============================================================================
+// ADMIN USER
+// Completely separate from Customer — per BUILD_STANDARDS 2.2
+// Admin auth and customer auth are fully isolated systems.
+// =============================================================================
+
+model AdminUser {
+  id           String    @id @default(uuid())
+  name         String
+  email        String    @unique
+  passwordHash String    @map("password_hash")
+  role         AdminRole @default(SUPPORT)
+  lastLogin    DateTime? @map("last_login")
+  createdAt    DateTime  @default(now()) @map("created_at")
+  updatedAt    DateTime  @updatedAt @map("updated_at")
+
+  @@map("admin_users")
+}
+
+// =============================================================================
+// CUSTOMER
+// Supports guest checkout and registered accounts on the same record.
+// passwordHash is nullable — null means guest-only account.
+// Per BUILD_STANDARDS 2.3 & 2.4.
+// =============================================================================
+
+model Customer {
+  id           String    @id @default(uuid())
+  email        String?   @unique
+  phone        String?   @unique
+  firstName    String?   @map("first_name")
+  lastName     String?   @map("last_name")
+  passwordHash String?   @map("password_hash") // null = guest (no login yet)
+  isActive     Boolean   @default(true) @map("is_active")
+  lastLogin    DateTime? @map("last_login")
+  createdAt    DateTime  @default(now()) @map("created_at")
+  updatedAt    DateTime  @updatedAt @map("updated_at")
+  deletedAt    DateTime? @map("deleted_at") // soft delete
+
+  addresses             CustomerAddress[]
+  orders                Order[]
+  wishlist              Wishlist[]
+  reviews               Review[]
+  cart                  Cart?
+  waitlistSubscriptions WaitlistSubscription[]
+  abandonedCheckouts    AbandonedCheckout[]
+
+  @@index([email])
+  @@index([phone])
+  @@index([isActive])
+  @@map("customers")
+}
+
+model CustomerAddress {
+  id         String   @id @default(uuid())
+  customerId String   @map("customer_id")
+  label      String?  // "Home", "Office", etc.
+  firstName  String   @map("first_name")
+  lastName   String   @map("last_name")
+  phone      String?
+  address    String
+  city       String
+  province   String?
+  postalCode String?  @map("postal_code")
+  country    String   // Populated from Setting (store.country) at application layer
+  isDefault  Boolean  @default(false) @map("is_default")
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  customer Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+
+  @@index([customerId])
+  @@map("customer_addresses")
+}
+
+// =============================================================================
+// PRODUCTS
+// =============================================================================
+
+model Product {
+  id           String        @id @default(uuid())
+  name         String
+  slug         String        @unique
+  description  String        @db.Text
+  price        Float
+  comparePrice Float?        @map("compare_price") // strike-through display price
+  status       ProductStatus @default(ACTIVE)
+  type         String?       // e.g. "Clothing", "Jewelry", "Accessory"
+  vendor       String?
+  tags         String[]      @default([])
+  weight       Float?        // kg — for shipping calculation
+  featured     Boolean       @default(false)
+  hasVariants  Boolean       @default(false) @map("has_variants")
+
+  // SEO fields — schema level now, admin UI deferred (BUILD_STANDARDS 2.10)
+  seoTitle       String? @map("seo_title")
+  seoDescription String? @map("seo_description") @db.Text
+
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+  deletedAt DateTime? @map("deleted_at") // soft delete
+
+  variants              ProductVariant[]
+  images                ProductImage[]
+  collections           CollectionProduct[]
+  categories            CategoryProduct[]
+  orderItems            OrderItem[]
+  reviews               Review[]
+  cartItems             CartItem[]
+  wishlist              Wishlist[]
+  waitlistSubscriptions WaitlistSubscription[]
+  restockSchedules      RestockSchedule[]
+
+  @@index([featured])
+  @@index([slug])
+  @@map("products")
+}
+
+model ProductVariant {
+  id           String   @id @default(uuid())
+  productId    String   @map("product_id")
+  title        String   // e.g. "Black / Size L" — human-readable label
+  sku          String   @unique
+  price        Float?   // overrides product base price when set
+  comparePrice Float?   @map("compare_price")
+  inventoryQty Int      @default(0) @map("inventory_qty")
+  color        String?
+  size         String?
+  barcode      String?
+  isActive     Boolean  @default(true) @map("is_active")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  product               Product                @relation(fields: [productId], references: [id], onDelete: Cascade)
+  images                ProductImage[]
+  orderItems            OrderItem[]
+  cartItems             CartItem[]
+  waitlistSubscriptions WaitlistSubscription[]
+  restockSchedules      RestockSchedule[]
+
+  @@index([productId])
+  @@index([sku])
+  @@index([isActive])
+  @@map("product_variants")
+}
+
+// ProductImage as own table — per BUILD_STANDARDS 2.8
+// altText must be exposed as editable admin field and rendered as HTML alt attribute.
+model ProductImage {
+  id        String   @id @default(uuid())
+  productId String   @map("product_id")
+  variantId String?  @map("variant_id") // optional — associates image with a specific variant
+  url       String
+  altText   String?  @map("alt_text")  // editable admin field; never left blank in rendered HTML
+  position  Int      @default(0)       // sort order within product gallery
+  isPrimary Boolean  @default(false)   @map("is_primary")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  product Product         @relation(fields: [productId], references: [id], onDelete: Cascade)
+  variant ProductVariant? @relation(fields: [variantId], references: [id], onDelete: SetNull)
+
+  @@index([productId])
+  @@index([variantId])
+  @@map("product_images")
+}
+
+// =============================================================================
+// COLLECTIONS — product grouping (Vortex pattern, BUILD_STANDARDS 2.9)
+// Supports manual (admin-curated) and smart (rule-based) collection types.
+// =============================================================================
+
+model Collection {
+  id           String         @id @default(uuid())
+  name         String
+  slug         String         @unique
+  description  String?        @db.Text
+  imageUrl     String?        @map("image_url")
+  imageAlt     String?        @map("image_alt") // alt text on collection hero image
+  type         CollectionType @default(MANUAL)
+  // Smart collection rule — evaluated to auto-include matching products
+  ruleField    String?        @map("rule_field")    // e.g. "tags", "vendor", "type"
+  ruleOperator String?        @map("rule_operator") // "equals" | "contains" | "not_equals"
+  ruleValue    String?        @map("rule_value")
+  isActive     Boolean        @default(true) @map("is_active")
+  sortOrder    Int            @default(0) @map("sort_order")
+
+  // SEO fields — BUILD_STANDARDS 2.10
+  seoTitle       String? @map("seo_title")
+  seoDescription String? @map("seo_description") @db.Text
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  products CollectionProduct[]
+
+  @@index([slug])
+  @@index([isActive])
+  @@map("collections")
+}
+
+// Junction table — many-to-many between Collection and Product
+model CollectionProduct {
+  collectionId String @map("collection_id")
+  productId    String @map("product_id")
+  position     Int    @default(0) // display order within collection
+
+  collection Collection @relation(fields: [collectionId], references: [id], onDelete: Cascade)
+  product    Product    @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@id([collectionId, productId])
+  @@map("collection_products")
+}
+
+// Category — top-level navigation taxonomy (separate from Collections)
+// Used for primary site navigation and browsing hierarchy.
+model Category {
+  id          String   @id @default(uuid())
+  name        String
+  slug        String   @unique
+  description String?  @db.Text
+  imageUrl    String?  @map("image_url")
+  imageAlt    String?  @map("image_alt")
+  isActive    Boolean  @default(true) @map("is_active")
+  sortOrder   Int      @default(0) @map("sort_order")
+
+  // SEO fields — BUILD_STANDARDS 2.10
+  seoTitle       String? @map("seo_title")
+  seoDescription String? @map("seo_description") @db.Text
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  products CategoryProduct[]
+
+  @@index([isActive])
+  @@index([sortOrder])
+  @@map("categories")
+}
+
+// Junction table — many-to-many between Category and Product
+model CategoryProduct {
+  categoryId String @map("category_id")
+  productId  String @map("product_id")
+  position   Int    @default(0)
+
+  category Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  product  Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@id([categoryId, productId])
+  @@map("category_products")
+}
+
+// =============================================================================
+// CART
+// =============================================================================
+
+model Cart {
+  id         String   @id @default(uuid())
+  customerId String?  @unique @map("customer_id") // null = guest cart (session-based)
+  sessionId  String?  @unique @map("session_id")  // guest cart identifier
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  customer Customer?  @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  items    CartItem[]
+
+  @@map("carts")
+}
+
+model CartItem {
+  id        String   @id @default(uuid())
+  cartId    String   @map("cart_id")
+  productId String   @map("product_id")
+  variantId String?  @map("variant_id")
+  quantity  Int
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  cart    Cart            @relation(fields: [cartId], references: [id], onDelete: Cascade)
+  product Product         @relation(fields: [productId], references: [id], onDelete: Cascade)
+  variant ProductVariant? @relation(fields: [variantId], references: [id], onDelete: SetNull)
+
+  @@unique([cartId, productId, variantId])
+  @@index([cartId])
+  @@map("cart_items")
+}
+
+// =============================================================================
+// WISHLIST
+// =============================================================================
+
+model Wishlist {
+  id         String   @id @default(uuid())
+  customerId String   @map("customer_id")
+  productId  String   @map("product_id")
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  customer Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  product  Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@unique([customerId, productId])
+  @@index([customerId])
+  @@map("wishlist")
+}
+
+// =============================================================================
+// ORDERS
+// =============================================================================
+
+model Order {
+  id          String @id @default(uuid())
+  orderNumber String @unique @map("order_number") // e.g. "#1001", human-readable
+
+  customerId String @map("customer_id")
+
+  // Dual status fields — BUILD_STANDARDS 2.5 (Vortex pattern, replaces single combined status)
+  // High-level order state is derived computationally (helper function) from paymentStatus + fulfillmentStatus.
+  paymentStatus     PaymentStatus     @default(UNPAID) @map("payment_status")
+  fulfillmentStatus FulfillmentStatus @default(UNFULFILLED) @map("fulfillment_status")
+  cancelledAt       DateTime?         @map("cancelled_at")
+
+  // Payment — abstracted per BUILD_STANDARDS 2.11
+  // paymentMethod is a simple label (e.g. "COD", "PayPal", "JazzCash")
+  // paymentMeta holds all gateway-specific data (e.g. PayPal order ID, capture ID)
+  // This means adding new gateways never requires schema changes.
+  paymentMethod String @default("COD") @map("payment_method")
+  paymentMeta   Json?  @map("payment_meta") // gateway-specific data blob
+
+  // Pricing breakdown
+  subtotal       Float
+  discountAmount Float  @default(0) @map("discount_amount")
+  shippingAmount Float  @default(0) @map("shipping_amount")
+  taxAmount      Float  @default(0) @map("tax_amount")
+  totalPrice     Float  @map("total_price") // subtotal - discount + shipping + tax
+  currency       String // Populated from Setting (store.currency) at application layer
+
+  couponCode String? @map("coupon_code") // coupon applied at checkout
+
+  // Shipping address stored as JSON snapshot
+  // Shape: { name, phone, address, city, province, postalCode, country }
+  // Snapshotted so order records remain accurate if customer later edits their address.
+  shippingAddress Json @map("shipping_address")
+
+  // Guest order linking — BUILD_STANDARDS 2.4
+  // Set to true when a guest checkout email matches an existing account.
+  // Triggers a post-purchase email inviting the customer to link the order.
+  guestOrderPossiblyLinked Boolean @default(false) @map("guest_order_possibly_linked")
+
+  // Backorder / special fulfillment types
+  orderType               String    @default("standard") @map("order_type") // "standard" | "backorder" | "preorder"
+  expectedFulfillmentDate DateTime? @map("expected_fulfillment_date")
+
+  notes     String?   @db.Text
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+  deletedAt DateTime? @map("deleted_at") // soft delete
+
+  customer Customer    @relation(fields: [customerId], references: [id])
+  items    OrderItem[]
+
+  @@index([customerId])
+  @@index([paymentStatus])
+  @@index([fulfillmentStatus])
+  @@index([orderNumber])
+  @@index([createdAt])
+  @@map("orders")
+}
+
+// OrderItem — BUILD_STANDARDS 2.6
+// productTitle, variantTitle, and sku are SNAPSHOTS taken at purchase time.
+// They are immutable after creation. If a product is renamed/deleted later,
+// order history is unaffected.
+model OrderItem {
+  id        String  @id @default(uuid())
+  orderId   String  @map("order_id")
+  productId String  @map("product_id")
+  variantId String? @map("variant_id")
+
+  // Snapshot fields — immutable after order creation
+  productTitle String  @map("product_title") // product name at time of purchase
+  variantTitle String? @map("variant_title") // variant label at time of purchase (null if no variant)
+  sku          String  // SKU at time of purchase
+
+  quantity   Int
+  unitPrice  Float @map("unit_price")
+  totalPrice Float @map("total_price") // quantity * unitPrice
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  order   Order           @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  product Product         @relation(fields: [productId], references: [id], onDelete: Restrict)
+  variant ProductVariant? @relation(fields: [variantId], references: [id], onDelete: SetNull)
+
+  @@index([orderId])
+  @@index([productId])
+  @@map("order_items")
+}
+
+// =============================================================================
+// ABANDONED CHECKOUT (from Vortex Rings)
+// Captures partial checkout data for recovery emails.
+// =============================================================================
+
+model AbandonedCheckout {
+  id         String  @id @default(uuid())
+  sessionId  String  @unique @map("session_id")
+  customerId String? @map("customer_id")
+
+  // Contact info captured before abandonment (may be partial)
+  name     String?
+  phone    String?
+  email    String?
+  address  String?
+  city     String?
+  province String?
+
+  // Cart state at abandonment
+  cart     Json  // snapshot of cart items array
+  subtotal Float @default(0)
+  discount Float @default(0)
+  total    Float @default(0)
+
+  recoveryEmailSentAt DateTime? @map("recovery_email_sent_at")
+  recoveredAt         DateTime? @map("recovered_at") // set when this checkout converts to an order
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  customer Customer? @relation(fields: [customerId], references: [id], onDelete: SetNull)
+
+  @@index([customerId])
+  @@index([createdAt])
+  @@map("abandoned_checkouts")
+}
+
+// =============================================================================
+// COUPONS / DISCOUNTS
+// =============================================================================
+
+model Coupon {
+  id             String       @id @default(uuid())
+  code           String       @unique
+  description    String?
+  discountType   DiscountType @map("discount_type")
+  discountValue  Float        @map("discount_value")
+  minOrderAmount Float?       @map("min_order_amount") // minimum cart total to apply
+  maxUses        Int?         @map("max_uses")         // null = unlimited
+  usedCount      Int          @default(0) @map("used_count")
+  isActive       Boolean      @default(true) @map("is_active")
+  startsAt       DateTime?    @map("starts_at")
+  expiresAt      DateTime?    @map("expires_at")
+  createdAt      DateTime     @default(now()) @map("created_at")
+  updatedAt      DateTime     @updatedAt @map("updated_at")
+
+  @@index([code])
+  @@index([isActive])
+  @@map("coupons")
+}
+
+// =============================================================================
+// REVIEWS
+// Admin moderation: isApproved must be true before review displays publicly.
+// =============================================================================
+
+model Review {
+  id           String   @id @default(uuid())
+  productId    String   @map("product_id")
+  customerId   String?  @map("customer_id") // null = unregistered/guest reviewer
+  reviewerName String   @map("reviewer_name")
+  rating       Int      // 1–5 stars
+  title        String?
+  body         String?  @db.Text
+  images       String[] @default([]) // reviewer-uploaded image URLs
+  isVerified   Boolean  @default(false) @map("is_verified") // confirmed purchase
+  isApproved   Boolean  @default(false) @map("is_approved") // admin moderation gate
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  product  Product   @relation(fields: [productId], references: [id], onDelete: Cascade)
+  customer Customer? @relation(fields: [customerId], references: [id], onDelete: SetNull)
+
+  @@index([productId])
+  @@index([isApproved])
+  @@index([rating])
+  @@map("reviews")
+}
+
+// =============================================================================
+// BACKORDER / WAITLIST SYSTEM (from Attireburg)
+// =============================================================================
+
+model WaitlistSubscription {
+  id         String   @id @default(uuid())
+  email      String
+  productId  String   @map("product_id")
+  variantId  String?  @map("variant_id")
+  customerId String?  @map("customer_id")
+  isActive   Boolean  @default(true) @map("is_active")
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  product  Product         @relation(fields: [productId], references: [id], onDelete: Cascade)
+  variant  ProductVariant? @relation(fields: [variantId], references: [id], onDelete: Cascade)
+  customer Customer?       @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  notifications RestockNotification[]
+
+  @@unique([email, productId, variantId])
+  @@index([productId])
+  @@index([variantId])
+  @@index([customerId])
+  @@index([isActive])
+  @@map("waitlist_subscriptions")
+}
+
+model RestockNotification {
+  id                     String   @id @default(uuid())
+  waitlistSubscriptionId String   @map("waitlist_subscription_id")
+  sentAt                 DateTime @map("sent_at")
+  emailOpened            Boolean  @default(false) @map("email_opened")
+  linkClicked            Boolean  @default(false) @map("link_clicked")
+  purchaseCompleted      Boolean  @default(false) @map("purchase_completed")
+  createdAt              DateTime @default(now()) @map("created_at")
+
+  subscription WaitlistSubscription @relation(fields: [waitlistSubscriptionId], references: [id], onDelete: Cascade)
+
+  @@index([waitlistSubscriptionId])
+  @@index([sentAt])
+  @@map("restock_notifications")
+}
+
+// Tracks expected restock dates per product/variant for admin planning and ETA display.
+model RestockSchedule {
+  id           String    @id @default(uuid())
+  productId    String    @map("product_id")
+  variantId    String?   @map("variant_id")
+  expectedDate DateTime  @map("expected_date")
+  actualDate   DateTime? @map("actual_date")
+  notes        String?   @db.Text
+  createdAt    DateTime  @default(now()) @map("created_at")
+  updatedAt    DateTime  @updatedAt @map("updated_at")
+
+  product Product         @relation(fields: [productId], references: [id], onDelete: Cascade)
+  variant ProductVariant? @relation(fields: [variantId], references: [id], onDelete: Cascade)
+
+  @@unique([productId, variantId])
+  @@index([productId])
+  @@index([expectedDate])
+  @@map("restock_schedules")
+}
+
+// =============================================================================
+// BLOG (from Vortex Rings)
+// =============================================================================
+
+model BlogArticle {
+  id               String     @id @default(uuid())
+  title            String
+  slug             String     @unique
+  bodyHtml         String     @db.Text @map("body_html")
+  excerpt          String?    @db.Text
+  author           String?
+  featuredImageUrl String?    @map("featured_image_url")
+  featuredImageAlt String?    @map("featured_image_alt") // alt text for featured image
+  status           BlogStatus @default(DRAFT)
+  publishedAt      DateTime?  @map("published_at")
+  tags             String[]   @default([])
+
+  // SEO fields — BUILD_STANDARDS 2.10
+  seoTitle       String? @map("seo_title")
+  seoDescription String? @map("seo_description") @db.Text
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([publishedAt])
+  @@index([slug])
+  @@map("blog_articles")
+}
+
+// =============================================================================
+// CMS PAGES (from Vortex Rings)
+// Used for About, Contact, Shipping Policy, Returns, FAQ wrapper, etc.
+// =============================================================================
+
+model Page {
+  id       String     @id @default(uuid())
+  title    String
+  slug     String     @unique
+  bodyHtml String     @db.Text @map("body_html")
+  status   PageStatus @default(ACTIVE)
+
+  // SEO fields — BUILD_STANDARDS 2.10
+  seoTitle       String? @map("seo_title")
+  seoDescription String? @map("seo_description") @db.Text
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([slug])
+  @@map("pages")
+}
+
+// FAQ items — admin-managed, displayed on FAQ page via accordion component.
+model FaqItem {
+  id        String   @id @default(uuid())
+  question  String
+  answer    String   @db.Text
+  category  String?  // optional grouping label (e.g. "Shipping", "Returns")
+  sortOrder Int      @default(0) @map("sort_order")
+  isActive  Boolean  @default(true) @map("is_active")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([isActive])
+  @@index([sortOrder])
+  @@map("faq_items")
+}
+
+// =============================================================================
+// NEWSLETTER & CONTACT (from Attireburg)
+// =============================================================================
+
+model Newsletter {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  isActive  Boolean  @default(true) @map("is_active")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([isActive])
+  @@map("newsletter")
+}
+
+model ContactMessage {
+  id        String   @id @default(uuid())
+  name      String
+  email     String
+  phone     String?
+  subject   String?
+  message   String   @db.Text
+  isRead    Boolean  @default(false) @map("is_read")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([isRead])
+  @@index([createdAt])
+  @@map("contact_messages")
+}
+
+// =============================================================================
+// SETTINGS — flexible key-value config store (Vortex pattern, BUILD_STANDARDS 2.7)
+//
+// Replaces Attireburg's fixed-column SiteSettings model.
+// All client-specific config lives here: store name, logo, brand colors,
+// contact info, currency, shipping thresholds, tax rate, tracking IDs, etc.
+// Adding a new config key never requires a schema migration.
+//
+// Reserved key examples:
+//   store.name, store.tagline, store.logo_url, store.currency
+//   store.contact.email, store.contact.phone, store.contact.address
+//   theme.primary_color, theme.accent_color, theme.font_family
+//   shipping.free_threshold, shipping.standard_cost, tax.rate
+//   tracking.meta_pixel_id, tracking.ga4_measurement_id
+//   social.instagram, social.facebook, social.tiktok
+// =============================================================================
+
+model Setting {
+  id        String   @id @default(uuid())
+  key       String   @unique
+  value     Json
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("settings")
+}
+
+// =============================================================================
+// MEDIA LIBRARY
+// Centralizes all uploaded assets. altText is mandatory admin field.
+// =============================================================================
+
+model MediaAsset {
+  id           String   @id @default(uuid())
+  url          String
+  altText      String?  @map("alt_text")    // editable admin field; rendered as alt on <img>
+  filename     String
+  mimeType     String   @map("mime_type")
+  sizeBytes    Int      @map("size_bytes")
+  uploadedById String?  @map("uploaded_by_id") // references AdminUser.id (loose — not FK)
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  @@index([mimeType])
+  @@map("media_assets")
+}
+
+// =============================================================================
+// EXCLUDED FROM BASE PRODUCT — documented here for clarity
+// The following models from the reference projects are NOT included.
+// They are future paid add-ons per client.
+//
+//   AccountingExpense  — P&L / OpEx tracking
+//   AdSpend            — ad spend recording
+//   OwnerTransaction   — capital equity tracking
+//   PostexSettlement   — courier CPR reconciliation
+//   FulfillmentCost    — per-order courier cost breakdown
+//   SkuCostHistory     — COGS tracking per variant over time
+//   Shipment           — PostEx / courier booking
+//   TrackingEvent      — live shipment status events
+//   AnalyticsEvent     — server-side pixel event log
+//   LegalContent       — bilingual DE/EN legal CMS (Attireburg client-specific)
+//
+// Ref: BUILD_STANDARDS.md section 2.13 & 3.2
+// =============================================================================
