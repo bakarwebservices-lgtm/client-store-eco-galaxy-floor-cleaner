@@ -44,6 +44,18 @@ This document tracks every UI element, intended action, route handler, and its e
 | **Checkout & Payments** | Order Query API (`src/app/api/orders/[id]/route.ts`) | Query complete order by UUID or orderNumber with snapshot lines & shipping address | `GET /api/orders/[id]` | `Connected` |
 | **Checkout & Payments** | Storefront Checkout Page (`src/app/(store)/checkout/page.tsx`) | Shipping address form, coupon code validation box, COD selector, InitiateCheckout hook | `GET /checkout` | `Connected` |
 | **Checkout & Payments** | Order Confirmation View (`src/app/(store)/checkout/success/[id]/page.tsx`) | Order confirmation receipt, snapshot summary, Purchase tracking hook trigger | `GET /checkout/success/[id]` | `Connected` |
+| **Admin Orders** | Admin Order List Page (`src/app/(admin)/admin/orders/page.tsx`) | Filter orders by payment & fulfillment status, search by customer/orderNumber | `GET /api/admin/orders` | `Connected` |
+| **Admin Orders** | Admin Order Detail View (`src/app/(admin)/admin/orders/[id]/page.tsx`) | Update independent payment & fulfillment statuses, edit internal staff notes | `GET/PATCH /api/admin/orders/[id]` | `Connected` |
+| **Admin Orders** | Cancel Order & Reverse Stock (`/api/admin/orders/[id]/cancel`) | Mark order cancelled and atomically restore line-item quantities to ProductVariant stock | `POST /api/admin/orders/[id]/cancel` | `Connected` |
+| **Customer Auth** | Customer Register (`src/app/(store)/account/register/page.tsx`) | Register with bcrypt password, rate-limit protection, create/upgrade Customer, set JWT | `POST /api/auth/customer/register` | `Connected` |
+| **Customer Auth** | Customer Login (`src/app/(store)/account/login/page.tsx`) | Verify credentials, rate-limit, issue HTTP-only customer session JWT cookie | `POST /api/auth/customer/login` | `Connected` |
+| **Customer Auth** | Customer Session Protection (`src/middleware.ts`) | Guards `/account/*` routes with customer session token validation & redirection | Middleware | `Connected` |
+| **Customer Auth** | Customer Logout | Clear customer session cookie | `POST /api/auth/customer/logout` | `Connected` |
+| **Customer Account** | Customer Dashboard (`src/app/(store)/account/page.tsx`) | Dashboard overview with profile summary, quick links, and recent orders | `GET /account` | `Connected` |
+| **Customer Account** | Customer Order History (`src/app/(store)/account/orders/page.tsx`) | Scoped order list querying only orders where `customerId === session.customerId` | `GET /api/customer/orders` | `Connected` |
+| **Customer Account** | Customer Order Detail (`src/app/(store)/account/orders/[id]/page.tsx`) | View customer's order receipt and shipping address snapshot (scoped to customerId) | `GET /api/customer/orders/[id]` | `Connected` |
+| **Customer Account** | Address Book Management (`src/app/(store)/account/addresses/page.tsx`) | Full CRUD for customer saved addresses with default toggle | `GET/POST/DELETE /api/customer/addresses` | `Connected` |
+| **Customer Account** | Profile Settings (`src/app/(store)/account/profile/page.tsx`) | Update personal name and phone number | `PATCH /api/customer/profile` | `Connected` |
 
 ---
 

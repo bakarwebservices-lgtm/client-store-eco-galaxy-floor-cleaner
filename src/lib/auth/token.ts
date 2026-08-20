@@ -4,6 +4,7 @@ const JWT_SECRET_STRING = process.env.JWT_SECRET || 'super-secret-jwt-key-minimu
 const SECRET_KEY = new TextEncoder().encode(JWT_SECRET_STRING);
 
 export const ADMIN_COOKIE_NAME = 'admin_session';
+export const CUSTOMER_COOKIE_NAME = 'customer_session';
 
 export interface AdminTokenPayload {
   id: string;
@@ -13,6 +14,13 @@ export interface AdminTokenPayload {
 }
 
 export type AdminJwtPayload = AdminTokenPayload;
+
+export interface CustomerTokenPayload {
+  customerId: string;
+  email: string | null;
+  firstName: string | null;
+  lastName: string | null;
+}
 
 export interface OrderAccessTokenPayload {
   orderId: string;
@@ -31,6 +39,23 @@ export async function verifyAdminToken(token: string): Promise<AdminTokenPayload
   try {
     const { payload } = await jwtVerify(token, SECRET_KEY);
     return payload as unknown as AdminTokenPayload;
+  } catch (error) {
+    return null;
+  }
+}
+
+export async function signCustomerToken(payload: CustomerTokenPayload): Promise<string> {
+  return new SignJWT({ ...payload })
+    .setProtectedHeader({ alg: 'HS256' })
+    .setIssuedAt()
+    .setExpirationTime('30d')
+    .sign(SECRET_KEY);
+}
+
+export async function verifyCustomerToken(token: string): Promise<CustomerTokenPayload | null> {
+  try {
+    const { payload } = await jwtVerify(token, SECRET_KEY);
+    return payload as unknown as CustomerTokenPayload;
   } catch (error) {
     return null;
   }

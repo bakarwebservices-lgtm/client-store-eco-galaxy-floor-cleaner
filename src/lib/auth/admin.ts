@@ -36,3 +36,13 @@ export async function clearAdminSessionCookie(): Promise<void> {
   const cookieStore = await cookies();
   cookieStore.delete(ADMIN_COOKIE_NAME);
 }
+
+export async function requireAdminAuth(): Promise<AdminJwtPayload> {
+  const session = await getAdminSession();
+  if (!session) {
+    const error: any = new Error('Unauthorized');
+    error.status = 401;
+    throw error;
+  }
+  return session;
+}
