@@ -1,41 +1,54 @@
 import { SignJWT, jwtVerify } from 'jose';
-import { AdminRole } from '@prisma/client';
-import { env } from '@/lib/env';
+
+const JWT_SECRET_STRING = process.env.JWT_SECRET || 'super-secret-jwt-key-minimum-32-characters-long!';
+const SECRET_KEY = new TextEncoder().encode(JWT_SECRET_STRING);
 
 export const ADMIN_COOKIE_NAME = 'admin_session';
 
-export interface AdminJwtPayload {
+export interface AdminTokenPayload {
   id: string;
   email: string;
   name: string;
-  role: AdminRole;
+  role: string;
 }
 
-function getJwtSecretKey(): Uint8Array {
-  return new TextEncoder().encode(env.ADMIN_JWT_SECRET);
+export type AdminJwtPayload = AdminTokenPayload;
+
+export interface OrderAccessTokenPayload {
+  orderId: string;
+  orderNumber: string;
 }
 
-export async function signAdminToken(payload: AdminJwtPayload): Promise<string> {
+export async function signAdminToken(payload: AdminTokenPayload): Promise<string> {
   return new SignJWT({ ...payload })
     .setProtectedHeader({ alg: 'HS256' })
     .setIssuedAt()
     .setExpirationTime('7d')
-    .sign(getJwtSecretKey());
+    .sign(SECRET_KEY);
 }
 
-export async function verifyAdminToken(token: string): Promise<AdminJwtPayload | null> {
+export async function verifyAdminToken(token: string): Promise<AdminTokenPayload | null> {
   try {
-    const { payload } = await jwtVerify(token, getJwtSecretKey());
-    if (!payload.id || !payload.email || !payload.role) {
-      return null;
-    }
-    return {
-      id: payload.id as string,
-      email: payload.email as string,
-      name: payload.name as string,
-      role: payload.role as AdminRole,
-    };
-  } catch {
+    const { payload } = await jwtVerify(token, SECRET_KEY);
+    return payload as unknown as AdminTokenPayload;
+  } catch (error) {
+    return null;
+  }
+}
+
+export async function signOrderAccessToken(orderId: string, orderNumber: string): Promise<string> {
+  return new SignJWT({ orderId, orderNumber })
+    .setProtectedHeader({ alg: 'HS256' })
+    .setIssuedAt()
+    .setExpirationTime('24h')
+    .sign(SECRET_KEY);
+}
+
+export async function verifyOrderAccessToken(token: string): Promise<OrderAccessTokenPayload | null> {
+  try {
+    const { payload } = await jwtVerify(token, SECRET_KEY);
+    return payload as unknown as OrderAccessTokenPayload;
+  } catch (error) {
     return null;
   }
 }

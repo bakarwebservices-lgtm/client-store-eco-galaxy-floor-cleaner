@@ -2,9 +2,11 @@ import React from 'react';
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import Image from 'next/image';
-import { notFound } from 'next/navigation';
+import { notFound, redirect } from 'next/navigation';
+import { cookies } from 'next/headers';
 import { db } from '@/lib/db';
-import { CheckCircle2, ShoppingBag, Truck, Package, Phone, Mail, MapPin } from 'lucide-react';
+import { verifyOrderAccessToken } from '@/lib/auth/token';
+import { CheckCircle2, ShoppingBag, Truck, Package, Phone, Mail, MapPin, ShieldAlert } from 'lucide-react';
 import { OrderSuccessTracker } from './OrderSuccessTracker';
 
 export const dynamic = 'force-dynamic';
@@ -36,6 +38,12 @@ export default async function OrderSuccessPage({
           },
         },
       },
+      customer: {
+        select: {
+          id: true,
+          email: true,
+        },
+      },
     },
   });
 
@@ -43,11 +51,46 @@ export default async function OrderSuccessPage({
     notFound();
   }
 
+  // Access Control Verification:
+  // Validate that the request possesses the signed order access token cookie
+  const cookieStore = await cookies();
+  const tokenCookie = cookieStore.get(`aw_order_access_${order.orderNumber}`)?.value;
+  let isAuthorized = false;
+
+  if (tokenCookie) {
+    const verified = await verifyOrderAccessToken(tokenCookie);
+    if (verified && (verified.orderId === order.id || verified.orderNumber === order.orderNumber)) {
+      isAuthorized = true;
+    }
+  }
+
+  if (!isAuthorized) {
+    return (
+      <main className="mx-auto max-w-lg px-4 py-20 text-center space-y-4">
+        <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-destructive/10 text-destructive">
+          <ShieldAlert className="h-7 w-7" />
+        </div>
+        <h1 className="text-xl font-bold text-foreground">Order Access Restricted</h1>
+        <p className="text-xs text-muted-foreground leading-relaxed">
+          For customer security, order details can only be viewed immediately following checkout or by logging into your customer account.
+        </p>
+        <div className="pt-2">
+          <Link
+            href="/products"
+            className="inline-block rounded-lg bg-primary px-5 py-2.5 text-xs font-bold text-primary-foreground shadow hover:bg-primary-hover transition-colors"
+          >
+            Return to Store Catalog
+          </Link>
+        </div>
+      </main>
+    );
+  }
+
   const shippingAddr: any = order.shippingAddress;
 
   return (
     <main className="mx-auto max-w-4xl px-4 py-12 sm:px-6 lg:px-8 space-y-8">
-      {/* Client tracker component for Purchase analytics hook */}
+      {/* Client tracker component with sessionStorage deduplication */}
       <OrderSuccessTracker order={order} />
 
       {/* Confirmation Hero */}

@@ -4,6 +4,7 @@ import { getActiveCart } from '@/lib/cart/session';
 import { checkoutSchema } from '@/lib/validation/checkout';
 import { getSetting } from '@/lib/settings';
 import { getPaymentGateway } from '@/lib/payments/registry';
+import { signOrderAccessToken } from '@/lib/auth/token';
 import { DiscountType, PaymentStatus, FulfillmentStatus, ProductStatus } from '@prisma/client';
 
 export const dynamic = 'force-dynamic';
@@ -27,10 +28,13 @@ export async function POST(req: NextRequest) {
     // 1. Fetch active cart
     const cart = await getActiveCart();
     if (!cart || cart.items.length === 0) {
-      return NextResponse.json({ error: 'Your cart is empty.' }, { status: 400 });
+      return NextResponse.json(
+        { error: 'Your cart is empty or this order has already been processed.' },
+        { status: 400 }
+      );
     }
 
-    // 2. Fetch Store Settings (currency, country, shipping rules)
+    // 2. Fetch Store Settings
     const currency = await getSetting<string>('store.currency', 'PKR');
     const defaultCountry = await getSetting<string>('store.country', 'Pakistan');
     const freeShippingThreshold = await getSetting<number>('shipping.free_threshold', 5000);
@@ -38,13 +42,21 @@ export async function POST(req: NextRequest) {
 
     const fullCountry = shippingAddress.country || defaultCountry;
 
-    // 3. Re-verify items, pricing, and stock atomically in transaction
+    // 3. Atomically verify items, pricing, stock, create order, and clear cart
     const orderResult = await db.$transaction(async (tx) => {
+      // Re-verify cart is still not empty within transaction (double-click / race protection)
+      const currentCartItems = await tx.cartItem.findMany({
+        where: { cartId: cart.id },
+      });
+
+      if (currentCartItems.length === 0) {
+        throw new Error('This order has already been submitted and processed.');
+      }
+
       let liveSubtotal = 0;
       const orderItemsToCreate = [];
 
       for (const item of cart.items) {
-        // Fetch live product
         const product = await tx.product.findUnique({
           where: { id: item.productId, deletedAt: null },
           include: { variants: true },
@@ -64,7 +76,7 @@ export async function POST(req: NextRequest) {
             throw new Error(`Option for "${product.name}" is no longer available.`);
           }
 
-          // Strict race-condition inventory check
+          // Strict inventory check
           if (variant.inventoryQty < item.quantity) {
             throw new Error(
               `Stock conflict: "${product.name} (${variant.title})" only has ${variant.inventoryQty} units remaining in stock. Please adjust your bag.`
@@ -85,7 +97,6 @@ export async function POST(req: NextRequest) {
         const lineTotal = unitPrice * item.quantity;
         liveSubtotal += lineTotal;
 
-        // Snapshot immutable item data per BUILD_STANDARDS 2.6
         orderItemsToCreate.push({
           productId: product.id,
           variantId: item.variantId || null,
@@ -98,7 +109,7 @@ export async function POST(req: NextRequest) {
         });
       }
 
-      // 4. Validate & apply coupon if provided
+      // 4. Validate & apply coupon
       let discountAmount = 0;
       let appliedCouponCode: string | null = null;
 
@@ -122,7 +133,6 @@ export async function POST(req: NextRequest) {
               discountAmount = Math.min(liveSubtotal, coupon.discountValue);
             }
 
-            // Increment coupon usage count
             await tx.coupon.update({
               where: { id: coupon.id },
               data: { usedCount: { increment: 1 } },
@@ -131,12 +141,12 @@ export async function POST(req: NextRequest) {
         }
       }
 
-      // 5. Calculate Shipping & Tax
+      // 5. Calculate Shipping & Totals
       const shippingAmount = liveSubtotal >= freeShippingThreshold ? 0 : standardShippingCost;
       const taxAmount = 0;
       const totalPrice = Math.max(0, liveSubtotal - discountAmount + shippingAmount + taxAmount);
 
-      // 6. Customer & Guest Email Match Resolution per BUILD_STANDARDS 2.4
+      // 6. Customer & Guest Email Match Resolution (BUILD_STANDARDS 2.4)
       const normalizedEmail = shippingAddress.email.toLowerCase().trim();
       let customer = await tx.customer.findUnique({
         where: { email: normalizedEmail },
@@ -145,7 +155,6 @@ export async function POST(req: NextRequest) {
       let guestOrderPossiblyLinked = false;
 
       if (!customer) {
-        // Create passwordless guest customer record
         customer = await tx.customer.create({
           data: {
             email: normalizedEmail,
@@ -156,15 +165,13 @@ export async function POST(req: NextRequest) {
           },
         });
       } else {
-        // Email matches an existing customer account
         if (!cart.customerId || cart.customerId !== customer.id) {
           guestOrderPossiblyLinked = true;
-          // Follow-up: link order email stub
-          console.log(`[Email Service Stub] Guest checkout matched existing account (${normalizedEmail}). Flagged guestOrderPossiblyLinked for post-purchase link invitation.`);
+          console.log(`[Email Service Stub] Guest checkout matched existing account (${normalizedEmail}). Flagged guestOrderPossiblyLinked.`);
         }
       }
 
-      // 7. Initiate Payment via Gateway Abstraction
+      // 7. Payment Gateway
       const gateway = getPaymentGateway(paymentMethod || 'COD');
       const orderNumber = generateOrderNumber();
 
@@ -178,7 +185,7 @@ export async function POST(req: NextRequest) {
         customerPhone: shippingAddress.phone,
       });
 
-      // 8. Snapshot address
+      // 8. Shipping Snapshot
       const shippingAddressSnapshot = {
         name: `${shippingAddress.firstName} ${shippingAddress.lastName}`.trim(),
         email: normalizedEmail,
@@ -219,7 +226,7 @@ export async function POST(req: NextRequest) {
         },
       });
 
-      // 10. Purge Cart Items
+      // 10. Purge Cart Items Immediately
       await tx.cartItem.deleteMany({
         where: { cartId: cart.id },
       });
@@ -227,13 +234,29 @@ export async function POST(req: NextRequest) {
       return newOrder;
     });
 
-    return NextResponse.json({
+    // Generate signed Order Access Token to authorize access to confirmation page
+    const orderAccessToken = await signOrderAccessToken(orderResult.id, orderResult.orderNumber);
+
+    const response = NextResponse.json({
       success: true,
       orderId: orderResult.id,
       orderNumber: orderResult.orderNumber,
       totalPrice: orderResult.totalPrice,
       currency: orderResult.currency,
     });
+
+    // Set secure HTTP-only access token cookie for this specific order
+    response.cookies.set({
+      name: `aw_order_access_${orderResult.orderNumber}`,
+      value: orderAccessToken,
+      httpOnly: true,
+      sameSite: 'lax',
+      secure: process.env.NODE_ENV === 'production',
+      maxAge: 60 * 60 * 24, // 24 hours
+      path: '/',
+    });
+
+    return response;
   } catch (error: any) {
     console.error('Checkout creation error:', error);
     return NextResponse.json(
