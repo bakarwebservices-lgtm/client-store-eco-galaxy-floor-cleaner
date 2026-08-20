@@ -24,6 +24,7 @@ interface CartContextType {
   items: CartItemType[];
   totalItems: number;
   subtotal: number;
+  freeShippingThreshold: number;
   isOpen: boolean;
   isLoading: boolean;
   openCart: () => void;
@@ -47,6 +48,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   const [items, setItems] = useState<CartItemType[]>([]);
   const [totalItems, setTotalItems] = useState(0);
   const [subtotal, setSubtotal] = useState(0);
+  const [freeShippingThreshold, setFreeShippingThreshold] = useState(5000);
   const [isOpen, setIsOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
@@ -58,6 +60,9 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         setItems(data.items || []);
         setTotalItems(data.totalItems || 0);
         setSubtotal(data.subtotal || 0);
+        if (typeof data.freeShippingThreshold === 'number') {
+          setFreeShippingThreshold(data.freeShippingThreshold);
+        }
       }
     } catch (err) {
       console.error('Failed to refresh cart:', err);
@@ -157,6 +162,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         items,
         totalItems,
         subtotal,
+        freeShippingThreshold,
         isOpen,
         isLoading,
         openCart,

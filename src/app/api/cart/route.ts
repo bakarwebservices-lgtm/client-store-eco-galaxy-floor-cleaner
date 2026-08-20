@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { getActiveCart } from '@/lib/cart/session';
 import { addToCartSchema } from '@/lib/validation/cart';
+import { getSetting } from '@/lib/settings';
 import { ProductStatus } from '@prisma/client';
 
 export const dynamic = 'force-dynamic';
@@ -9,6 +10,9 @@ export const dynamic = 'force-dynamic';
 export async function GET() {
   try {
     const cart = await getActiveCart();
+
+    // Read dynamic shipping threshold from Setting model (BUILD_STANDARDS 2.7)
+    const freeShippingThreshold = await getSetting<number>('shipping.free_threshold', 5000);
 
     const formattedItems = cart.items.map((item) => {
       const price = item.variant?.price ?? item.product.price;
@@ -41,6 +45,7 @@ export async function GET() {
       items: formattedItems,
       totalItems,
       subtotal,
+      freeShippingThreshold,
     });
   } catch (error) {
     console.error('Failed to get cart:', error);

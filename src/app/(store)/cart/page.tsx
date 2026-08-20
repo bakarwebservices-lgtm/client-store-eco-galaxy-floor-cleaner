@@ -10,9 +10,8 @@ import { Breadcrumbs } from '@/components/storefront/Breadcrumbs';
 export const dynamic = 'force-dynamic';
 
 export default function CartPage() {
-  const { items, totalItems, subtotal, updateQuantity, removeItem } = useCart();
+  const { items, totalItems, subtotal, freeShippingThreshold, updateQuantity, removeItem } = useCart();
 
-  const freeShippingThreshold = 5000;
   const progressToFreeShipping = Math.min(100, (subtotal / freeShippingThreshold) * 100);
   const remainingForFreeShipping = Math.max(0, freeShippingThreshold - subtotal);
 
@@ -30,13 +29,13 @@ export default function CartPage() {
         <div className="grid grid-cols-1 gap-8 lg:grid-cols-3">
           {/* Left 2 Cols: Items Table */}
           <div className="lg:col-span-2 space-y-4">
-            {/* Free Shipping Progress Indicator */}
+            {/* Dynamic Free Shipping Progress Indicator (Driven by Setting model) */}
             <div className="rounded-xl border border-border bg-card p-4 space-y-2 shadow-sm">
               <div className="flex items-center gap-2 text-xs font-semibold text-foreground">
                 <Truck className="h-4 w-4 text-primary" />
                 {remainingForFreeShipping > 0 ? (
                   <span>
-                    Add <strong className="text-primary">Rs. {remainingForFreeShipping.toLocaleString()}</strong> more to unlock <strong>FREE Shipping</strong>!
+                    Add <strong className="text-primary">Rs. {remainingForFreeShipping.toLocaleString()}</strong> more to unlock <strong>FREE Shipping</strong> (Threshold: Rs. {freeShippingThreshold.toLocaleString()})!
                   </span>
                 ) : (
                   <span className="text-success font-bold">🎉 You unlocked FREE Shipping!</span>
