@@ -168,8 +168,12 @@ export async function POST(
       });
     }
 
-    // Prepare image strings (JSON array or URL array)
-    const formattedImages = images.map((img) => JSON.stringify(img));
+    // Prepare image strings - guarantees consistent JSON serialization of { url, altText }
+    const formattedImages = images.map((img: any) =>
+      typeof img === 'string'
+        ? JSON.stringify({ url: img, altText: `${product.name} review photo` })
+        : JSON.stringify({ url: img.url, altText: img.altText || `${product.name} review photo` })
+    );
 
     let review;
     if (existingReview) {
