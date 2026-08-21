@@ -2,7 +2,12 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getAdminSession } from '@/lib/auth/admin';
 import { getStorageAdapter } from '@/lib/storage/registry';
 import { db } from '@/lib/db';
-import { mediaUploadSchema, ALLOWED_IMAGE_TYPES, MAX_FILE_SIZE_BYTES } from '@/lib/validation/media';
+import {
+  mediaUploadSchema,
+  ALLOWED_IMAGE_TYPES,
+  MAX_FILE_SIZE_BYTES,
+  validateImageSignature,
+} from '@/lib/validation/media';
 
 export const dynamic = 'force-dynamic';
 
@@ -29,7 +34,7 @@ export async function POST(req: NextRequest) {
 
     const altText = valResult.data.altText;
 
-    // Validate MIME type
+    // Validate declared MIME type
     if (!ALLOWED_IMAGE_TYPES.includes(file.type)) {
       return NextResponse.json(
         { error: `Unsupported file type: ${file.type}. Allowed types: JPEG, PNG, WebP, GIF, SVG, AVIF.` },
@@ -49,9 +54,20 @@ export async function POST(req: NextRequest) {
     const arrayBuffer = await file.arrayBuffer();
     const buffer = Buffer.from(arrayBuffer);
 
+    // Deep Magic-Byte / Signature Verification & SVG Sanitization (Prevents XSS / disguised executable attacks)
+    const sigResult = validateImageSignature(buffer, file.type);
+    if (!sigResult.isValid) {
+      return NextResponse.json(
+        { error: sigResult.error || 'Invalid image file content.' },
+        { status: 400 }
+      );
+    }
+
+    const finalBuffer = sigResult.sanitizedBuffer || buffer;
+
     // Call storage adapter abstraction (zero filesystem dependencies in route handler)
     const storage = getStorageAdapter();
-    const uploadResult = await storage.uploadFile(buffer, file.name, file.type);
+    const uploadResult = await storage.uploadFile(finalBuffer, file.name, file.type);
 
     // Persist MediaAsset record
     const mediaAsset = await db.mediaAsset.create({
