@@ -35,6 +35,32 @@ export class SupabaseStorageAdapter implements IStorageAdapter {
     return `${basename}-${Date.now()}-${randomSuffix}${ext}`;
   }
 
+  private extractKey(keyOrUrl: string): string {
+    if (!keyOrUrl) return '';
+    let clean = keyOrUrl.trim();
+
+    const publicPrefix = `/storage/v1/object/public/${this.bucket}/`;
+    const authPrefix = `/storage/v1/object/${this.bucket}/`;
+
+    if (clean.includes(publicPrefix)) {
+      clean = clean.split(publicPrefix)[1];
+    } else if (clean.includes(authPrefix)) {
+      clean = clean.split(authPrefix)[1];
+    } else if (clean.startsWith('http://') || clean.startsWith('https://')) {
+      try {
+        const parsedUrl = new URL(clean);
+        clean = parsedUrl.pathname.replace(/^\/+/, '');
+        if (clean.startsWith(`${this.bucket}/`)) {
+          clean = clean.slice(this.bucket.length + 1);
+        }
+      } catch {
+        clean = path.basename(clean);
+      }
+    }
+
+    return clean.split('?')[0];
+  }
+
   async uploadFile(
     fileBuffer: Buffer | Uint8Array,
     filename: string,
@@ -81,27 +107,46 @@ export class SupabaseStorageAdapter implements IStorageAdapter {
   }
 
   getUrl(key: string): string {
-    return `${this.supabaseUrl}/storage/v1/object/public/${this.bucket}/${key}`;
+    const cleanKey = this.extractKey(key);
+    return `${this.supabaseUrl}/storage/v1/object/public/${this.bucket}/${cleanKey}`;
   }
 
-  async deleteFile(key: string): Promise<boolean> {
+  async deleteFile(keyOrUrl: string): Promise<boolean> {
     try {
-      const deleteUrl = `${this.supabaseUrl}/storage/v1/object/${this.bucket}/${key}`;
-      const headers: Record<string, string> = {};
+      const cleanKey = this.extractKey(keyOrUrl);
+      if (!cleanKey) return true;
+
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+      };
 
       if (this.supabaseKey) {
         headers['Authorization'] = `Bearer ${this.supabaseKey}`;
         headers['apikey'] = this.supabaseKey;
       }
 
-      const response = await fetch(deleteUrl, {
+      // 1. Supabase standard batch deletion API
+      const batchDeleteUrl = `${this.supabaseUrl}/storage/v1/object/${this.bucket}`;
+      const batchResponse = await fetch(batchDeleteUrl, {
+        method: 'DELETE',
+        headers,
+        body: JSON.stringify({ prefixes: [cleanKey] }),
+      });
+
+      if (batchResponse.ok) {
+        return true;
+      }
+
+      // 2. Direct single file deletion endpoint fallback
+      const singleDeleteUrl = `${this.supabaseUrl}/storage/v1/object/${this.bucket}/${cleanKey}`;
+      const singleResponse = await fetch(singleDeleteUrl, {
         method: 'DELETE',
         headers,
       });
 
-      return response.ok;
+      return singleResponse.ok;
     } catch (err) {
-      console.warn(`Supabase Storage deletion error for key "${key}":`, err);
+      console.warn(`Supabase Storage deletion error for "${keyOrUrl}":`, err);
       return false;
     }
   }

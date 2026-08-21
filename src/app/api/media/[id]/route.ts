@@ -3,7 +3,6 @@ import { getAdminSession } from '@/lib/auth/admin';
 import { getStorageAdapter } from '@/lib/storage/registry';
 import { db } from '@/lib/db';
 import { mediaUpdateSchema } from '@/lib/validation/media';
-import path from 'path';
 
 export const dynamic = 'force-dynamic';
 
@@ -57,10 +56,9 @@ export async function DELETE(
       return NextResponse.json({ error: 'Media asset not found.' }, { status: 404 });
     }
 
-    // Delete physical file via storage adapter abstraction
-    const key = path.basename(asset.url);
+    // Delete physical file via storage adapter abstraction (Supabase Storage / Cloudinary / Local)
     const storage = getStorageAdapter();
-    await storage.deleteFile(key);
+    await storage.deleteFile(asset.url);
 
     // Delete DB record
     await db.mediaAsset.delete({
@@ -68,8 +66,8 @@ export async function DELETE(
     });
 
     return NextResponse.json({ success: true, message: 'Media asset deleted successfully.' });
-  } catch (error) {
+  } catch (error: any) {
     console.error('Failed to delete media asset:', error);
-    return NextResponse.json({ error: 'Failed to delete media asset.' }, { status: 500 });
+    return NextResponse.json({ error: error?.message || 'Failed to delete media asset.' }, { status: 500 });
   }
 }

@@ -33,9 +33,13 @@ export async function middleware(req: NextRequest) {
 
   // 2. Protect Customer Account Routes
   if (pathname.startsWith('/account')) {
-    if (pathname === '/account/login' || pathname === '/account/register') {
+    if (
+      pathname === '/account/login' ||
+      pathname === '/account/register' ||
+      pathname === '/account/verify-email'
+    ) {
       const token = req.cookies.get(CUSTOMER_COOKIE_NAME)?.value;
-      if (token && (await verifyCustomerToken(token))) {
+      if (token && (pathname === '/account/login' || pathname === '/account/register') && (await verifyCustomerToken(token))) {
         return NextResponse.redirect(new URL('/account', req.url));
       }
       return NextResponse.next();
