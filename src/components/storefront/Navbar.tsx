@@ -1,13 +1,36 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { ShoppingBag, Menu, X, Search, User } from 'lucide-react';
+import { ShoppingBag, Menu, X, Search, User, ChevronDown } from 'lucide-react';
 import { useCart } from '@/context/CartContext';
+
+interface CategoryNav {
+  id: string;
+  name: string;
+  slug: string;
+}
 
 export function Navbar() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [categories, setCategories] = useState<CategoryNav[]>([]);
+  const [categoriesOpen, setCategoriesOpen] = useState(false);
   const { totalItems, toggleCart } = useCart();
+
+  useEffect(() => {
+    async function loadCategories() {
+      try {
+        const res = await fetch('/api/categories');
+        if (res.ok) {
+          const data = await res.json();
+          setCategories(data.categories || []);
+        }
+      } catch (err) {
+        console.error('Failed to load categories navigation', err);
+      }
+    }
+    loadCategories();
+  }, []);
 
   return (
     <header className="sticky top-0 z-40 border-b border-border bg-card/90 backdrop-blur">
@@ -26,6 +49,40 @@ export function Navbar() {
             <Link href="/products" className="transition-colors hover:text-foreground">
               Catalog
             </Link>
+
+            {/* Categories Dropdown */}
+            {categories.length > 0 && (
+              <div
+                className="relative group py-2"
+                onMouseEnter={() => setCategoriesOpen(true)}
+                onMouseLeave={() => setCategoriesOpen(false)}
+              >
+                <button
+                  type="button"
+                  onClick={() => setCategoriesOpen(!categoriesOpen)}
+                  className="flex items-center gap-1 transition-colors hover:text-foreground focus:outline-none"
+                >
+                  <span>Categories</span>
+                  <ChevronDown className="h-3.5 w-3.5" />
+                </button>
+
+                {categoriesOpen && (
+                  <div className="absolute left-0 top-full w-48 rounded-xl border border-border bg-card p-2 shadow-xl animate-in fade-in zoom-in-95 duration-150 z-50">
+                    {categories.map((cat) => (
+                      <Link
+                        key={cat.id}
+                        href={`/categories/${cat.slug}`}
+                        onClick={() => setCategoriesOpen(false)}
+                        className="block rounded-lg px-3 py-1.5 text-xs font-medium text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+                      >
+                        {cat.name}
+                      </Link>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
             <Link href="/products?featured=true" className="transition-colors hover:text-foreground">
               Featured
             </Link>
@@ -93,6 +150,27 @@ export function Navbar() {
           >
             All Products
           </Link>
+
+          {categories.length > 0 && (
+            <div className="border-t border-b border-border py-2 space-y-1">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground block px-1">
+                Categories
+              </span>
+              <div className="grid grid-cols-2 gap-1 pt-1">
+                {categories.map((cat) => (
+                  <Link
+                    key={cat.id}
+                    href={`/categories/${cat.slug}`}
+                    onClick={() => setMobileMenuOpen(false)}
+                    className="block rounded-lg px-2 py-1 text-xs font-medium text-muted-foreground hover:bg-muted hover:text-foreground"
+                  >
+                    {cat.name}
+                  </Link>
+                ))}
+              </div>
+            </div>
+          )}
+
           <Link
             href="/products?featured=true"
             onClick={() => setMobileMenuOpen(false)}

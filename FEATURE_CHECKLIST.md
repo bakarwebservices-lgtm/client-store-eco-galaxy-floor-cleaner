@@ -62,6 +62,31 @@ This document tracks every UI element, intended action, route handler, and its e
 | **Reviews (Admin)** | Review Status Toggle | Approve or move review back to pending moderation | `PATCH /api/admin/reviews/[id]` | `Connected` |
 | **Reviews (Admin)** | Review Deletion | Permanently delete / reject abusive reviews | `DELETE /api/admin/reviews/[id]` | `Connected` |
 | **Reviews (Customer)** | Delete Own Review | Access-controlled deletion endpoint allowing customers to remove their own review | `DELETE /api/customer/reviews/[id]` | `Connected` |
+| **Taxonomy (Storefront)** | Category Menu & Navigation (`src/components/storefront/Navbar.tsx`) | Dynamic category links in desktop dropdown and mobile menu drawer | `GET /api/categories` | `Connected` |
+| **Taxonomy (Storefront)** | Category Product Page (`src/app/(store)/categories/[slug]/page.tsx`) | Paginated category product grid, breadcrumbs, canonical tag, SEO fields | `GET /api/categories/[id]` | `Connected` |
+| **Taxonomy (Storefront)** | Collection Product Page (`src/app/(store)/collections/[slug]/page.tsx`) | Paginated collection product grid, SMART dynamic rule evaluation & MANUAL position order | `GET /api/collections/[id]` | `Connected` |
+| **Taxonomy (Admin)** | Category Management (`src/app/(admin)/admin/categories/page.tsx`) | Full Category CRUD with MediaUploadModal image/altText, sortOrder, SEO fields | `GET/POST/PUT/DELETE /api/categories` | `Connected` |
+| **Taxonomy (Admin)** | Collection Management (`src/app/(admin)/admin/collections/page.tsx`) | Full Collection CRUD with SMART rule builder and MANUAL product selector | `GET/POST/PUT/DELETE /api/collections` | `Connected` |
+| **Taxonomy (Admin)** | Product Category Assignment (`src/components/admin/ProductForm.tsx`) | Integrated category selection checkboxes in product create/edit form | `GET /api/categories?admin=true` | `Connected` |
+| **Coupons (Admin)** | Coupons List & Filters (`src/app/(admin)/admin/coupons/page.tsx`) | Paginated coupon list, computed state badges (active/expired/depleted), search | `GET /api/admin/coupons` | `Connected` |
+| **Coupons (Admin)** | Coupon Creation & Editing (`src/components/admin/CouponForm.tsx`) | Form with auto-uppercase, discountType switch, Zod validation, order protection locking | `POST/PUT /api/admin/coupons` | `Connected` |
+| **Coupons (Admin)** | Safe Deletion / Deactivation | Hard-delete for 0-usage coupons, soft-deactivate (isActive: false) for used coupons | `DELETE /api/admin/coupons/[id]` | `Connected` |
+| **Coupons (Admin)** | Quick Status Toggle | Instant active/inactive switch | `PATCH /api/admin/coupons/[id]` | `Connected` |
+| **Coupons (Storefront)** | Coupon Checkout Validation (`src/app/api/coupons/validate/route.ts`) | Reused validation route checking min order, dates, max usage, calculating deductions | `POST /api/coupons/validate` | `Connected` |
+| **CMS: Blog (Storefront)** | Blog Listing Page (`src/app/(store)/blog/page.tsx`) | Paginated published journal articles, tags filter, reading time, breadcrumbs | `GET /api/blog` | `Connected` |
+| **CMS: Blog (Storefront)** | Article Detail View (`src/app/(store)/blog/[slug]/page.tsx`) | Sanitized HTML rendering, OpenGraph tags, altText image, dynamic SEO metadata | `GET /api/blog/[id]` | `Connected` |
+| **CMS: Blog (Admin)** | Blog Article CRUD (`src/app/(admin)/admin/blog/page.tsx`) | Rich text formatting editor, Media Library integration, tags, author, SEO fields | `GET/POST/PUT/DELETE /api/blog` | `Connected` |
+| **CMS: Pages (Storefront)** | Static Page Reader (`src/app/(store)/pages/[slug]/page.tsx`) | Dynamic CMS policy/about page renderer, sanitized HTML, breadcrumbs, SEO metadata | `GET /api/pages/[id]` | `Connected` |
+| **CMS: Pages (Admin)** | Static Page CRUD (`src/app/(admin)/admin/pages/page.tsx`) | Custom page creation, auto-slug generator, rich text editor, active/hidden toggle | `GET/POST/PUT/DELETE /api/pages` | `Connected` |
+| **CMS: FAQ (Storefront)** | FAQ Accordion View (`src/app/(store)/faq/page.tsx`) | Real-time search, category filter pills, accessible expandable accordion items | `GET /api/faq` | `Connected` |
+| **CMS: FAQ (Admin)** | FAQ Item CRUD (`src/app/(admin)/admin/faq/page.tsx`) | Question/answer management, category grouping, sort order, 1-click active toggle | `GET/POST/PUT/DELETE /api/faq` | `Connected` |
+| **Newsletter (Storefront)** | Footer Subscription Form (`src/components/storefront/NewsletterSignup.tsx`) | Email validation, rate limiting, duplicate-safe upsert, inline status feedback | `POST /api/newsletter` | `Connected` |
+| **Newsletter (Admin)** | Subscribers List & CSV Export (`src/app/(admin)/admin/newsletter/page.tsx`) | Search, active/unsubscribed filter, CSV file download, subscription toggle | `GET/PATCH/DELETE /api/newsletter` | `Connected` |
+| **Contact Form (Storefront)** | Contact Us Page (`src/app/(store)/contact/page.tsx`) | Rate-limited inquiry submission, store hours, contact meta, success state | `POST /api/contact` | `Connected` |
+| **Contact Form (Admin)** | Inbound Messages Inbox (`src/app/(admin)/admin/contact/page.tsx`) | Real-time unread badge, filter unread, message modal, direct email reply | `GET/PATCH/DELETE /api/contact` | `Connected` |
+| **Backorder / Waitlist (Storefront)** | Out-of-Stock Notification Form (`src/app/(store)/products/[slug]/ProductDetailClient.tsx`) | Automatic display when stock is 0, email capture, customerId link, success feedback | `POST /api/waitlist` | `Connected` |
+| **Backorder / Waitlist (Admin)** | Waitlist & Restock Management (`src/app/(admin)/admin/waitlist/page.tsx`) | Product/variant subscriber totals, ETA restock scheduler, manual batch alert sender | `GET/POST /api/waitlist` | `Connected` |
+| **Backorder / Waitlist (Engine)** | Restock Alert Auto-Dispatcher (`src/lib/email/restock.ts`) | Server-side after() hook on inventory replenishment with RestockNotification logs | Internal Email Dispatcher | `Connected` |
 
 ---
 

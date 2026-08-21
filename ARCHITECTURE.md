@@ -239,3 +239,14 @@ This document outlines the architectural design, directory structure, and domain
 | **OWASP Security** | Server Zod validation, HTTP-only cookies, isolated admin auth | Auth helpers & route middleware |
 | **Mobile-First Responsiveness** | 2-column product grids on mobile, tested spacing | Viewport testing before feature signoff |
 | **Analytics Hooks** | Non-blocking `track()` dispatcher for Pixel & GA4 | Embedded in Cart, Checkout, Purchase flows |
+
+---
+
+## 6. Known Architectural Limitations & Future Upgrades
+
+### 6.1 RMA Returns & Verified Review Status (INFO-1)
+When an order's `fulfillmentStatus` transitions to `RETURNED` via the RMA return workflow (`src/app/api/admin/orders/[id]/return/route.ts`), existing approved customer reviews for products in that order retain their `isVerified: true` flag. The purchase was legitimate at order time, but the platform does not retroactively revoke verified buyer badges upon return. For deployments requiring strict policy enforcement (e.g., removing the verified badge or flagging the review for re-moderation after a return), a post-return hook can update matching `Review` records.
+
+### 6.2 In-Memory Rate Limiter on Serverless Deployments (INFO-2)
+The sliding window rate limiter (`src/lib/security/rateLimit.ts`) utilizes an in-memory `Map` data structure. In serverless / multi-instance edge environments, each instance maintains its own memory space. For high-scale production multi-region deployments, swap the memory store for a distributed Redis or Upstash KV store (`@upstash/ratelimit`).
+

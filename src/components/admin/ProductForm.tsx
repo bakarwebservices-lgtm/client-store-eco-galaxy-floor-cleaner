@@ -1,7 +1,7 @@
 'use client';
 import { formatCurrency } from '@/lib/format';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Plus, Trash2, Loader2, ArrowLeft, AlertCircle, ImagePlus, Star } from 'lucide-react';
 import Link from 'next/link';
@@ -10,10 +10,10 @@ import { MediaUploadModal } from './MediaUploadModal';
 
 export function ProductForm({
   initialData,
-  categories = [],
+  categories: initialCategories = [],
 }: {
   initialData?: any;
-  categories: Array<{ id: string; name: string }>;
+  categories?: Array<{ id: string; name: string }>;
 }) {
   const router = useRouter();
   const isEditing = Boolean(initialData?.id);
@@ -57,6 +57,25 @@ export function ProductForm({
 
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [availableCategories, setAvailableCategories] = useState<Array<{ id: string; name: string }>>(initialCategories);
+
+  // Load available categories on mount if not provided in props
+  useEffect(() => {
+    async function loadCategories() {
+      try {
+        const res = await fetch('/api/categories?admin=true');
+        if (res.ok) {
+          const data = await res.json();
+          setAvailableCategories(data.categories || []);
+        }
+      } catch (err) {
+        console.error('Failed to load categories in ProductForm', err);
+      }
+    }
+    if (initialCategories.length === 0) {
+      loadCategories();
+    }
+  }, [initialCategories.length]);
 
   // Auto slug generation from name if empty
   const handleNameChange = (val: string) => {
@@ -543,9 +562,9 @@ export function ProductForm({
             {/* Categories */}
             <div className="rounded-xl border border-border bg-card p-5 space-y-3 shadow-sm">
               <h2 className="text-sm font-bold uppercase tracking-wider text-foreground">Category Assignment</h2>
-              {categories.length > 0 ? (
+              {availableCategories.length > 0 ? (
                 <div className="space-y-2 max-h-48 overflow-y-auto">
-                  {categories.map((c) => {
+                  {availableCategories.map((c) => {
                     const isChecked = selectedCategoryIds.includes(c.id);
                     return (
                       <label key={c.id} className="flex items-center gap-2 text-xs text-foreground cursor-pointer">

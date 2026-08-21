@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { LogOut, ShieldCheck, UserCheck, Package, ShoppingCart, Layers, MessageSquare } from 'lucide-react';
+import { LogOut, ShieldCheck, UserCheck, Package, ShoppingCart, Layers, MessageSquare, FolderTree, Tag, BookOpen, FileText, HelpCircle, Mail, Bell } from 'lucide-react';
 
 interface AdminUserSession {
   id: string;
@@ -117,14 +117,32 @@ export default function AdminDashboardPage() {
         </section>
 
         {/* Quick Domain Navigation Grid */}
-        <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           <Link href="/admin/products" className="rounded-xl border border-border bg-card p-5 space-y-2 hover:border-primary/40 transition-colors">
             <div className="flex items-center justify-between text-muted-foreground">
               <span className="text-xs font-medium uppercase tracking-wider">Catalog</span>
               <Package className="h-4 w-4 text-primary" />
             </div>
-            <div className="text-xl font-bold text-foreground">Products & SKUs</div>
+            <div className="text-lg font-bold text-foreground">Products & SKUs</div>
             <p className="text-xs text-muted-foreground">Manage catalog items, variants & pricing</p>
+          </Link>
+
+          <Link href="/admin/categories" className="rounded-xl border border-border bg-card p-5 space-y-2 hover:border-primary/40 transition-colors">
+            <div className="flex items-center justify-between text-muted-foreground">
+              <span className="text-xs font-medium uppercase tracking-wider">Taxonomy</span>
+              <FolderTree className="h-4 w-4 text-primary" />
+            </div>
+            <div className="text-lg font-bold text-foreground">Categories</div>
+            <p className="text-xs text-muted-foreground">Storefront navigation hierarchy & filters</p>
+          </Link>
+
+          <Link href="/admin/collections" className="rounded-xl border border-border bg-card p-5 space-y-2 hover:border-primary/40 transition-colors">
+            <div className="flex items-center justify-between text-muted-foreground">
+              <span className="text-xs font-medium uppercase tracking-wider">Curations</span>
+              <Layers className="h-4 w-4 text-primary" />
+            </div>
+            <div className="text-lg font-bold text-foreground">Collections</div>
+            <p className="text-xs text-muted-foreground">Manual groupings & dynamic smart rules</p>
           </Link>
 
           <Link href="/admin/orders" className="rounded-xl border border-border bg-card p-5 space-y-2 hover:border-primary/40 transition-colors">
@@ -132,7 +150,7 @@ export default function AdminDashboardPage() {
               <span className="text-xs font-medium uppercase tracking-wider">Fulfillment</span>
               <ShoppingCart className="h-4 w-4 text-primary" />
             </div>
-            <div className="text-xl font-bold text-foreground">Orders & Returns</div>
+            <div className="text-lg font-bold text-foreground">Orders & Returns</div>
             <p className="text-xs text-muted-foreground">Payment status, shipping, RMA returns</p>
           </Link>
 
@@ -141,8 +159,71 @@ export default function AdminDashboardPage() {
               <span className="text-xs font-medium uppercase tracking-wider">Feedback</span>
               <MessageSquare className="h-4 w-4 text-amber-500" />
             </div>
-            <div className="text-xl font-bold text-foreground">Review Moderation</div>
+            <div className="text-lg font-bold text-foreground">Review Moderation</div>
             <p className="text-xs text-muted-foreground">Moderate customer ratings & photo reviews</p>
+          </Link>
+
+          <Link href="/admin/coupons" className="rounded-xl border border-border bg-card p-5 space-y-2 hover:border-primary/40 transition-colors">
+            <div className="flex items-center justify-between text-muted-foreground">
+              <span className="text-xs font-medium uppercase tracking-wider">Promotions</span>
+              <Tag className="h-4 w-4 text-primary" />
+            </div>
+            <div className="text-lg font-bold text-foreground">Coupons & Discounts</div>
+            <p className="text-xs text-muted-foreground">Manage promo codes, percentages & fixed vouchers</p>
+          </Link>
+
+          <Link href="/admin/blog" className="rounded-xl border border-border bg-card p-5 space-y-2 hover:border-primary/40 transition-colors">
+            <div className="flex items-center justify-between text-muted-foreground">
+              <span className="text-xs font-medium uppercase tracking-wider">Journal</span>
+              <BookOpen className="h-4 w-4 text-primary" />
+            </div>
+            <div className="text-lg font-bold text-foreground">Blog Articles</div>
+            <p className="text-xs text-muted-foreground">Editorial stories, styling guides & news</p>
+          </Link>
+
+          <Link href="/admin/pages" className="rounded-xl border border-border bg-card p-5 space-y-2 hover:border-primary/40 transition-colors">
+            <div className="flex items-center justify-between text-muted-foreground">
+              <span className="text-xs font-medium uppercase tracking-wider">Content</span>
+              <FileText className="h-4 w-4 text-primary" />
+            </div>
+            <div className="text-lg font-bold text-foreground">Custom Pages</div>
+            <p className="text-xs text-muted-foreground">Static policy, about, terms & custom CMS pages</p>
+          </Link>
+
+          <Link href="/admin/faq" className="rounded-xl border border-border bg-card p-5 space-y-2 hover:border-primary/40 transition-colors">
+            <div className="flex items-center justify-between text-muted-foreground">
+              <span className="text-xs font-medium uppercase tracking-wider">Support</span>
+              <HelpCircle className="h-4 w-4 text-primary" />
+            </div>
+            <div className="text-lg font-bold text-foreground">FAQ Management</div>
+            <p className="text-xs text-muted-foreground">Customer questions, answers & category grouping</p>
+          </Link>
+
+          <Link href="/admin/newsletter" className="rounded-xl border border-border bg-card p-5 space-y-2 hover:border-primary/40 transition-colors">
+            <div className="flex items-center justify-between text-muted-foreground">
+              <span className="text-xs font-medium uppercase tracking-wider">Audience</span>
+              <Mail className="h-4 w-4 text-primary" />
+            </div>
+            <div className="text-lg font-bold text-foreground">Newsletter Subscribers</div>
+            <p className="text-xs text-muted-foreground">Marketing subscribers & CSV exports</p>
+          </Link>
+
+          <Link href="/admin/contact" className="rounded-xl border border-border bg-card p-5 space-y-2 hover:border-primary/40 transition-colors">
+            <div className="flex items-center justify-between text-muted-foreground">
+              <span className="text-xs font-medium uppercase tracking-wider">Inbound</span>
+              <MessageSquare className="h-4 w-4 text-primary" />
+            </div>
+            <div className="text-lg font-bold text-foreground">Customer Messages</div>
+            <p className="text-xs text-muted-foreground">Storefront contact inquiries & email replies</p>
+          </Link>
+
+          <Link href="/admin/waitlist" className="rounded-xl border border-border bg-card p-5 space-y-2 hover:border-primary/40 transition-colors">
+            <div className="flex items-center justify-between text-muted-foreground">
+              <span className="text-xs font-medium uppercase tracking-wider">Inventory</span>
+              <Bell className="h-4 w-4 text-amber-500" />
+            </div>
+            <div className="text-lg font-bold text-foreground">Waitlist & Restock</div>
+            <p className="text-xs text-muted-foreground">Backorder queues, ETA dates & restock alerts</p>
           </Link>
 
           <Link href="/admin/media" className="rounded-xl border border-border bg-card p-5 space-y-2 hover:border-primary/40 transition-colors">
@@ -150,7 +231,7 @@ export default function AdminDashboardPage() {
               <span className="text-xs font-medium uppercase tracking-wider">Assets</span>
               <Layers className="h-4 w-4 text-primary" />
             </div>
-            <div className="text-xl font-bold text-foreground">Media Library</div>
+            <div className="text-lg font-bold text-foreground">Media Library</div>
             <p className="text-xs text-muted-foreground">Upload and manage media with alt text</p>
           </Link>
         </section>

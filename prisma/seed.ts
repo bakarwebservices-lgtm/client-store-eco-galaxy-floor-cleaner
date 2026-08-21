@@ -58,6 +58,10 @@ async function main() {
     { key: 'shipping.free_threshold', value: Number(process.env.INITIAL_FREE_SHIPPING_THRESHOLD) || 5000, description: 'Free shipping qualifying order subtotal' },
     { key: 'shipping.standard_cost', value: Number(process.env.INITIAL_STANDARD_SHIPPING_COST) || 250, description: 'Standard flat rate shipping fee' },
     { key: 'store.name', value: process.env.INITIAL_STORE_NAME || 'AWWeb SaaS Template Store', description: 'Store display name' },
+    { key: 'store.email', value: process.env.INITIAL_STORE_EMAIL || 'support@store.com', description: 'Store public customer support email' },
+    { key: 'store.phone', value: process.env.INITIAL_STORE_PHONE || '+92 300 0000000', description: 'Store public contact phone / WhatsApp' },
+    { key: 'store.address', value: process.env.INITIAL_STORE_ADDRESS || 'Lahore, Punjab, Pakistan', description: 'Store physical / operating address' },
+    { key: 'store.hours', value: process.env.INITIAL_STORE_HOURS || 'Mon – Sat: 10:00 AM – 8:00 PM PKT', description: 'Customer support business hours' },
     { key: 'tax.rate', value: Number(process.env.INITIAL_TAX_RATE) || 0, description: 'Default sales tax percentage' },
   ];
 

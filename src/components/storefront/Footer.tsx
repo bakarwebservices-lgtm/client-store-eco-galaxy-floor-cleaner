@@ -1,21 +1,25 @@
 import React from 'react';
 import Link from 'next/link';
+import { NewsletterSignup } from './NewsletterSignup';
 
 export function Footer() {
   return (
     <footer className="border-t border-border bg-card text-card-foreground mt-20">
       <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
-        <div className="grid grid-cols-1 gap-8 sm:grid-cols-2 md:grid-cols-4">
-          <div className="space-y-3">
+        <div className="grid grid-cols-1 gap-8 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-5">
+          <div className="space-y-3 lg:col-span-2">
             <div className="flex items-center gap-2 font-heading font-bold text-foreground text-base">
               <div className="flex h-6 w-6 items-center justify-center rounded bg-primary text-primary-foreground text-xs font-bold">
                 AW
               </div>
               STORE
             </div>
-            <p className="text-xs text-muted-foreground leading-relaxed">
+            <p className="text-xs text-muted-foreground leading-relaxed max-w-sm">
               Premium quality products with swift delivery and end-to-end customer support.
             </p>
+            <div className="pt-2 max-w-sm">
+              <NewsletterSignup />
+            </div>
           </div>
 
           <div className="space-y-2">
