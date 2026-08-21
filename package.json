@@ -9,7 +9,11 @@
     "lint": "next lint",
     "test": "vitest run",
     "test:watch": "vitest",
+    "seed": "tsx prisma/seed.ts",
     "postinstall": "prisma generate"
+  },
+  "prisma": {
+    "seed": "tsx prisma/seed.ts"
   },
   "dependencies": {
     "@prisma/client": "^6.0.1",
