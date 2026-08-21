@@ -19,6 +19,13 @@ export async function GET(
     const skip = (page - 1) * limit;
     const isAdmin = searchParams.get('admin') === 'true';
 
+    if (isAdmin) {
+      const admin = await getAdminSession();
+      if (!admin) {
+        return NextResponse.json({ error: 'Unauthorized: Admin session required' }, { status: 401 });
+      }
+    }
+
     const collection = await db.collection.findFirst({
       where: {
         OR: [{ id }, { slug: id }],
