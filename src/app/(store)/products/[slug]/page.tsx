@@ -8,6 +8,7 @@ import { ProductStatus } from '@prisma/client';
 import { getSetting } from '@/lib/settings';
 import { Breadcrumbs } from '@/components/storefront/Breadcrumbs';
 import { ProductDetailClient } from './ProductDetailClient';
+import { ProductReviews } from '@/components/storefront/ProductReviews';
 
 export async function generateMetadata({
   params,
@@ -110,6 +111,9 @@ export default async function ProductDetailPage({
 
       {/* Client Component containing Gallery & Interactive Variant Selector */}
       <ProductDetailClient product={product} />
+
+      {/* Customer Reviews & Ratings Section */}
+      <ProductReviews productId={product.id} productName={product.name} />
     </main>
   );
 }

@@ -2,7 +2,8 @@
 
 import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { LogOut, ShieldCheck, UserCheck, Package, ShoppingCart, Layers } from 'lucide-react';
+import Link from 'next/link';
+import { LogOut, ShieldCheck, UserCheck, Package, ShoppingCart, Layers, MessageSquare } from 'lucide-react';
 
 interface AdminUserSession {
   id: string;
@@ -115,43 +116,43 @@ export default function AdminDashboardPage() {
           </div>
         </section>
 
-        {/* Quick Domain Status Grid (Prepared for next vertical features) */}
+        {/* Quick Domain Navigation Grid */}
         <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <div className="rounded-xl border border-border bg-card p-5 space-y-2">
+          <Link href="/admin/products" className="rounded-xl border border-border bg-card p-5 space-y-2 hover:border-primary/40 transition-colors">
             <div className="flex items-center justify-between text-muted-foreground">
-              <span className="text-xs font-medium uppercase tracking-wider">Auth & Staff</span>
-              <UserCheck className="h-4 w-4 text-success" />
+              <span className="text-xs font-medium uppercase tracking-wider">Catalog</span>
+              <Package className="h-4 w-4 text-primary" />
             </div>
-            <div className="text-2xl font-bold text-foreground">Active</div>
-            <p className="text-xs text-muted-foreground">JWT session + HTTP-only cookies</p>
-          </div>
+            <div className="text-xl font-bold text-foreground">Products & SKUs</div>
+            <p className="text-xs text-muted-foreground">Manage catalog items, variants & pricing</p>
+          </Link>
 
-          <div className="rounded-xl border border-border bg-card p-5 space-y-2">
+          <Link href="/admin/orders" className="rounded-xl border border-border bg-card p-5 space-y-2 hover:border-primary/40 transition-colors">
             <div className="flex items-center justify-between text-muted-foreground">
-              <span className="text-xs font-medium uppercase tracking-wider">Products & SKUs</span>
-              <Package className="h-4 w-4" />
+              <span className="text-xs font-medium uppercase tracking-wider">Fulfillment</span>
+              <ShoppingCart className="h-4 w-4 text-primary" />
             </div>
-            <div className="text-2xl font-bold text-foreground">Ready for Build</div>
-            <p className="text-xs text-muted-foreground">Next vertical feature</p>
-          </div>
+            <div className="text-xl font-bold text-foreground">Orders & Returns</div>
+            <p className="text-xs text-muted-foreground">Payment status, shipping, RMA returns</p>
+          </Link>
 
-          <div className="rounded-xl border border-border bg-card p-5 space-y-2">
+          <Link href="/admin/reviews" className="rounded-xl border border-border bg-card p-5 space-y-2 hover:border-primary/40 transition-colors">
             <div className="flex items-center justify-between text-muted-foreground">
-              <span className="text-xs font-medium uppercase tracking-wider">Collections</span>
-              <Layers className="h-4 w-4" />
+              <span className="text-xs font-medium uppercase tracking-wider">Feedback</span>
+              <MessageSquare className="h-4 w-4 text-amber-500" />
             </div>
-            <div className="text-2xl font-bold text-foreground">Pending</div>
-            <p className="text-xs text-muted-foreground">Manual & Smart rule grouping</p>
-          </div>
+            <div className="text-xl font-bold text-foreground">Review Moderation</div>
+            <p className="text-xs text-muted-foreground">Moderate customer ratings & photo reviews</p>
+          </Link>
 
-          <div className="rounded-xl border border-border bg-card p-5 space-y-2">
+          <Link href="/admin/media" className="rounded-xl border border-border bg-card p-5 space-y-2 hover:border-primary/40 transition-colors">
             <div className="flex items-center justify-between text-muted-foreground">
-              <span className="text-xs font-medium uppercase tracking-wider">Orders Engine</span>
-              <ShoppingCart className="h-4 w-4" />
+              <span className="text-xs font-medium uppercase tracking-wider">Assets</span>
+              <Layers className="h-4 w-4 text-primary" />
             </div>
-            <div className="text-2xl font-bold text-foreground">Pending</div>
-            <p className="text-xs text-muted-foreground">Dual status & snapshot tracking</p>
-          </div>
+            <div className="text-xl font-bold text-foreground">Media Library</div>
+            <p className="text-xs text-muted-foreground">Upload and manage media with alt text</p>
+          </Link>
         </section>
       </main>
     </div>
