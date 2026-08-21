@@ -99,7 +99,7 @@ export default async function HomePage() {
       },
       include: {
         images: {
-          orderBy: { sortOrder: 'asc' },
+          orderBy: [{ isPrimary: 'desc' }, { position: 'asc' }],
           take: 2,
         },
         variants: {
