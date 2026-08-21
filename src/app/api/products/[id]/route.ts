@@ -1,8 +1,9 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest, NextResponse, after } from 'next/server';
 import { db } from '@/lib/db';
 import { productSchema } from '@/lib/validation/product';
 import { getAdminSession } from '@/lib/auth/admin';
 import { ProductStatus } from '@prisma/client';
+import { dispatchRestockAlerts } from '@/lib/email/restock';
 
 export async function GET(
   req: NextRequest,
@@ -123,23 +124,61 @@ export async function PUT(
         });
       }
 
-      // 3. Refresh Variants
-      await tx.productVariant.deleteMany({ where: { productId: id } });
+      // 3. Upsert / Sync Variants (preserves existing variant IDs so foreign keys like WaitlistSubscription are not cascade-deleted)
       if (data.hasVariants && data.variants.length > 0) {
-        await tx.productVariant.createMany({
-          data: data.variants.map((v) => ({
-            productId: id,
-            title: v.title,
-            sku: v.sku,
-            price: v.price ?? null,
-            comparePrice: v.comparePrice ?? null,
-            inventoryQty: v.inventoryQty,
-            color: v.color ?? null,
-            size: v.size ?? null,
-            barcode: v.barcode ?? null,
-            isActive: v.isActive,
-          })),
-        });
+        const incomingSkus = new Set(data.variants.map((v) => v.sku));
+        const incomingIds = new Set(data.variants.map((v) => v.id).filter(Boolean) as string[]);
+
+        // Delete variants that were removed from the product
+        const variantsToDelete = existing.variants.filter(
+          (ev) => !incomingSkus.has(ev.sku) && !incomingIds.has(ev.id)
+        );
+        if (variantsToDelete.length > 0) {
+          await tx.productVariant.deleteMany({
+            where: { id: { in: variantsToDelete.map((v) => v.id) } },
+          });
+        }
+
+        // Update existing or create new variants
+        for (const v of data.variants) {
+          const matched = existing.variants.find(
+            (ev) => (v.id && ev.id === v.id) || ev.sku === v.sku
+          );
+
+          if (matched) {
+            await tx.productVariant.update({
+              where: { id: matched.id },
+              data: {
+                title: v.title,
+                sku: v.sku,
+                price: v.price ?? null,
+                comparePrice: v.comparePrice ?? null,
+                inventoryQty: v.inventoryQty,
+                color: v.color ?? null,
+                size: v.size ?? null,
+                barcode: v.barcode ?? null,
+                isActive: v.isActive,
+              },
+            });
+          } else {
+            await tx.productVariant.create({
+              data: {
+                productId: id,
+                title: v.title,
+                sku: v.sku,
+                price: v.price ?? null,
+                comparePrice: v.comparePrice ?? null,
+                inventoryQty: v.inventoryQty,
+                color: v.color ?? null,
+                size: v.size ?? null,
+                barcode: v.barcode ?? null,
+                isActive: v.isActive,
+              },
+            });
+          }
+        }
+      } else {
+        await tx.productVariant.deleteMany({ where: { productId: id } });
       }
 
       // 4. Refresh Images
@@ -165,6 +204,42 @@ export async function PUT(
         categories: { include: { category: true } },
       },
     });
+
+    // Identify variants that genuinely transitioned from 0 (or new) to >0 stock
+    const oldVariantsMap = new Map<string, number>();
+    for (const ov of existing.variants) {
+      oldVariantsMap.set(ov.id, ov.inventoryQty);
+      if (ov.sku) oldVariantsMap.set(ov.sku, ov.inventoryQty);
+    }
+
+    const replenishedVariantIds: string[] = [];
+    if (updated && updated.variants.length > 0) {
+      for (const variant of updated.variants) {
+        const oldQty = oldVariantsMap.has(variant.id)
+          ? oldVariantsMap.get(variant.id)!
+          : (oldVariantsMap.has(variant.sku) ? oldVariantsMap.get(variant.sku)! : 0);
+
+        // Genuine 0 -> positive stock transition
+        if (oldQty === 0 && variant.inventoryQty > 0) {
+          replenishedVariantIds.push(variant.id);
+        }
+      }
+    }
+
+    // If variants were genuinely replenished from 0 to > 0, trigger restock alert emails via after()
+    if (replenishedVariantIds.length > 0) {
+      after(async () => {
+        try {
+          for (const variantId of replenishedVariantIds) {
+            await dispatchRestockAlerts({ productId: id, variantId });
+          }
+          // Also dispatch base product subscribers
+          await dispatchRestockAlerts({ productId: id });
+        } catch (dispatchErr) {
+          console.error('[Product Update Restock Hook Error]', dispatchErr);
+        }
+      });
+    }
 
     return NextResponse.json({ success: true, product: updated });
   } catch (error) {
