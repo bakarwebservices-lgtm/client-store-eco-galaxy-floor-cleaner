@@ -3,7 +3,7 @@ import { SignJWT, jwtVerify } from 'jose';
 // Separate Admin and Customer JWT secrets (BUILD_STANDARDS 2.2)
 const ADMIN_JWT_SECRET_STRING =
   process.env.ADMIN_JWT_SECRET ||
-  (process.env.NODE_ENV === 'production'
+  (process.env.NODE_ENV === 'production' && process.env.NEXT_PHASE !== 'phase-production-build'
     ? (() => {
         throw new Error('ADMIN_JWT_SECRET environment variable is missing in production!');
       })()
@@ -11,7 +11,7 @@ const ADMIN_JWT_SECRET_STRING =
 
 const CUSTOMER_JWT_SECRET_STRING =
   process.env.CUSTOMER_JWT_SECRET ||
-  (process.env.NODE_ENV === 'production'
+  (process.env.NODE_ENV === 'production' && process.env.NEXT_PHASE !== 'phase-production-build'
     ? (() => {
         throw new Error('CUSTOMER_JWT_SECRET environment variable is missing in production!');
       })()
