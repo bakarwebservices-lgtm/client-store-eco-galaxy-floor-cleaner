@@ -129,6 +129,7 @@ model Customer {
   @@index([email])
   @@index([phone])
   @@index([isActive])
+  @@index([deletedAt])
   @@map("customers")
 }
 
@@ -194,6 +195,8 @@ model Product {
 
   @@index([featured])
   @@index([slug])
+  @@index([status])
+  @@index([deletedAt])
   @@map("products")
 }
 
@@ -277,6 +280,7 @@ model Collection {
 
   @@index([slug])
   @@index([isActive])
+  @@index([sortOrder])
   @@map("collections")
 }
 
@@ -290,6 +294,7 @@ model CollectionProduct {
   product    Product    @relation(fields: [productId], references: [id], onDelete: Cascade)
 
   @@id([collectionId, productId])
+  @@index([productId])
   @@map("collection_products")
 }
 
@@ -329,6 +334,7 @@ model CategoryProduct {
   product  Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
 
   @@id([categoryId, productId])
+  @@index([productId])
   @@map("category_products")
 }
 
@@ -364,6 +370,7 @@ model CartItem {
 
   @@unique([cartId, productId, variantId])
   @@index([cartId])
+  @@index([productId])
   @@map("cart_items")
 }
 
@@ -445,6 +452,7 @@ model Order {
   @@index([fulfillmentStatus])
   @@index([orderNumber])
   @@index([createdAt])
+  @@index([deletedAt])
   @@map("orders")
 }
 
@@ -562,6 +570,7 @@ model Review {
   customer Customer? @relation(fields: [customerId], references: [id], onDelete: SetNull)
 
   @@index([productId])
+  @@index([customerId])
   @@index([isApproved])
   @@index([rating])
   @@map("reviews")
@@ -656,6 +665,7 @@ model BlogArticle {
 
   @@index([publishedAt])
   @@index([slug])
+  @@index([status])
   @@map("blog_articles")
 }
 
@@ -679,6 +689,7 @@ model Page {
   updatedAt DateTime @updatedAt @map("updated_at")
 
   @@index([slug])
+  @@index([status])
   @@map("pages")
 }
 
@@ -695,6 +706,7 @@ model FaqItem {
 
   @@index([isActive])
   @@index([sortOrder])
+  @@index([category])
   @@map("faq_items")
 }
 
