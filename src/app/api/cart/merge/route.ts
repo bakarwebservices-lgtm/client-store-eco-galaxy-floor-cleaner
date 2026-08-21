@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { mergeCartSchema } from '@/lib/validation/cart';
+import { getCustomerSession } from '@/lib/auth/customer';
 
 export const dynamic = 'force-dynamic';
 
@@ -14,6 +15,17 @@ export const dynamic = 'force-dynamic';
  */
 export async function POST(req: NextRequest) {
   try {
+    // Authenticate customer session strictly from cookies
+    const customer = await getCustomerSession();
+    if (!customer?.customerId) {
+      return NextResponse.json(
+        { error: 'Unauthorized: Valid customer session required for cart merge.' },
+        { status: 401 }
+      );
+    }
+
+    const customerId = customer.customerId;
+
     const body = await req.json();
     const parsed = mergeCartSchema.safeParse(body);
     if (!parsed.success) {
@@ -21,12 +33,6 @@ export async function POST(req: NextRequest) {
     }
 
     const { guestSessionId } = parsed.data;
-
-    // Get customer ID from body or active auth context
-    const customerId = (body as any).customerId;
-    if (!customerId) {
-      return NextResponse.json({ error: 'Customer ID required for cart merge.' }, { status: 400 });
-    }
 
     // 1. Fetch guest cart
     const guestCart = await db.cart.findUnique({
