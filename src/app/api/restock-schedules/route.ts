@@ -7,6 +7,11 @@ export const dynamic = 'force-dynamic';
 
 export async function GET(request: NextRequest) {
   try {
+    const admin = await getAdminSession();
+    if (!admin) {
+      return NextResponse.json({ error: 'Unauthorized: Admin session required' }, { status: 401 });
+    }
+
     const { searchParams } = new URL(request.url);
     const productId = searchParams.get('productId');
     const variantId = searchParams.get('variantId');
