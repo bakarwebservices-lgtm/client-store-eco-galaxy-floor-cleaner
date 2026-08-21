@@ -234,6 +234,15 @@ export default function AdminDashboardPage() {
             <div className="text-lg font-bold text-foreground">Media Library</div>
             <p className="text-xs text-muted-foreground">Upload and manage media with alt text</p>
           </Link>
+
+          <Link href="/admin/settings" className="rounded-xl border border-border bg-card p-5 space-y-2 hover:border-primary/40 transition-colors">
+            <div className="flex items-center justify-between text-muted-foreground">
+              <span className="text-xs font-medium uppercase tracking-wider">Configuration</span>
+              <ShieldCheck className="h-4 w-4 text-primary" />
+            </div>
+            <div className="text-lg font-bold text-foreground">Store Settings</div>
+            <p className="text-xs text-muted-foreground">Branding, currency, themes, shipping & tracking</p>
+          </Link>
         </section>
       </main>
     </div>
