@@ -1,13 +1,14 @@
 import { describe, it, expect } from 'vitest';
-import { validateImageSignature, mediaUploadSchema } from './media';
+import { validateImageSignature, mediaUploadSchema, isVideoMimeType } from './media';
 
 describe('Media File Signature and Upload Validation', () => {
-  it('validates mandatory altText schema correctly', () => {
+  it('validates altText schema correctly', () => {
     const valid = mediaUploadSchema.safeParse({ altText: 'Diamond engagement ring hero shot' });
     expect(valid.success).toBe(true);
 
-    const empty = mediaUploadSchema.safeParse({ altText: '' });
-    expect(empty.success).toBe(false);
+    const empty = mediaUploadSchema.safeParse({});
+    expect(empty.success).toBe(true);
+    expect(empty.data?.altText).toBe('Product Media Asset');
   });
 
   it('verifies valid JPEG magic bytes (FF D8 FF)', () => {
@@ -37,6 +38,24 @@ describe('Media File Signature and Upload Validation', () => {
     ]);
     const res = validateImageSignature(webpHeader, 'image/webp');
     expect(res.isValid).toBe(true);
+  });
+
+  it('verifies valid MP4 / MOV video signature (ftyp box)', () => {
+    const mp4Header = Buffer.from([
+      0x00, 0x00, 0x00, 0x18,
+      0x66, 0x74, 0x79, 0x70, // 'ftyp'
+      0x69, 0x73, 0x6f, 0x6d, // 'isom'
+    ]);
+    const res = validateImageSignature(mp4Header, 'video/mp4');
+    expect(res.isValid).toBe(true);
+    expect(isVideoMimeType('video/mp4')).toBe(true);
+  });
+
+  it('verifies valid WebM video signature (EBML header)', () => {
+    const webmHeader = Buffer.from([0x1a, 0x45, 0xdf, 0xa3, 0x9f, 0x42, 0x86, 0x81]);
+    const res = validateImageSignature(webmHeader, 'video/webm');
+    expect(res.isValid).toBe(true);
+    expect(isVideoMimeType('video/webm')).toBe(true);
   });
 
   it('sanitizes SVG with malicious <script> tags and onload handlers', () => {

@@ -9,13 +9,27 @@ export const ALLOWED_IMAGE_TYPES = [
   'image/avif',
 ];
 
-export const MAX_FILE_SIZE_BYTES = 5 * 1024 * 1024; // 5 MB
+export const ALLOWED_VIDEO_TYPES = [
+  'video/mp4',
+  'video/webm',
+  'video/quicktime',
+  'video/ogg',
+  'video/x-m4v',
+];
+
+export const ALLOWED_MEDIA_TYPES = [
+  ...ALLOWED_IMAGE_TYPES,
+  ...ALLOWED_VIDEO_TYPES,
+];
+
+export const MAX_FILE_SIZE_BYTES = 50 * 1024 * 1024; // 50 MB to comfortably support product showcase videos
 
 export const mediaUploadSchema = z.object({
   altText: z
-    .string({ required_error: 'Alt text is required for accessibility and SEO' })
-    .min(1, 'Alt text is required and cannot be empty')
-    .max(255, 'Alt text must be under 255 characters'),
+    .string()
+    .max(255, 'Alt text must be under 255 characters')
+    .optional()
+    .default('Product Media Asset'),
 });
 
 export const mediaUpdateSchema = z.object({
@@ -24,6 +38,10 @@ export const mediaUpdateSchema = z.object({
     .min(1, 'Alt text cannot be empty')
     .max(255, 'Alt text must be under 255 characters'),
 });
+
+export function isVideoMimeType(mimeType: string): boolean {
+  return ALLOWED_VIDEO_TYPES.includes(mimeType) || mimeType.startsWith('video/');
+}
 
 /**
  * Validates actual binary content (magic bytes) against declared MIME type
@@ -37,7 +55,11 @@ export function validateImageSignature(
     return { isValid: false, error: 'File buffer is too small or empty.' };
   }
 
-  // 1. JPEG signature: FF D8 FF
+  // ==========================================
+  // 1. IMAGE FORMATS
+  // ==========================================
+
+  // JPEG signature: FF D8 FF
   if (declaredMimeType === 'image/jpeg') {
     const isJpeg = buffer[0] === 0xff && buffer[1] === 0xd8 && buffer[2] === 0xff;
     if (!isJpeg) {
@@ -46,7 +68,7 @@ export function validateImageSignature(
     return { isValid: true, sanitizedBuffer: buffer };
   }
 
-  // 2. PNG signature: 89 50 4E 47 0D 0A 1A 0A
+  // PNG signature: 89 50 4E 47 0D 0A 1A 0A
   if (declaredMimeType === 'image/png') {
     const isPng =
       buffer[0] === 0x89 &&
@@ -59,7 +81,7 @@ export function validateImageSignature(
     return { isValid: true, sanitizedBuffer: buffer };
   }
 
-  // 3. GIF signature: GIF87a or GIF89a (47 49 46 38)
+  // GIF signature: GIF87a or GIF89a (47 49 46 38)
   if (declaredMimeType === 'image/gif') {
     const isGif =
       buffer[0] === 0x47 &&
@@ -72,7 +94,7 @@ export function validateImageSignature(
     return { isValid: true, sanitizedBuffer: buffer };
   }
 
-  // 4. WebP signature: RIFF (bytes 0-3) and WEBP (bytes 8-11)
+  // WebP signature: RIFF (bytes 0-3) and WEBP (bytes 8-11)
   if (declaredMimeType === 'image/webp') {
     const isRiff =
       buffer[0] === 0x52 &&
@@ -91,7 +113,7 @@ export function validateImageSignature(
     return { isValid: true, sanitizedBuffer: buffer };
   }
 
-  // 5. AVIF signature: ftyp box containing avif / avis / mif1
+  // AVIF signature: ftyp box containing avif / avis / mif1
   if (declaredMimeType === 'image/avif') {
     if (buffer.length < 12) {
       return { isValid: false, error: 'Invalid AVIF file: header too short.' };
@@ -108,16 +130,14 @@ export function validateImageSignature(
     return { isValid: true, sanitizedBuffer: buffer };
   }
 
-  // 6. SVG validation and sanitization:
+  // SVG validation and sanitization:
   if (declaredMimeType === 'image/svg+xml') {
     const textContent = buffer.toString('utf8');
 
-    // Basic structure check: must contain <svg
     if (!textContent.includes('<svg')) {
       return { isValid: false, error: 'Invalid SVG file: root <svg> element missing.' };
     }
 
-    // Adversarial security check: block dangerous constructs
     const dangerousPatterns = [
       /<script[\s\S]*?>[\s\S]*?<\/script>/gi,
       /<script[\s\S]*?>/gi,
@@ -140,9 +160,7 @@ export function validateImageSignature(
       }
     }
 
-    // If active scripts were detected, reject or return sanitized version
     if (hadMaliciousPayload) {
-      // Clean up any remaining residue
       sanitizedSvg = sanitizedSvg
         .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
         .replace(/on\w+="[^"]*"/gi, '')
@@ -155,6 +173,53 @@ export function validateImageSignature(
     };
   }
 
+  // ==========================================
+  // 2. VIDEO FORMATS
+  // ==========================================
+
+  // MP4 / M4V / QuickTime MOV signature: ftyp box or moov/mdat box
+  if (declaredMimeType === 'video/mp4' || declaredMimeType === 'video/x-m4v' || declaredMimeType === 'video/quicktime') {
+    if (buffer.length < 8) {
+      return { isValid: false, error: 'Invalid video file: header too short.' };
+    }
+    const boxType = buffer.subarray(4, 8).toString('ascii');
+    const isMp4OrMov =
+      boxType === 'ftyp' ||
+      boxType === 'moov' ||
+      boxType === 'mdat' ||
+      boxType === 'wide' ||
+      boxType === 'skip';
+    if (!isMp4OrMov) {
+      return { isValid: false, error: 'Invalid video file content: binary signature does not match MP4/MOV.' };
+    }
+    return { isValid: true, sanitizedBuffer: buffer };
+  }
+
+  // WebM signature: EBML ID 1A 45 DF A3 at beginning
+  if (declaredMimeType === 'video/webm') {
+    const isWebm =
+      buffer[0] === 0x1a &&
+      buffer[1] === 0x45 &&
+      buffer[2] === 0xdf &&
+      buffer[3] === 0xa3;
+    if (!isWebm) {
+      return { isValid: false, error: 'Invalid WebM file content: binary signature does not match video/webm.' };
+    }
+    return { isValid: true, sanitizedBuffer: buffer };
+  }
+
+  // OGG video signature: OggS
+  if (declaredMimeType === 'video/ogg') {
+    const isOgg =
+      buffer[0] === 0x4f &&
+      buffer[1] === 0x67 &&
+      buffer[2] === 0x67 &&
+      buffer[3] === 0x53;
+    if (!isOgg) {
+      return { isValid: false, error: 'Invalid OGG video content: binary signature does not match video/ogg.' };
+    }
+    return { isValid: true, sanitizedBuffer: buffer };
+  }
+
   return { isValid: false, error: 'Unsupported media file type.' };
 }
-

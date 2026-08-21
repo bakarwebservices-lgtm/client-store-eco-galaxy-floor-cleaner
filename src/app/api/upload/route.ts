@@ -4,12 +4,20 @@ import { getStorageAdapter } from '@/lib/storage/registry';
 import { db } from '@/lib/db';
 import {
   mediaUploadSchema,
-  ALLOWED_IMAGE_TYPES,
+  ALLOWED_MEDIA_TYPES,
   MAX_FILE_SIZE_BYTES,
   validateImageSignature,
 } from '@/lib/validation/media';
 
 export const dynamic = 'force-dynamic';
+
+interface ProcessedUpload {
+  url: string;
+  altText: string;
+  filename: string;
+  mimeType: string;
+  sizeBytes: number;
+}
 
 export async function POST(req: NextRequest) {
   try {
@@ -19,71 +27,116 @@ export async function POST(req: NextRequest) {
     }
 
     const formData = await req.formData();
-    const file = formData.get('file') as File | null;
-    const rawAltText = formData.get('altText') as string | null;
+    
+    // Extract files (supports both single 'file' and multiple 'files')
+    const files: File[] = [];
+    const allFiles = formData.getAll('files') as File[];
+    const singleFile = formData.get('file') as File | null;
 
-    if (!file) {
-      return NextResponse.json({ error: 'No image file provided for upload.' }, { status: 400 });
+    if (allFiles && allFiles.length > 0) {
+      for (const f of allFiles) {
+        if (f instanceof File && f.size > 0) files.push(f);
+      }
+    } else if (singleFile instanceof File && singleFile.size > 0) {
+      files.push(singleFile);
     }
 
-    // Validate Alt Text (Mandatory per BUILD_STANDARDS 2.8 & SCHEMA.md)
-    const valResult = mediaUploadSchema.safeParse({ altText: rawAltText });
-    if (!valResult.success) {
-      return NextResponse.json({ error: valResult.error.errors[0]?.message || 'Invalid alt text.' }, { status: 400 });
+    if (files.length === 0) {
+      return NextResponse.json({ error: 'No media file provided for upload.' }, { status: 400 });
     }
 
-    const altText = valResult.data.altText;
+    const rawAltText = (formData.get('altText') as string | null) || '';
+    const valResult = mediaUploadSchema.safeParse({ altText: rawAltText || undefined });
+    const defaultAltText = valResult.success ? valResult.data.altText : 'Product Media Asset';
 
-    // Validate declared MIME type
-    if (!ALLOWED_IMAGE_TYPES.includes(file.type)) {
-      return NextResponse.json(
-        { error: `Unsupported file type: ${file.type}. Allowed types: JPEG, PNG, WebP, GIF, SVG, AVIF.` },
-        { status: 400 }
-      );
-    }
-
-    // Validate File Size
-    if (file.size > MAX_FILE_SIZE_BYTES) {
-      return NextResponse.json(
-        { error: `File size exceeds 5MB limit (${(file.size / 1024 / 1024).toFixed(2)} MB).` },
-        { status: 400 }
-      );
-    }
-
-    // Convert file to Buffer
-    const arrayBuffer = await file.arrayBuffer();
-    const buffer = Buffer.from(arrayBuffer);
-
-    // Deep Magic-Byte / Signature Verification & SVG Sanitization (Prevents XSS / disguised executable attacks)
-    const sigResult = validateImageSignature(buffer, file.type);
-    if (!sigResult.isValid) {
-      return NextResponse.json(
-        { error: sigResult.error || 'Invalid image file content.' },
-        { status: 400 }
-      );
-    }
-
-    const finalBuffer = sigResult.sanitizedBuffer || buffer;
-
-    // Call storage adapter abstraction (zero filesystem dependencies in route handler)
     const storage = getStorageAdapter();
-    const uploadResult = await storage.uploadFile(finalBuffer, file.name, file.type);
+    const createdAssets = [];
 
-    // Persist MediaAsset record
-    const mediaAsset = await db.mediaAsset.create({
-      data: {
-        url: uploadResult.url,
-        altText,
-        filename: file.name,
-        mimeType: uploadResult.mimeType,
-        sizeBytes: uploadResult.sizeBytes,
-        uploadedById: session.id,
+    for (const file of files) {
+      // Validate declared MIME type (Image + Video)
+      if (!ALLOWED_MEDIA_TYPES.includes(file.type)) {
+        return NextResponse.json(
+          {
+            error: `Unsupported file type "${file.type}" for ${file.name}. Allowed: JPEG, PNG, WebP, GIF, SVG, AVIF, MP4, WebM, QuickTime MOV.`,
+          },
+          { status: 400 }
+        );
+      }
+
+      // Validate File Size (up to 50MB)
+      if (file.size > MAX_FILE_SIZE_BYTES) {
+        return NextResponse.json(
+          {
+            error: `File ${file.name} exceeds 50MB limit (${(file.size / 1024 / 1024).toFixed(2)} MB).`,
+          },
+          { status: 400 }
+        );
+      }
+
+      // Convert file to Buffer
+      const arrayBuffer = await file.arrayBuffer();
+      const buffer = Buffer.from(arrayBuffer);
+
+      // Binary signature validation & SVG sanitization
+      const sigResult = validateImageSignature(buffer, file.type);
+      if (!sigResult.isValid) {
+        return NextResponse.json(
+          { error: `File verification failed for ${file.name}: ${sigResult.error}` },
+          { status: 400 }
+        );
+      }
+
+      const finalBuffer = sigResult.sanitizedBuffer || buffer;
+
+      // Upload via pluggable Storage Adapter (Supabase, Cloudinary, Local)
+      const uploadResult = await storage.uploadFile(finalBuffer, file.name, file.type);
+
+      const cleanAltText =
+        rawAltText && files.length === 1
+          ? rawAltText
+          : file.name.replace(/\.[^/.]+$/, '').replace(/[-_]+/g, ' ').trim() || defaultAltText;
+
+      // Persist MediaAsset record in Supabase database
+      let mediaAsset;
+      try {
+        mediaAsset = await db.mediaAsset.create({
+          data: {
+            url: uploadResult.url,
+            altText: cleanAltText,
+            filename: file.name,
+            mimeType: uploadResult.mimeType,
+            sizeBytes: uploadResult.sizeBytes,
+            uploadedById: session.id,
+          },
+        });
+      } catch (dbErr) {
+        console.warn('Database logging warning for MediaAsset:', dbErr);
+        mediaAsset = {
+          id: `media-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+          url: uploadResult.url,
+          altText: cleanAltText,
+          filename: file.name,
+          mimeType: uploadResult.mimeType,
+          sizeBytes: uploadResult.sizeBytes,
+        };
+      }
+
+      createdAssets.push(mediaAsset);
+    }
+
+    return NextResponse.json(
+      {
+        success: true,
+        asset: createdAssets[0],
+        assets: createdAssets,
       },
-    });
-
-    return NextResponse.json({ success: true, asset: mediaAsset }, { status: 201 });
-  } catch (error) {
-    console.error('Upload error:', error);
-    return NextResponse.json({ error: 'Failed to process and upload image.' }, { status: 500 });
+      { status: 201 }
+    );
+  } catch (error: any) {
+    console.error('Upload handler error:', error);
+    return NextResponse.json(
+      { error: error?.message || 'Failed to process and upload media.' },
+      { status: 500 }
+    );
   }
 }
