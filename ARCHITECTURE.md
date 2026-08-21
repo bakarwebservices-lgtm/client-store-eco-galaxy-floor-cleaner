@@ -250,3 +250,9 @@ When an order's `fulfillmentStatus` transitions to `RETURNED` via the RMA return
 ### 6.2 In-Memory Rate Limiter on Serverless Deployments (INFO-2)
 The sliding window rate limiter (`src/lib/security/rateLimit.ts`) utilizes an in-memory `Map` data structure. In serverless / multi-instance edge environments, each instance maintains its own memory space. For high-scale production multi-region deployments, swap the memory store for a distributed Redis or Upstash KV store (`@upstash/ratelimit`).
 
+### 6.3 Optimistic Concurrency Control across Multi-Admin Workflows (HIGH-2)
+Admin editable models (Products, Collections, Categories, Blog Articles) currently employ a last-write-wins policy upon submission. In high-concurrency multi-admin environments where multiple staff members might edit the same record simultaneously, a versioning pattern (`@version` integer column or checking `updatedAt` in Prisma `update({ where: { id, updatedAt } })`) should be introduced to prevent accidental overwrites.
+
+### 6.4 Unified API Route Namespace Restructuring (MED-3)
+Currently, admin routes are split between dedicated admin namespaces (e.g. `/api/admin/coupons`, `/api/admin/orders`, `/api/admin/reviews`) and dual-purpose root endpoints (e.g. `/api/blog`, `/api/products`, `/api/categories` utilizing `?admin=true` query parameters). Future iterations should completely separate storefront endpoints under `/api/store/*` and admin management endpoints under `/api/admin/*` to enforce absolute structural isolation.
+

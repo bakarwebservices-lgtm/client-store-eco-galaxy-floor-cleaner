@@ -53,26 +53,34 @@ export async function POST(request: NextRequest) {
 
     const { productId, variantId, expectedDate, actualDate, notes } = parsed.data;
 
-    const schedule = await db.restockSchedule.upsert({
+    const existing = await db.restockSchedule.findFirst({
       where: {
-        productId_variantId: {
-          productId,
-          variantId: variantId || null as any,
-        },
-      },
-      create: {
         productId,
         variantId: variantId || null,
-        expectedDate: new Date(expectedDate),
-        actualDate: actualDate ? new Date(actualDate) : null,
-        notes: notes || null,
-      },
-      update: {
-        expectedDate: new Date(expectedDate),
-        actualDate: actualDate ? new Date(actualDate) : undefined,
-        notes: notes || undefined,
       },
     });
+
+    let schedule;
+    if (existing) {
+      schedule = await db.restockSchedule.update({
+        where: { id: existing.id },
+        data: {
+          expectedDate: new Date(expectedDate),
+          actualDate: actualDate ? new Date(actualDate) : null,
+          notes: notes !== undefined ? notes : existing.notes,
+        },
+      });
+    } else {
+      schedule = await db.restockSchedule.create({
+        data: {
+          productId,
+          variantId: variantId || null,
+          expectedDate: new Date(expectedDate),
+          actualDate: actualDate ? new Date(actualDate) : null,
+          notes: notes || null,
+        },
+      });
+    }
 
     return NextResponse.json({ success: true, schedule });
   } catch (error: any) {
