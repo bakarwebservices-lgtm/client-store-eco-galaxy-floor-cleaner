@@ -95,11 +95,22 @@ export async function POST(req: NextRequest) {
           variantTitle = variant.title;
           sku = variant.sku;
 
-          // Atomically decrement variant stock
-          await tx.productVariant.update({
-            where: { id: variant.id },
-            data: { inventoryQty: { decrement: item.quantity } },
+          // Atomic conditional stock decrement — prevents overselling race conditions under concurrent checkouts
+          const updateResult = await tx.productVariant.updateMany({
+            where: {
+              id: variant.id,
+              inventoryQty: { gte: item.quantity },
+            },
+            data: {
+              inventoryQty: { decrement: item.quantity },
+            },
           });
+
+          if (updateResult.count === 0) {
+            throw new Error(
+              `Stock conflict: "${product.name} (${variant.title})" does not have enough units available in stock. Please adjust your bag.`
+            );
+          }
         }
 
         const lineTotal = unitPrice * item.quantity;
