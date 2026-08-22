@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import { Mail, Check, AlertCircle, Loader2 } from 'lucide-react';
+import { safeFetch } from '@/lib/apiClient';
 
 export function NewsletterSignup() {
   const [email, setEmail] = useState('');
@@ -16,21 +17,20 @@ export function NewsletterSignup() {
     setStatus(null);
 
     try {
-      const res = await fetch('/api/newsletter', {
+      const { ok, data, error } = await safeFetch<any>('/api/newsletter', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email }),
       });
 
-      const data = await res.json();
-      if (!res.ok) {
-        throw new Error(data.error || 'Failed to subscribe');
+      if (!ok) {
+        setStatus({ type: 'error', message: error || 'Failed to subscribe. Please try again.' });
+      } else {
+        setStatus({ type: 'success', message: data?.message || 'Thank you for subscribing!' });
+        setEmail('');
       }
-
-      setStatus({ type: 'success', message: data.message || 'Thank you for subscribing!' });
-      setEmail('');
     } catch (err: any) {
-      setStatus({ type: 'error', message: err.message || 'Something went wrong. Please try again.' });
+      setStatus({ type: 'error', message: err?.message || 'Something went wrong. Please try again.' });
     } finally {
       setLoading(false);
     }

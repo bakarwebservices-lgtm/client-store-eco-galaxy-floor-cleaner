@@ -6,6 +6,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { MediaUploadModal } from './MediaUploadModal';
 import { CategorySchema, type CategoryInput } from '@/lib/validation/taxonomy';
+import { safeFetch } from '@/lib/apiClient';
 import {
   ArrowLeft,
   Loader2,
@@ -88,21 +89,22 @@ export function CategoryForm({ initialData, isEditing = false }: CategoryFormPro
       const endpoint = isEditing ? `/api/categories/${initialData.id}` : '/api/categories';
       const method = isEditing ? 'PUT' : 'POST';
 
-      const res = await fetch(endpoint, {
+      const { ok, data, error } = await safeFetch(endpoint, {
         method,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(parsed.data),
       });
 
-      const data = await res.json();
-      if (!res.ok) {
-        throw new Error(data.error || 'Failed to save category');
+      if (!ok) {
+        setErrorMessage(error || 'Failed to save category');
+        setSubmitting(false);
+        return;
       }
 
       router.push('/admin/categories');
       router.refresh();
     } catch (err: any) {
-      setErrorMessage(err.message);
+      setErrorMessage(err?.message || 'An unexpected error occurred while saving category');
       setSubmitting(false);
     }
   };

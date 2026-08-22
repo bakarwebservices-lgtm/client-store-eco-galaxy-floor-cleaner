@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { ArrowLeft, MapPin, Plus, Trash2, Check, AlertCircle } from 'lucide-react';
 import { Breadcrumbs } from '@/components/storefront/Breadcrumbs';
+import { safeFetch } from '@/lib/apiClient';
 
 export const dynamic = 'force-dynamic';
 
@@ -28,9 +29,10 @@ export default function CustomerAddressesPage() {
   const fetchAddresses = async () => {
     setLoading(true);
     try {
-      const res = await fetch('/api/customer/addresses');
-      const data = await res.json();
-      setAddresses(data.addresses || []);
+      const { ok, data } = await safeFetch<any>('/api/customer/addresses');
+      if (ok && data) {
+        setAddresses(data.addresses || []);
+      }
     } catch (err) {
       console.error(err);
     } finally {
@@ -47,13 +49,17 @@ export default function CustomerAddressesPage() {
     setSaving(true);
     setError(null);
     try {
-      const res = await fetch('/api/customer/addresses', {
+      const { ok, data, error: fetchErr } = await safeFetch<any>('/api/customer/addresses', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ firstName, lastName, label, phone, address, city, province, postalCode, isDefault }),
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Failed to save address');
+
+      if (!ok) {
+        setError(fetchErr || 'Failed to save address. Please check your entries.');
+        setSaving(false);
+        return;
+      }
 
       setIsAdding(false);
       setFirstName('');

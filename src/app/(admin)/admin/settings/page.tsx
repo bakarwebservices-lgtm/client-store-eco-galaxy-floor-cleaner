@@ -31,6 +31,7 @@ import {
   HEX_COLOR_REGEX,
   type AllSettingsInput,
 } from '@/lib/validation/settings';
+import { safeFetch } from '@/lib/apiClient';
 
 type SettingsTab = 'identity' | 'contact' | 'theme' | 'shipping' | 'tracking' | 'social';
 
@@ -69,16 +70,15 @@ export default function AdminSettingsPage() {
     async function loadSettings() {
       setLoading(true);
       try {
-        const res = await fetch('/api/admin/settings');
-        if (res.ok) {
-          const data = await res.json();
+        const { ok, data, error } = await safeFetch<any>('/api/admin/settings');
+        if (ok && data) {
           setSettings({ ...DEFAULT_SETTINGS, ...data.settings });
         } else {
-          setErrorMessage('Failed to load store settings.');
+          setErrorMessage(error || 'Failed to load store settings.');
         }
-      } catch (err) {
+      } catch (err: any) {
         console.error('Error fetching settings:', err);
-        setErrorMessage('Network error while loading settings.');
+        setErrorMessage(err?.message || 'Network error while loading settings.');
       } finally {
         setLoading(false);
       }
@@ -125,24 +125,22 @@ export default function AdminSettingsPage() {
         ? sectionKeys.reduce((acc, k) => ({ ...acc, [k]: settings[k] }), {})
         : settings;
 
-      const res = await fetch('/api/admin/settings', {
+      const { ok, data, error } = await safeFetch<any>('/api/admin/settings', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
       });
 
-      if (res.ok) {
-        const data = await res.json();
+      if (ok && data) {
         setSettings({ ...DEFAULT_SETTINGS, ...data.settings });
         setSaveSuccess(true);
         setTimeout(() => setSaveSuccess(false), 4000);
       } else {
-        const data = await res.json();
-        setErrorMessage(data.error || 'Failed to save store settings.');
+        setErrorMessage(error || 'Failed to save store settings.');
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error('Error saving settings:', err);
-      setErrorMessage('Network error while saving settings.');
+      setErrorMessage(err?.message || 'Network error while saving settings.');
     } finally {
       setSaving(false);
     }

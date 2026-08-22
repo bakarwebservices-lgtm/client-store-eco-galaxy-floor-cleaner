@@ -3,6 +3,7 @@
 import React, { useState, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Lock, Mail, AlertCircle, Loader2, ShieldCheck, Eye, EyeOff } from 'lucide-react';
+import { safeFetch } from '@/lib/apiClient';
 
 function LoginForm() {
   const router = useRouter();
@@ -32,16 +33,14 @@ function LoginForm() {
     setIsLoading(true);
 
     try {
-      const res = await fetch('/api/auth/admin/login', {
+      const { ok, data, error } = await safeFetch<any>('/api/auth/admin/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: email.trim(), password }),
       });
 
-      const data = await res.json();
-
-      if (!res.ok) {
-        setErrorMessage(data.error || 'Authentication failed. Please check your credentials.');
+      if (!ok) {
+        setErrorMessage(error || 'Authentication failed. Please check your credentials.');
         setIsLoading(false);
         return;
       }
@@ -49,9 +48,9 @@ function LoginForm() {
       // Successful login -> Redirect to dashboard
       router.push(from);
       router.refresh();
-    } catch (err) {
+    } catch (err: any) {
       console.error('Login error:', err);
-      setErrorMessage('Network error occurred. Please try again.');
+      setErrorMessage(err?.message || 'Network error occurred. Please try again.');
       setIsLoading(false);
     }
   };

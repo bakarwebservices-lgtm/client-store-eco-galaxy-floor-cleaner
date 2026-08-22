@@ -6,6 +6,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { MediaUploadModal } from './MediaUploadModal';
 import { CollectionSchema, type CollectionInput } from '@/lib/validation/taxonomy';
+import { safeFetch } from '@/lib/apiClient';
 import {
   Loader2,
   Image as ImageIcon,
@@ -141,21 +142,22 @@ export function CollectionForm({ initialData, isEditing = false }: CollectionFor
       const endpoint = isEditing ? `/api/collections/${initialData.id}` : '/api/collections';
       const method = isEditing ? 'PUT' : 'POST';
 
-      const res = await fetch(endpoint, {
+      const { ok, data, error } = await safeFetch(endpoint, {
         method,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(parsed.data),
       });
 
-      const data = await res.json();
-      if (!res.ok) {
-        throw new Error(data.error || 'Failed to save collection');
+      if (!ok) {
+        setErrorMessage(error || 'Failed to save collection');
+        setSubmitting(false);
+        return;
       }
 
       router.push('/admin/collections');
       router.refresh();
     } catch (err: any) {
-      setErrorMessage(err.message);
+      setErrorMessage(err?.message || 'An unexpected error occurred while saving collection');
       setSubmitting(false);
     }
   };

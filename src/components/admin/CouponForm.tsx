@@ -4,7 +4,8 @@ import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { DiscountType } from '@prisma/client';
-import { CouponSchema } from '@/lib/validation/coupon';
+import { CouponSchema, type CouponInput } from '@/lib/validation/coupon';
+import { safeFetch } from '@/lib/apiClient';
 import {
   Percent,
   Coins,
@@ -94,21 +95,22 @@ export function CouponForm({ initialData, isEditing = false }: CouponFormProps) 
       const endpoint = isEditing ? `/api/admin/coupons/${initialData.id}` : '/api/admin/coupons';
       const method = isEditing ? 'PUT' : 'POST';
 
-      const res = await fetch(endpoint, {
+      const { ok, data, error } = await safeFetch(endpoint, {
         method,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(parsed.data),
       });
 
-      const data = await res.json();
-      if (!res.ok) {
-        throw new Error(data.error || 'Failed to save coupon');
+      if (!ok) {
+        setErrorMessage(error || 'Failed to save coupon');
+        setSubmitting(false);
+        return;
       }
 
       router.push('/admin/coupons');
       router.refresh();
     } catch (err: any) {
-      setErrorMessage(err.message);
+      setErrorMessage(err?.message || 'An unexpected error occurred while saving coupon');
       setSubmitting(false);
     }
   };

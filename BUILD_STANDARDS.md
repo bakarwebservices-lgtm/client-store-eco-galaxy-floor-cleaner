@@ -1,4 +1,4 @@
-﻿# BUILD_STANDARDS.md
+# BUILD_STANDARDS.md
 ## AWWeb Merged SaaS Template — Permanent Build Standards & Rules
 
 > **MANDATORY READ:** This file must be read in full at the start of every session before any work begins.
@@ -284,6 +284,11 @@ These are **not** built into the base product. They are added per-client as paid
 - [ ] Shared validation schemas (e.g. Zod) in a `/lib/validation` directory — reused between client and server.
 - [ ] No magic strings for statuses, roles, or event names — use TypeScript enums or `const` maps.
 - [ ] No dead code left in the codebase. Remove commented-out blocks before merging to `main`.
+
+### 4.8 Universal Graceful Error Handling (Permanent Standing Rule)
+- [ ] **Structured API Error Shape**: Every API route handler MUST return a structured JSON response `{ error: string, details?: any }` on failure with appropriate HTTP status codes (400, 401, 403, 404, 409, 413, 429, 500). Raw stack traces, SQL errors, or platform HTML pages must NEVER be sent in API response bodies; log them server-side and provide clean, masked client messages.
+- [ ] **Safe Frontend Fetch Handling**: All client-side fetch calls and form submissions MUST use safe response parsing (via `safeFetch` from `@/lib/apiClient` or try/catch around `.text()` and `JSON.parse`). Never assume a response is valid JSON or that status is 2xx. Raw crashes like `SyntaxError: Unexpected token` are strictly forbidden.
+- [ ] **Actionable & Specific User Messaging**: User-facing error alerts must be human-readable, specific, and actionable (e.g. "Image exceeds 50MB limit" or "Please choose a unique product slug") while hiding internal implementation details (file paths, database table names, JWT signatures).
 
 ---
 

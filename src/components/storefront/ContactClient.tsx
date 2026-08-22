@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import { Breadcrumbs } from '@/components/storefront/Breadcrumbs';
+import { safeFetch } from '@/lib/apiClient';
 import {
   Mail,
   Phone,
@@ -38,7 +39,7 @@ export function ContactClient({ info }: { info: ContactInfo }) {
     setLoading(true);
 
     try {
-      const res = await fetch('/api/contact', {
+      const { ok, data, error } = await safeFetch<any>('/api/contact', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -50,24 +51,26 @@ export function ContactClient({ info }: { info: ContactInfo }) {
         }),
       });
 
-      const data = await res.json();
-      if (!res.ok) {
-        throw new Error(data.error || 'Failed to send message');
+      if (!ok) {
+        setResult({
+          type: 'error',
+          text: error || 'Failed to send message. Please try again.',
+        });
+      } else {
+        setResult({
+          type: 'success',
+          text: data?.message || 'Your message has been sent successfully!',
+        });
+        setName('');
+        setEmail('');
+        setPhone('');
+        setSubject('');
+        setMessage('');
       }
-
-      setResult({
-        type: 'success',
-        text: data.message || 'Your message has been sent successfully!',
-      });
-      setName('');
-      setEmail('');
-      setPhone('');
-      setSubject('');
-      setMessage('');
     } catch (err: any) {
       setResult({
         type: 'error',
-        text: err.message || 'Something went wrong. Please try again.',
+        text: err?.message || 'Something went wrong. Please try again.',
       });
     } finally {
       setLoading(false);

@@ -8,6 +8,7 @@ import Link from 'next/link';
 import { ShieldCheck, Truck, ArrowLeft, Loader2, Tag, Check, AlertCircle, Banknote, CreditCard } from 'lucide-react';
 import { useCart } from '@/context/CartContext';
 import { track } from '@/lib/tracking/events';
+import { safeFetch } from '@/lib/apiClient';
 import { Breadcrumbs } from '@/components/storefront/Breadcrumbs';
 
 export const dynamic = 'force-dynamic';
@@ -65,22 +66,20 @@ export default function CheckoutPage() {
     setValidatingCoupon(true);
 
     try {
-      const res = await fetch('/api/coupons/validate', {
+      const { ok, data, error } = await safeFetch<any>('/api/coupons/validate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ code: couponCode.trim(), subtotal }),
       });
 
-      const data = await res.json();
-
-      if (!res.ok) {
-        setCouponError(data.error || 'Invalid coupon code');
+      if (!ok) {
+        setCouponError(error || 'Invalid coupon code');
         setAppliedCoupon(null);
       } else {
         setAppliedCoupon(data);
       }
-    } catch (err) {
-      setCouponError('Network error while validating coupon');
+    } catch (err: any) {
+      setCouponError(err?.message || 'Network error while validating coupon');
     } finally {
       setValidatingCoupon(false);
     }
@@ -121,16 +120,14 @@ export default function CheckoutPage() {
     };
 
     try {
-      const res = await fetch('/api/checkout', {
+      const { ok, data, error } = await safeFetch<any>('/api/checkout', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
       });
 
-      const data = await res.json();
-
-      if (!res.ok) {
-        setCheckoutError(data.error || 'Failed to place order.');
+      if (!ok) {
+        setCheckoutError(error || 'Failed to place order.');
         setIsSubmitting(false);
         return;
       }
@@ -140,9 +137,9 @@ export default function CheckoutPage() {
 
       // Redirect to Order Confirmation Success page
       router.push(`/checkout/success/${data.orderNumber}`);
-    } catch (err) {
+    } catch (err: any) {
       console.error('Checkout error:', err);
-      setCheckoutError('Network error while placing order.');
+      setCheckoutError(err?.message || 'Network error while placing order.');
       setIsSubmitting(false);
     }
   };

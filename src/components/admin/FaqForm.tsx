@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { FaqItemSchema } from '@/lib/validation/cms';
+import { safeFetch } from '@/lib/apiClient';
 import { RichTextEditor } from './RichTextEditor';
 import { Loader2, AlertCircle, HelpCircle } from 'lucide-react';
 
@@ -49,21 +50,22 @@ export function FaqForm({ initialData, isEditing = false }: FaqFormProps) {
       const endpoint = isEditing ? `/api/faq/${initialData.id}` : '/api/faq';
       const method = isEditing ? 'PUT' : 'POST';
 
-      const res = await fetch(endpoint, {
+      const { ok, data, error } = await safeFetch(endpoint, {
         method,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(parsed.data),
       });
 
-      const data = await res.json();
-      if (!res.ok) {
-        throw new Error(data.error || 'Failed to save FAQ item');
+      if (!ok) {
+        setErrorMessage(error || 'Failed to save FAQ item');
+        setSubmitting(false);
+        return;
       }
 
       router.push('/admin/faq');
       router.refresh();
     } catch (err: any) {
-      setErrorMessage(err.message);
+      setErrorMessage(err?.message || 'An unexpected error occurred while saving FAQ item');
       setSubmitting(false);
     }
   };

@@ -4,7 +4,8 @@ import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { PageStatus } from '@prisma/client';
-import { PageSchema } from '@/lib/validation/cms';
+import { PageSchema, type PageInput } from '@/lib/validation/cms';
+import { safeFetch } from '@/lib/apiClient';
 import { RichTextEditor } from './RichTextEditor';
 import { Loader2, AlertCircle, FileText } from 'lucide-react';
 
@@ -67,21 +68,22 @@ export function PageForm({ initialData, isEditing = false }: PageFormProps) {
       const endpoint = isEditing ? `/api/pages/${initialData.id}` : '/api/pages';
       const method = isEditing ? 'PUT' : 'POST';
 
-      const res = await fetch(endpoint, {
+      const { ok, data, error } = await safeFetch(endpoint, {
         method,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(parsed.data),
       });
 
-      const data = await res.json();
-      if (!res.ok) {
-        throw new Error(data.error || 'Failed to save page');
+      if (!ok) {
+        setErrorMessage(error || 'Failed to save page');
+        setSubmitting(false);
+        return;
       }
 
       router.push('/admin/pages');
       router.refresh();
     } catch (err: any) {
-      setErrorMessage(err.message);
+      setErrorMessage(err?.message || 'An unexpected error occurred while saving page');
       setSubmitting(false);
     }
   };

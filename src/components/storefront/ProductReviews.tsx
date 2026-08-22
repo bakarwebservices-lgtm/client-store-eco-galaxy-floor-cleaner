@@ -14,6 +14,7 @@ import {
   MessageSquare,
   ThumbsUp,
 } from 'lucide-react';
+import { safeFetch } from '@/lib/apiClient';
 
 interface ReviewImage {
   url: string;
@@ -167,7 +168,7 @@ export function ProductReviews({ productId, productName }: ProductReviewsProps) 
     setSubmitting(true);
 
     try {
-      const res = await fetch(`/api/products/${productId}/reviews`, {
+      const { ok, data, error } = await safeFetch<any>(`/api/products/${productId}/reviews`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -179,12 +180,13 @@ export function ProductReviews({ productId, productName }: ProductReviewsProps) 
         }),
       });
 
-      const data = await res.json();
-      if (!res.ok) {
-        throw new Error(data.error || 'Failed to submit review');
+      if (!ok) {
+        setFormError(error || 'Failed to submit review');
+        setSubmitting(false);
+        return;
       }
 
-      setSuccessMessage(data.message || 'Review submitted and pending moderation!');
+      setSuccessMessage(data?.message || 'Review submitted and pending moderation!');
       setReviewerName('');
       setTitle('');
       setBody('');
@@ -196,7 +198,7 @@ export function ProductReviews({ productId, productName }: ProductReviewsProps) 
         setSuccessMessage(null);
       }, 3000);
     } catch (err: any) {
-      setFormError(err.message);
+      setFormError(err?.message || 'An unexpected error occurred while submitting review');
     } finally {
       setSubmitting(false);
     }

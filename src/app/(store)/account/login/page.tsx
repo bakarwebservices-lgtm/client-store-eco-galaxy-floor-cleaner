@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { User, Lock, ArrowRight, AlertCircle, Loader2 } from 'lucide-react';
 import { useCart } from '@/context/CartContext';
+import { safeFetch } from '@/lib/apiClient';
 
 export const dynamic = 'force-dynamic';
 
@@ -25,21 +26,22 @@ function CustomerLoginForm() {
     setError(null);
 
     try {
-      const res = await fetch('/api/auth/customer/login', {
+      const { ok, data, error: fetchErr } = await safeFetch<any>('/api/auth/customer/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password }),
       });
 
-      const data = await res.json();
-      if (!res.ok) {
-        throw new Error(data.error || 'Failed to log in');
+      if (!ok) {
+        setError(fetchErr || 'Failed to log in. Please verify your email and password.');
+        setLoading(false);
+        return;
       }
 
       await refreshCart();
       router.push(redirect);
     } catch (err: any) {
-      setError(err.message);
+      setError(err?.message || 'An unexpected error occurred during login.');
       setLoading(false);
     }
   };

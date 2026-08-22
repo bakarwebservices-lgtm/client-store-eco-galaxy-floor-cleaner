@@ -4,6 +4,7 @@ import { formatCurrency } from '@/lib/format';
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
+import { safeFetch } from '@/lib/apiClient';
 import { Plus, Search, Edit2, Trash2, Package } from 'lucide-react';
 
 export default function AdminProductsPage() {
@@ -18,18 +19,16 @@ export default function AdminProductsPage() {
     setLoading(true);
     try {
       const params = new URLSearchParams({
-        admin: 'true',
         page: page.toString(),
-        limit: '10',
+        limit: '20',
         ...(search ? { q: search } : {}),
         ...(statusFilter ? { status: statusFilter } : {}),
       });
 
-      const res = await fetch(`/api/products?${params.toString()}`);
-      if (res.ok) {
-        const data = await res.json();
-        setProducts(data.products);
-        setTotalPages(data.pagination.totalPages);
+      const { ok, data } = await safeFetch<any>(`/api/products?${params.toString()}`);
+      if (ok && data) {
+        setProducts(data.products || []);
+        setTotalPages(data.pagination?.totalPages || 1);
       }
     } catch (err) {
       console.error('Failed to load admin products', err);
@@ -52,14 +51,15 @@ export default function AdminProductsPage() {
     if (!confirm(`Are you sure you want to archive and soft-delete "${name}"?`)) return;
 
     try {
-      const res = await fetch(`/api/products/${id}`, { method: 'DELETE' });
-      if (res.ok) {
+      const { ok, error } = await safeFetch<any>(`/api/products/${id}`, { method: 'DELETE' });
+      if (ok) {
         fetchProducts();
       } else {
-        alert('Failed to delete product');
+        alert(error || 'Failed to delete product');
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error('Delete error', err);
+      alert(err?.message || 'Failed to delete product');
     }
   };
 

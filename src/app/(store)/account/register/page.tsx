@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { UserPlus, AlertCircle, Loader2 } from 'lucide-react';
 import { useCart } from '@/context/CartContext';
+import { safeFetch } from '@/lib/apiClient';
 
 export const dynamic = 'force-dynamic';
 
@@ -28,21 +29,22 @@ function CustomerRegisterForm() {
     setError(null);
 
     try {
-      const res = await fetch('/api/auth/customer/register', {
+      const { ok, data, error: fetchErr } = await safeFetch<any>('/api/auth/customer/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ firstName, lastName, email, phone: phone || null, password }),
       });
 
-      const data = await res.json();
-      if (!res.ok) {
-        throw new Error(data.error || 'Failed to register account');
+      if (!ok) {
+        setError(fetchErr || 'Failed to register account. Please check your information.');
+        setLoading(false);
+        return;
       }
 
       await refreshCart();
       router.push(redirect);
     } catch (err: any) {
-      setError(err.message);
+      setError(err?.message || 'An unexpected error occurred during registration.');
       setLoading(false);
     }
   };

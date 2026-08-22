@@ -5,6 +5,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { Plus, Search, Trash2, Copy, Check, Image as ImageIcon, Edit3 } from 'lucide-react';
 import { MediaUploadModal } from '@/components/admin/MediaUploadModal';
+import { safeFetch } from '@/lib/apiClient';
 
 export const dynamic = 'force-dynamic';
 
@@ -53,14 +54,15 @@ export default function AdminMediaPage() {
     if (!confirm(`Are you sure you want to permanently delete "${name}"?`)) return;
 
     try {
-      const res = await fetch(`/api/media/${id}`, { method: 'DELETE' });
-      if (res.ok) {
+      const { ok, error } = await safeFetch<any>(`/api/media/${id}`, { method: 'DELETE' });
+      if (ok) {
         fetchAssets();
       } else {
-        alert('Failed to delete media asset');
+        alert(error || 'Failed to delete media asset');
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error('Delete error', err);
+      alert(err?.message || 'Failed to delete media asset');
     }
   };
 
@@ -69,16 +71,19 @@ export default function AdminMediaPage() {
     if (!newAlt || newAlt.trim() === currentAlt) return;
 
     try {
-      const res = await fetch(`/api/media/${id}`, {
+      const { ok, error } = await safeFetch<any>(`/api/media/${id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ altText: newAlt.trim() }),
       });
-      if (res.ok) {
+      if (ok) {
         fetchAssets();
+      } else {
+        alert(error || 'Failed to update alt text');
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error('Update error', err);
+      alert(err?.message || 'Failed to update alt text');
     }
   };
 

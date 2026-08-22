@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { ArrowLeft, User, Check, AlertCircle, Loader2 } from 'lucide-react';
 import { Breadcrumbs } from '@/components/storefront/Breadcrumbs';
+import { safeFetch } from '@/lib/apiClient';
 
 export const dynamic = 'force-dynamic';
 
@@ -19,9 +20,8 @@ export default function CustomerProfilePage() {
   useEffect(() => {
     async function loadProfile() {
       try {
-        const res = await fetch('/api/auth/customer/me');
-        const data = await res.json();
-        if (data.customer) {
+        const { ok, data } = await safeFetch<any>('/api/auth/customer/me');
+        if (ok && data?.customer) {
           setFirstName(data.customer.firstName || '');
           setLastName(data.customer.lastName || '');
           setEmail(data.customer.email || '');
@@ -42,18 +42,19 @@ export default function CustomerProfilePage() {
     setMsg(null);
 
     try {
-      const res = await fetch('/api/customer/profile', {
+      const { ok, data, error: fetchErr } = await safeFetch<any>('/api/customer/profile', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ firstName, lastName, phone: phone || null }),
       });
 
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Failed to update profile');
-
-      setMsg({ type: 'success', text: 'Profile details updated successfully.' });
+      if (!ok) {
+        setMsg({ type: 'error', text: fetchErr || 'Failed to update profile. Please try again.' });
+      } else {
+        setMsg({ type: 'success', text: 'Profile details updated successfully.' });
+      }
     } catch (err: any) {
-      setMsg({ type: 'error', text: err.message });
+      setMsg({ type: 'error', text: err?.message || 'Something went wrong.' });
     } finally {
       setSaving(false);
     }

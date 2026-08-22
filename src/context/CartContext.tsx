@@ -2,6 +2,7 @@
 
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { track } from '@/lib/tracking/events';
+import { safeFetch } from '@/lib/apiClient';
 
 export interface CartItemType {
   id: string;
@@ -56,9 +57,8 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
 
   const refreshCart = useCallback(async () => {
     try {
-      const res = await fetch('/api/cart');
-      if (res.ok) {
-        const data = await res.json();
+      const { ok, data } = await safeFetch<any>('/api/cart');
+      if (ok && data) {
         setItems(data.items || []);
         setTotalItems(data.totalItems || 0);
         setSubtotal(data.subtotal || 0);
@@ -97,17 +97,15 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   }) => {
     setIsLoading(true);
     try {
-      const res = await fetch('/api/cart', {
+      const { ok, data, error } = await safeFetch<any>('/api/cart', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ productId, variantId, quantity }),
       });
 
-      const data = await res.json();
-
-      if (!res.ok) {
+      if (!ok) {
         setIsLoading(false);
-        return { success: false, error: data.error || 'Failed to add item.' };
+        return { success: false, error: error || 'Failed to add item to cart.' };
       }
 
       await refreshCart();
@@ -124,10 +122,10 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       });
 
       return { success: true };
-    } catch (err) {
+    } catch (err: any) {
       console.error('Add to cart error:', err);
       setIsLoading(false);
-      return { success: false, error: 'Network error occurred.' };
+      return { success: false, error: err?.message || 'Network error occurred.' };
     }
   };
 

@@ -6,6 +6,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { ProductStatus } from '@prisma/client';
 import { MediaUploadModal, SelectedMediaItem } from '@/components/admin/MediaUploadModal';
+import { safeFetch } from '@/lib/apiClient';
 import {
   ArrowLeft,
   Loader2,
@@ -330,25 +331,23 @@ export function ProductForm({
       const url = effectiveIsEditing ? `/api/products/${initialData.id}` : '/api/products';
       const method = effectiveIsEditing ? 'PUT' : 'POST';
 
-      const res = await fetch(url, {
+      const { ok, data, error } = await safeFetch(url, {
         method,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
       });
 
-      const data = await res.json();
-
-      if (!res.ok) {
-        setErrorMessage(data.error || 'Failed to save product');
+      if (!ok) {
+        setErrorMessage(error || 'Failed to save product');
         setIsLoading(false);
         return;
       }
 
       router.push('/admin/products');
       router.refresh();
-    } catch (err) {
+    } catch (err: any) {
       console.error('Product save error:', err);
-      setErrorMessage('Network error occurred while saving product');
+      setErrorMessage(err?.message || 'Network error occurred while saving product');
       setIsLoading(false);
     }
   };
