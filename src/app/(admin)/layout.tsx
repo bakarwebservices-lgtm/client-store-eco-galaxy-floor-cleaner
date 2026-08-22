@@ -1,9 +1,11 @@
 import React from 'react';
+import { AdminShell } from '@/components/admin/AdminSidebar';
 
 export default function AdminLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  return <div className="min-h-screen bg-background">{children}</div>;
+  return <AdminShell>{children}</AdminShell>;
 }
+

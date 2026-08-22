@@ -59,47 +59,9 @@ export default function AdminDashboardPage() {
   }
 
   return (
-    <div className="min-h-screen bg-background text-foreground">
-      {/* Top Navigation Bar */}
-      <header className="sticky top-0 z-30 border-b border-border bg-card/95 backdrop-blur">
-        <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center gap-3">
-            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary text-primary-foreground font-bold">
-              AW
-            </div>
-            <div>
-              <h1 className="text-base font-semibold leading-tight">Store Admin</h1>
-              <p className="text-xs text-muted-foreground">Operations & Catalog Hub</p>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-4">
-            {user && (
-              <div className="hidden sm:flex items-center gap-2 text-xs text-muted-foreground border border-border rounded-full px-3 py-1 bg-muted/30">
-                <span className="h-2 w-2 rounded-full bg-success inline-block"></span>
-                <span className="font-medium text-foreground">{user.name}</span>
-                <span className="uppercase text-[10px] font-bold tracking-wider px-1.5 py-0.5 rounded bg-primary/10 text-primary">
-                  {user.role}
-                </span>
-              </div>
-            )}
-
-            <button
-              onClick={handleLogout}
-              disabled={isLoggingOut}
-              className="flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-xs font-medium text-foreground hover:bg-muted transition-colors disabled:opacity-50"
-            >
-              <LogOut className="h-3.5 w-3.5" />
-              <span>{isLoggingOut ? 'Signing out...' : 'Sign Out'}</span>
-            </button>
-          </div>
-        </div>
-      </header>
-
-      {/* Main Container */}
-      <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8 space-y-8">
-        {/* Welcome Banner */}
-        <section className="rounded-xl border border-border bg-card p-6 shadow-sm">
+    <div className="p-4 sm:p-6 lg:p-8 space-y-6 max-w-7xl mx-auto">
+      {/* Welcome Banner */}
+      <section className="rounded-xl border border-border bg-card p-6 shadow-sm">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div className="space-y-1">
               <h2 className="text-xl font-bold tracking-tight">
@@ -244,7 +206,6 @@ export default function AdminDashboardPage() {
             <p className="text-xs text-muted-foreground">Branding, currency, themes, shipping & tracking</p>
           </Link>
         </section>
-      </main>
     </div>
   );
 }
