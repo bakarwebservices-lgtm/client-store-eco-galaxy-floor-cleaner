@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import Image from 'next/image';
-import { X, Upload, Search, Check, AlertCircle, Loader2, ImagePlus, Film, CheckSquare, Square, Plus } from 'lucide-react';
+import { X, Upload, Search, Check, AlertCircle, Loader2, ImagePlus, Film, CheckSquare, Plus } from 'lucide-react';
 
 export interface SelectedMediaItem {
   url: string;
@@ -41,9 +41,10 @@ export function MediaUploadModal({
   const [search, setSearch] = useState('');
   const [selectedAssets, setSelectedAssets] = useState<any[]>([]);
 
-  // Multi-file upload queue
+  // Multi-file upload queue & progress
   const [queuedFiles, setQueuedFiles] = useState<QueuedFile[]>([]);
   const [uploading, setUploading] = useState(false);
+  const [uploadProgressText, setUploadProgressText] = useState<string>('');
   const [uploadError, setUploadError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const modalRef = useRef<HTMLDivElement>(null);
@@ -80,8 +81,13 @@ export function MediaUploadModal({
       });
       const res = await fetch(`/api/media?${params.toString()}`);
       if (res.ok) {
-        const data = await res.json();
-        setAssets(data.assets || []);
+        const text = await res.text().catch(() => '');
+        try {
+          const data = JSON.parse(text);
+          setAssets(data.assets || []);
+        } catch {
+          console.warn('Failed to parse media assets JSON response');
+        }
       }
     } catch (err) {
       console.error('Failed to fetch media assets', err);
@@ -96,6 +102,7 @@ export function MediaUploadModal({
       setSelectedAssets([]);
       setQueuedFiles([]);
       setUploadError(null);
+      setUploadProgressText('');
     }
   }, [isOpen, search]);
 
@@ -108,7 +115,7 @@ export function MediaUploadModal({
 
     for (const f of files) {
       if (f.size > 50 * 1024 * 1024) {
-        setUploadError(`File "${f.name}" exceeds the 50MB limit.`);
+        setUploadError(`File "${f.name}" exceeds the 50MB maximum supported limit (${(f.size / 1024 / 1024).toFixed(1)}MB).`);
         return;
       }
 
@@ -123,7 +130,11 @@ export function MediaUploadModal({
       });
     }
 
-    setQueuedFiles((prev) => [...prev, ...validQueued]);
+    if (!allowMultiple) {
+      setQueuedFiles(validQueued.slice(0, 1));
+    } else {
+      setQueuedFiles((prev) => [...prev, ...validQueued]);
+    }
   };
 
   const handleRemoveQueuedFile = (index: number) => {
@@ -148,57 +159,161 @@ export function MediaUploadModal({
     }
 
     setUploading(true);
+    const successfullyUploaded: SelectedMediaItem[] = [];
+    const errors: string[] = [];
 
     try {
-      const formData = new FormData();
-      queuedFiles.forEach((item) => {
-        formData.append('files', item.file);
-      });
+      for (let i = 0; i < queuedFiles.length; i++) {
+        const item = queuedFiles[i];
+        const file = item.file;
+        const fileIndexLabel = `(${i + 1}/${queuedFiles.length})`;
+        setUploadProgressText(`Uploading ${fileIndexLabel} "${file.name}"...`);
 
-      const res = await fetch('/api/upload', {
-        method: 'POST',
-        body: formData,
-      });
+        try {
+          // 1. Request Signed Upload URL for direct client-to-storage upload (bypasses Vercel 4.5MB serverless limit)
+          const signRes = await fetch('/api/upload/sign', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              filename: file.name,
+              mimeType: file.type || 'image/jpeg',
+            }),
+          });
 
-      const data = await res.json();
+          const signText = await signRes.text().catch(() => '');
+          let signData: any = null;
+          try {
+            signData = JSON.parse(signText);
+          } catch {
+            // Non-JSON response
+          }
 
-      if (!res.ok) {
-        setUploadError(data.error || 'Upload failed.');
-        setUploading(false);
-        return;
+          if (!signRes.ok) {
+            if (signRes.status === 413) {
+              throw new Error(`File is too large (${(file.size / 1024 / 1024).toFixed(1)}MB). Max direct payload limit is 50MB.`);
+            }
+            throw new Error(signData?.error || `Authorization error (${signRes.status}): ${signText.slice(0, 100)}`);
+          }
+
+          let uploadedPublicUrl = '';
+
+          if (signData.direct && signData.uploadUrl) {
+            // Direct client-to-Supabase Storage upload via signed URL (PUT)
+            setUploadProgressText(`Streaming ${fileIndexLabel} "${file.name}" directly to Supabase Storage...`);
+
+            const directRes = await fetch(signData.uploadUrl, {
+              method: 'PUT',
+              headers: {
+                'Content-Type': file.type || 'application/octet-stream',
+              },
+              body: file,
+            });
+
+            if (!directRes.ok) {
+              const directErrText = await directRes.text().catch(() => '');
+              throw new Error(`Supabase direct upload failed (${directRes.status}): ${directErrText.slice(0, 120)}`);
+            }
+
+            uploadedPublicUrl = signData.publicUrl;
+
+            // Record the uploaded asset in the database
+            const recordRes = await fetch('/api/upload/record', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                url: uploadedPublicUrl,
+                altText: item.altText || file.name,
+                filename: file.name,
+                mimeType: file.type || 'image/jpeg',
+                sizeBytes: file.size,
+              }),
+            });
+
+            const recordText = await recordRes.text().catch(() => '');
+            let recordData: any = null;
+            try {
+              recordData = JSON.parse(recordText);
+            } catch {
+              // fallback
+            }
+
+            if (!recordRes.ok) {
+              console.warn('MediaAsset database logging warning:', recordText);
+            }
+
+            successfullyUploaded.push({
+              url: uploadedPublicUrl,
+              altText: item.altText || file.name,
+              id: recordData?.asset?.id,
+              mimeType: file.type,
+            });
+          } else {
+            // Fallback proxy upload via /api/upload (for local disk development adapter)
+            setUploadProgressText(`Uploading ${fileIndexLabel} "${file.name}" via local adapter...`);
+            const formData = new FormData();
+            formData.append('file', file);
+            if (item.altText) formData.append('altText', item.altText);
+
+            const uploadRes = await fetch('/api/upload', {
+              method: 'POST',
+              body: formData,
+            });
+
+            const uploadText = await uploadRes.text().catch(() => '');
+            let uploadData: any = null;
+            try {
+              uploadData = JSON.parse(uploadText);
+            } catch {
+              // Non-JSON
+            }
+
+            if (!uploadRes.ok) {
+              if (uploadRes.status === 413) {
+                throw new Error(`File "${file.name}" (${(file.size / 1024 / 1024).toFixed(1)}MB) exceeds serverless limit of 4.5MB.`);
+              }
+              throw new Error(uploadData?.error || `Upload failed (${uploadRes.status}): ${uploadText.slice(0, 120)}`);
+            }
+
+            const rawAsset = uploadData.asset || (uploadData.assets && uploadData.assets[0]);
+            if (!rawAsset?.url) {
+              throw new Error('Upload succeeded but no public URL was returned from server.');
+            }
+
+            successfullyUploaded.push({
+              url: rawAsset.url,
+              altText: item.altText || rawAsset.altText || file.name,
+              id: rawAsset.id,
+              mimeType: rawAsset.mimeType || file.type,
+            });
+          }
+        } catch (fileErr: any) {
+          console.error(`Error uploading "${file.name}":`, fileErr);
+          errors.push(`"${file.name}": ${fileErr?.message || 'Upload failed'}`);
+        }
       }
 
-      const rawAssets = Array.isArray(data.assets)
-        ? data.assets
-        : data.asset
-        ? [data.asset]
-        : [];
+      // Pass successfully uploaded assets to caller
+      if (successfullyUploaded.length > 0) {
+        if (onSelectMultiple && allowMultiple) {
+          onSelectMultiple(successfullyUploaded);
+        } else {
+          onSelect(successfullyUploaded[0]);
+        }
 
-      const uploadedAssets: SelectedMediaItem[] = rawAssets.map((a: any, idx: number) => ({
-        url: a.url,
-        altText: queuedFiles[idx]?.altText || a.altText || a.filename || 'Uploaded media',
-        id: a.id,
-        mimeType: a.mimeType,
-      }));
-
-      if (uploadedAssets.length === 0) {
-        setUploadError('Upload succeeded on server but no asset URL was returned.');
-        setUploading(false);
-        return;
-      }
-
-      if (onSelectMultiple && allowMultiple) {
-        onSelectMultiple(uploadedAssets);
+        if (errors.length === 0) {
+          onClose();
+        } else {
+          setUploadError(`Uploaded ${successfullyUploaded.length} item(s) successfully. However, ${errors.length} failed:\n${errors.join('\n')}`);
+        }
       } else {
-        onSelect(uploadedAssets[0]);
+        setUploadError(errors.join('\n') || 'All file uploads failed.');
       }
-
-      onClose();
     } catch (err: any) {
-      console.error('Upload failed', err);
+      console.error('Batch upload error:', err);
       setUploadError(err?.message || 'Network error during upload.');
     } finally {
       setUploading(false);
+      setUploadProgressText('');
     }
   };
 
@@ -253,7 +368,7 @@ export function MediaUploadModal({
               {title}
             </h2>
             <p className="text-xs text-muted-foreground mt-0.5">
-              Upload multiple images & videos (MP4, WebM, PNG, JPG, WebP) to Supabase Storage
+              Direct-to-Cloud Upload supports high-resolution images & videos up to 50MB each.
             </p>
           </div>
           <button
@@ -394,7 +509,7 @@ export function MediaUploadModal({
             /* Upload Tab (Multi-file batch) */
             <form onSubmit={handleUploadSubmit} className="space-y-6">
               {uploadError && (
-                <div className="flex items-start gap-2.5 rounded-lg border border-destructive/30 bg-destructive/10 p-3 text-xs text-destructive">
+                <div className="flex items-start gap-2.5 rounded-lg border border-destructive/30 bg-destructive/10 p-3.5 text-xs text-destructive whitespace-pre-line">
                   <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
                   <p>{uploadError}</p>
                 </div>
@@ -408,7 +523,7 @@ export function MediaUploadModal({
                 <input
                   ref={fileInputRef}
                   type="file"
-                  multiple
+                  multiple={allowMultiple}
                   accept="image/*,video/*"
                   onChange={handleFileChange}
                   className="hidden"
@@ -416,10 +531,10 @@ export function MediaUploadModal({
 
                 <Upload className="h-10 w-10 text-primary/80 mb-2" />
                 <p className="text-sm font-semibold text-foreground">
-                  Click or drag multiple images & videos here
+                  Click or drag {allowMultiple ? 'multiple images & videos' : 'an image or video'} here
                 </p>
                 <p className="text-xs text-muted-foreground mt-1">
-                  Supports JPEG, PNG, WebP, GIF, SVG, AVIF, MP4, WebM, MOV (Up to 50MB each)
+                  Direct upload supports JPEG, PNG, WebP, GIF, SVG, AVIF, MP4, WebM, MOV (Up to 50MB each)
                 </p>
               </div>
 
@@ -495,7 +610,7 @@ export function MediaUploadModal({
                     {uploading ? (
                       <>
                         <Loader2 className="h-4 w-4 animate-spin" />
-                        <span>Uploading {queuedFiles.length} file{queuedFiles.length > 1 ? 's' : ''} to Supabase...</span>
+                        <span>{uploadProgressText || `Uploading ${queuedFiles.length} file(s)...`}</span>
                       </>
                     ) : (
                       <>

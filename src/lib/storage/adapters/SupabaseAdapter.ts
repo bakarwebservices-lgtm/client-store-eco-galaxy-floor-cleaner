@@ -28,7 +28,7 @@ export class SupabaseStorageAdapter implements IStorageAdapter {
     this.bucket = (bucket || process.env.SUPABASE_STORAGE_BUCKET || 'Media-Bucket').trim();
   }
 
-  private sanitizeFilename(filename: string): string {
+  public sanitizeFilename(filename: string): string {
     const ext = path.extname(filename).toLowerCase();
     const basename = path.basename(filename, ext).replace(/[^a-zA-Z0-9_-]/g, '-').toLowerCase();
     const randomSuffix = crypto.randomBytes(6).toString('hex');
@@ -103,6 +103,54 @@ export class SupabaseStorageAdapter implements IStorageAdapter {
       key: fullPath,
       sizeBytes: fileBuffer.length,
       mimeType,
+    };
+  }
+
+  async createSignedUploadUrl(
+    filename: string,
+    folder?: string,
+    expiresInSeconds: number = 3600
+  ): Promise<{ uploadUrl: string; publicUrl: string; key: string }> {
+    const sanitizedKey = this.sanitizeFilename(filename);
+    const folderPrefix = folder ? `${folder.replace(/\/+$/, '')}/` : '';
+    const fullPath = `${folderPrefix}${sanitizedKey}`;
+
+    const signEndpoint = `${this.supabaseUrl}/storage/v1/object/upload/sign/${this.bucket}/${fullPath}`;
+
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+    };
+
+    if (this.supabaseKey) {
+      headers['Authorization'] = `Bearer ${this.supabaseKey}`;
+      headers['apikey'] = this.supabaseKey;
+    }
+
+    const response = await fetch(signEndpoint, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ expiresIn: expiresInSeconds }),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('Supabase signed upload URL generation error:', errorText);
+      throw new Error(`Failed to generate signed upload URL (${response.status}): ${errorText}`);
+    }
+
+    const data = await response.json();
+    const rawUrl: string = data.url || data.signedUrl;
+
+    const uploadUrl = rawUrl.startsWith('http')
+      ? rawUrl
+      : `${this.supabaseUrl}/storage/v1${rawUrl.startsWith('/') ? '' : '/'}${rawUrl}`;
+
+    const publicUrl = this.getUrl(fullPath);
+
+    return {
+      uploadUrl,
+      publicUrl,
+      key: fullPath,
     };
   }
 
