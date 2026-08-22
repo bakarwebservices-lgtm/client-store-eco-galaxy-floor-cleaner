@@ -64,8 +64,10 @@ export function ProductReviews({ productId, productName }: ProductReviewsProps) 
   const [title, setTitle] = useState('');
   const [body, setBody] = useState('');
   const [images, setImages] = useState<ReviewImage[]>([]);
+  const [photoUploading, setPhotoUploading] = useState(false);
   const [newImageUrl, setNewImageUrl] = useState('');
   const [newImageAlt, setNewImageAlt] = useState('');
+  const [showUrlInput, setShowUrlInput] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
@@ -75,6 +77,7 @@ export function ProductReviews({ productId, productName }: ProductReviewsProps) 
 
   const modalRef = useRef<HTMLDivElement>(null);
   const closeButtonRef = useRef<HTMLButtonElement>(null);
+  const photoInputRef = useRef<HTMLInputElement>(null);
 
   const fetchReviews = async (p = 1) => {
     setLoading(true);
@@ -142,6 +145,55 @@ export function ProductReviews({ productId, productName }: ProductReviewsProps) 
     };
   }, [isModalOpen]);
 
+  const handlePhotoFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []);
+    if (files.length === 0) return;
+
+    if (images.length + files.length > 5) {
+      setFormError(`Maximum 5 photos allowed. You currently have ${images.length} photo(s).`);
+      return;
+    }
+
+    setPhotoUploading(true);
+    setFormError(null);
+
+    try {
+      for (const file of files) {
+        if (file.size > 15 * 1024 * 1024) {
+          throw new Error(`File "${file.name}" exceeds maximum allowed 15MB limit.`);
+        }
+
+        const formData = new FormData();
+        formData.append('file', file);
+        formData.append('folder', 'reviews');
+        const cleanName = file.name.replace(/\.[^/.]+$/, '').replace(/[-_]+/g, ' ').trim();
+        formData.append('altText', cleanName || `${productName} review photo`);
+
+        const { ok, data, error } = await safeFetch<any>('/api/upload', {
+          method: 'POST',
+          body: formData,
+        });
+
+        if (!ok || !data?.asset?.url) {
+          throw new Error(error || `Failed to upload "${file.name}".`);
+        }
+
+        setImages((prev) => [
+          ...prev,
+          {
+            url: data.asset.url,
+            altText: data.asset.altText || cleanName || `${productName} review photo`,
+          },
+        ]);
+      }
+    } catch (err: any) {
+      setFormError(err?.message || 'Failed to upload photo.');
+    } finally {
+      setPhotoUploading(false);
+      if (photoInputRef.current) photoInputRef.current.value = '';
+    }
+  };
+
   const handleAddImage = () => {
     if (!newImageUrl.trim()) return;
     if (!newImageAlt.trim()) {
@@ -155,6 +207,7 @@ export function ProductReviews({ productId, productName }: ProductReviewsProps) 
     setImages([...images, { url: newImageUrl.trim(), altText: newImageAlt.trim() }]);
     setNewImageUrl('');
     setNewImageAlt('');
+    setShowUrlInput(false);
     setFormError(null);
   };
 
@@ -584,40 +637,82 @@ export function ProductReviews({ productId, productName }: ProductReviewsProps) 
               </div>
 
               {/* Photo Upload with Mandatory altText per prompt */}
-              <div className="space-y-2 rounded-xl border border-border bg-muted/10 p-3.5">
+              <div className="space-y-3 rounded-xl border border-border bg-muted/10 p-3.5">
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-bold text-foreground flex items-center gap-1.5">
                     <Camera className="h-3.5 w-3.5 text-primary" />
                     <span>Attach Photos ({images.length}/5)</span>
                   </span>
-                  <span className="text-[10px] text-muted-foreground">Alt text required</span>
+                  <span className="text-[10px] text-muted-foreground">JPEG, PNG, WebP up to 15MB</span>
                 </div>
 
                 {images.length < 5 && (
                   <div className="space-y-2 pt-1">
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                      <input
-                        type="url"
-                        value={newImageUrl}
-                        onChange={(e) => setNewImageUrl(e.target.value)}
-                        placeholder="Image URL (https://...)"
-                        className="rounded-lg border border-input bg-background p-2 text-xs text-foreground focus:outline-none"
-                      />
-                      <input
-                        type="text"
-                        value={newImageAlt}
-                        onChange={(e) => setNewImageAlt(e.target.value)}
-                        placeholder="Photo description (Alt text) *"
-                        className="rounded-lg border border-input bg-background p-2 text-xs text-foreground focus:outline-none"
-                      />
+                    <input
+                      ref={photoInputRef}
+                      type="file"
+                      accept="image/*"
+                      multiple
+                      onChange={handlePhotoFileChange}
+                      className="hidden"
+                    />
+
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => photoInputRef.current?.click()}
+                        disabled={photoUploading}
+                        className="flex flex-1 items-center justify-center gap-2 rounded-lg bg-primary/10 border border-primary/20 px-3 py-2 text-xs font-semibold text-primary hover:bg-primary/20 transition-colors disabled:opacity-50"
+                      >
+                        {photoUploading ? (
+                          <>
+                            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                            <span>Uploading photo...</span>
+                          </>
+                        ) : (
+                          <>
+                            <Camera className="h-3.5 w-3.5" />
+                            <span>+ Upload Photo from Device</span>
+                          </>
+                        )}
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => setShowUrlInput(!showUrlInput)}
+                        className="rounded-lg border border-border bg-card px-3 py-2 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors"
+                      >
+                        {showUrlInput ? 'Hide URL' : 'Paste URL'}
+                      </button>
                     </div>
-                    <button
-                      type="button"
-                      onClick={handleAddImage}
-                      className="rounded-lg bg-muted px-3 py-1.5 text-xs font-semibold text-foreground hover:bg-muted/80 transition-colors w-full"
-                    >
-                      + Add Photo
-                    </button>
+
+                    {showUrlInput && (
+                      <div className="space-y-2 rounded-lg border border-border bg-card p-2.5">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                          <input
+                            type="url"
+                            value={newImageUrl}
+                            onChange={(e) => setNewImageUrl(e.target.value)}
+                            placeholder="Image URL (https://...)"
+                            className="rounded-lg border border-input bg-background p-2 text-xs text-foreground focus:outline-none"
+                          />
+                          <input
+                            type="text"
+                            value={newImageAlt}
+                            onChange={(e) => setNewImageAlt(e.target.value)}
+                            placeholder="Photo description (Alt text) *"
+                            className="rounded-lg border border-input bg-background p-2 text-xs text-foreground focus:outline-none"
+                          />
+                        </div>
+                        <button
+                          type="button"
+                          onClick={handleAddImage}
+                          className="rounded-lg bg-muted px-3 py-1.5 text-xs font-semibold text-foreground hover:bg-muted/80 transition-colors w-full"
+                        >
+                          + Add Image URL
+                        </button>
+                      </div>
+                    )}
                   </div>
                 )}
 

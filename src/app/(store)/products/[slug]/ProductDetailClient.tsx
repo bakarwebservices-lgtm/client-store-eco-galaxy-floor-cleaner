@@ -6,10 +6,13 @@ import { ProductGallery } from '@/components/storefront/ProductGallery';
 import { VariantSelector, VariantOption } from '@/components/storefront/VariantSelector';
 import { ShoppingBag, Heart, ShieldCheck, Truck, RotateCcw, Loader2 } from 'lucide-react';
 import { useCart } from '@/context/CartContext';
+import { useWishlist } from '@/context/WishlistContext';
 import { ProductWithRelations } from '@/types';
 
 export function ProductDetailClient({ product }: { product: ProductWithRelations }) {
   const { addItem, isLoading } = useCart();
+  const { isInWishlist, toggleWishlist } = useWishlist();
+  const isWishlisted = isInWishlist(product.id);
   const variants: VariantOption[] = product.variants || [];
   const [selectedVariant, setSelectedVariant] = useState<VariantOption | null>(
     variants.length > 0 ? variants[0] : null
@@ -218,10 +221,24 @@ export function ProductDetailClient({ product }: { product: ProductWithRelations
               {/* Wishlist Button */}
               <button
                 type="button"
-                className="flex h-11 w-11 items-center justify-center rounded-lg border border-border bg-card text-muted-foreground hover:text-destructive hover:border-destructive/30 transition-colors"
-                aria-label="Add to wishlist"
+                onClick={() =>
+                  toggleWishlist({
+                    id: product.id,
+                    name: product.name,
+                    slug: product.slug,
+                    price: currentPrice,
+                    imageUrl: product.images?.[0]?.url,
+                  })
+                }
+                className={`flex h-11 w-11 items-center justify-center rounded-lg border transition-all ${
+                  isWishlisted
+                    ? 'border-red-200 bg-red-50 text-red-600 dark:border-red-900/40 dark:bg-red-950/30 dark:text-red-400'
+                    : 'border-border bg-card text-muted-foreground hover:text-destructive hover:border-destructive/30'
+                }`}
+                aria-label={isWishlisted ? 'Remove from wishlist' : 'Add to wishlist'}
+                title={isWishlisted ? 'Saved in your wishlist' : 'Add to wishlist'}
               >
-                <Heart className="h-4 w-4" />
+                <Heart className={`h-4 w-4 transition-transform ${isWishlisted ? 'fill-red-500 text-red-500 scale-110' : ''}`} />
               </button>
             </div>
           )}

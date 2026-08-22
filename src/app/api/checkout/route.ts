@@ -251,7 +251,12 @@ export async function POST(req: NextRequest) {
       });
 
       return newOrder;
-    });
+    },
+    {
+      maxWait: 10000, // 10 seconds max wait for connection
+      timeout: 30000, // 30 seconds transaction timeout for pooler safety
+    }
+  );
 
     // Successfully completed transaction without collision
     break;

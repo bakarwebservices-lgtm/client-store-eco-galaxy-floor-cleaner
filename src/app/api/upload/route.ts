@@ -21,13 +21,16 @@ interface ProcessedUpload {
 
 export async function POST(req: NextRequest) {
   try {
-    const session = await getAdminSession();
-    if (!session) {
+    const formData = await req.formData();
+    const folder = (formData.get('folder') as string) || req.nextUrl.searchParams.get('folder') || '';
+    
+    const adminSession = await getAdminSession();
+    const isReviewUpload = folder === 'reviews';
+
+    if (!adminSession && !isReviewUpload) {
       return NextResponse.json({ error: 'Unauthorized. Admin session required.' }, { status: 401 });
     }
 
-    const formData = await req.formData();
-    
     // Extract files (supports both single 'file' and multiple 'files')
     const files: File[] = [];
     const allFiles = formData.getAll('files') as File[];
@@ -53,6 +56,14 @@ export async function POST(req: NextRequest) {
     const createdAssets = [];
 
     for (const file of files) {
+      // Review photos must be image format
+      if (isReviewUpload && !file.type.startsWith('image/')) {
+        return NextResponse.json(
+          { error: `Invalid format for review photo. Only image files (JPEG, PNG, WebP) are accepted.` },
+          { status: 400 }
+        );
+      }
+
       // Validate declared MIME type (Image + Video)
       if (!ALLOWED_MEDIA_TYPES.includes(file.type)) {
         return NextResponse.json(
@@ -106,7 +117,7 @@ export async function POST(req: NextRequest) {
             filename: file.name,
             mimeType: uploadResult.mimeType,
             sizeBytes: uploadResult.sizeBytes,
-            uploadedById: session.id,
+            uploadedById: adminSession?.id || null,
           },
         });
       } catch (dbErr) {

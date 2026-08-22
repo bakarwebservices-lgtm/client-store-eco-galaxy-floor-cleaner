@@ -507,7 +507,7 @@ export function MediaUploadModal({
             </div>
           ) : (
             /* Upload Tab (Multi-file batch) */
-            <form onSubmit={handleUploadSubmit} className="space-y-6">
+            <div className="space-y-6">
               {uploadError && (
                 <div className="flex items-start gap-2.5 rounded-lg border border-destructive/30 bg-destructive/10 p-3.5 text-xs text-destructive whitespace-pre-line">
                   <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
@@ -603,7 +603,8 @@ export function MediaUploadModal({
                   </div>
 
                   <button
-                    type="submit"
+                    type="button"
+                    onClick={handleUploadSubmit}
                     disabled={uploading || queuedFiles.length === 0}
                     className="flex w-full items-center justify-center gap-2 rounded-xl bg-primary py-3 text-sm font-bold text-primary-foreground shadow-lg hover:bg-primary-hover transition-colors disabled:opacity-50"
                   >
@@ -621,7 +622,7 @@ export function MediaUploadModal({
                   </button>
                 </div>
               )}
-            </form>
+            </div>
           )}
         </div>
 

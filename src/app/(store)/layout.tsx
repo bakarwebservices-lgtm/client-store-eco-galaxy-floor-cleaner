@@ -3,6 +3,7 @@ import { Navbar } from '@/components/storefront/Navbar';
 import { Footer } from '@/components/storefront/Footer';
 import { CartDrawer } from '@/components/storefront/CartDrawer';
 import { CartProvider } from '@/context/CartContext';
+import { WishlistProvider } from '@/context/WishlistContext';
 
 export default function StoreLayout({
   children,
@@ -11,12 +12,14 @@ export default function StoreLayout({
 }) {
   return (
     <CartProvider>
-      <div className="flex min-h-screen flex-col bg-background text-foreground">
-        <Navbar />
-        <div className="flex-1">{children}</div>
-        <Footer />
-        <CartDrawer />
-      </div>
+      <WishlistProvider>
+        <div className="flex min-h-screen flex-col bg-background text-foreground">
+          <Navbar />
+          <div className="flex-1">{children}</div>
+          <Footer />
+          <CartDrawer />
+        </div>
+      </WishlistProvider>
     </CartProvider>
   );
 }

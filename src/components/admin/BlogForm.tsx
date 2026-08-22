@@ -125,7 +125,8 @@ export function BlogForm({ initialData, isEditing = false }: BlogFormProps) {
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-8">
+    <>
+      <form onSubmit={handleSubmit} className="space-y-8">
       {errorMessage && (
         <div className="flex items-center gap-2 rounded-xl border border-destructive/30 bg-destructive/10 p-4 text-xs text-destructive">
           <AlertCircle className="h-4 w-4 shrink-0" />
@@ -391,17 +392,18 @@ export function BlogForm({ initialData, isEditing = false }: BlogFormProps) {
           </div>
         </div>
       </div>
-
-      {/* Media Upload Modal */}
-      {mediaModalOpen && (
-        <MediaUploadModal
-          isOpen={mediaModalOpen}
-          onClose={() => setMediaModalOpen(false)}
-          onSelect={handleMediaSelected}
-          allowMultiple={false}
-          title="Select or Upload Featured Hero Image"
-        />
-      )}
     </form>
+
+    {/* Media Upload Modal */}
+    {mediaModalOpen && (
+      <MediaUploadModal
+        isOpen={mediaModalOpen}
+        onClose={() => setMediaModalOpen(false)}
+        onSelect={handleMediaSelected}
+        allowMultiple={false}
+        title="Select or Upload Featured Hero Image"
+      />
+    )}
+  </>
   );
 }
