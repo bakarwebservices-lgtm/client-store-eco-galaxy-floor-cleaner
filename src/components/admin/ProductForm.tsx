@@ -45,6 +45,7 @@ export function ProductForm({
 }: ProductFormProps) {
   const router = useRouter();
   const passedCategories = categories.length > 0 ? categories : initialCategories;
+  const effectiveIsEditing = isEditing || Boolean(initialData?.id);
 
   // Basic Info state
   const [name, setName] = useState(initialData?.name || '');
@@ -326,8 +327,8 @@ export function ProductForm({
     };
 
     try {
-      const url = isEditing ? `/api/products/${initialData.id}` : '/api/products';
-      const method = isEditing ? 'PUT' : 'POST';
+      const url = effectiveIsEditing ? `/api/products/${initialData.id}` : '/api/products';
+      const method = effectiveIsEditing ? 'PUT' : 'POST';
 
       const res = await fetch(url, {
         method,
@@ -371,7 +372,7 @@ export function ProductForm({
             className="flex items-center gap-2 rounded-lg bg-primary px-5 py-2 text-xs font-bold text-primary-foreground shadow hover:bg-primary-hover transition-colors disabled:opacity-50"
           >
             {isLoading && <Loader2 className="h-4 w-4 animate-spin" />}
-            <span>{isEditing ? 'Save Changes' : 'Publish Product'}</span>
+            <span>{effectiveIsEditing ? 'Save Changes' : 'Publish Product'}</span>
           </button>
         </div>
 

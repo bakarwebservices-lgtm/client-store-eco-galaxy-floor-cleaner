@@ -168,23 +168,35 @@ export function MediaUploadModal({
         return;
       }
 
-      const uploadedAssets: SelectedMediaItem[] = (data.assets || [data.asset]).map((a: any, idx: number) => ({
+      const rawAssets = Array.isArray(data.assets)
+        ? data.assets
+        : data.asset
+        ? [data.asset]
+        : [];
+
+      const uploadedAssets: SelectedMediaItem[] = rawAssets.map((a: any, idx: number) => ({
         url: a.url,
-        altText: queuedFiles[idx]?.altText || a.altText || a.filename,
+        altText: queuedFiles[idx]?.altText || a.altText || a.filename || 'Uploaded media',
         id: a.id,
         mimeType: a.mimeType,
       }));
 
+      if (uploadedAssets.length === 0) {
+        setUploadError('Upload succeeded on server but no asset URL was returned.');
+        setUploading(false);
+        return;
+      }
+
       if (onSelectMultiple && allowMultiple) {
         onSelectMultiple(uploadedAssets);
-      } else if (uploadedAssets.length > 0) {
+      } else {
         onSelect(uploadedAssets[0]);
       }
 
       onClose();
-    } catch (err) {
+    } catch (err: any) {
       console.error('Upload failed', err);
-      setUploadError('Network error during upload.');
+      setUploadError(err?.message || 'Network error during upload.');
     } finally {
       setUploading(false);
     }

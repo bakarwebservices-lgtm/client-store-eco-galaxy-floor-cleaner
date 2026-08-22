@@ -58,8 +58,13 @@ export function BlogForm({ initialData, isEditing = false }: BlogFormProps) {
   };
 
   const handleMediaSelected = (asset: { url: string; altText: string }) => {
+    if (!asset || !asset.url) {
+      setErrorMessage('Failed to attach media: No valid image URL received from upload.');
+      return;
+    }
     setFeaturedImageUrl(asset.url);
-    setFeaturedImageAlt(asset.altText || title);
+    setFeaturedImageAlt(asset.altText || title || 'Featured Article Image');
+    setErrorMessage(null);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -391,6 +396,8 @@ export function BlogForm({ initialData, isEditing = false }: BlogFormProps) {
           isOpen={mediaModalOpen}
           onClose={() => setMediaModalOpen(false)}
           onSelect={handleMediaSelected}
+          allowMultiple={false}
+          title="Select or Upload Featured Hero Image"
         />
       )}
     </form>

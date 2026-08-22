@@ -36,7 +36,7 @@ export default async function EditProductPage({
     <div className="min-h-screen bg-background text-foreground px-4 py-8 sm:px-6 lg:px-8">
       <div className="mx-auto max-w-5xl space-y-6">
         <h1 className="text-2xl font-bold tracking-tight">Edit Product: {product.name}</h1>
-        <ProductForm initialData={product} categories={categories} />
+        <ProductForm initialData={product} categories={categories} isEditing={true} />
       </div>
     </div>
   );
