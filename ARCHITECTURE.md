@@ -173,24 +173,23 @@ This document outlines the architectural design, directory structure, and domain
 - **Tracking Hook**: `AddToCart` event dispatched on addition
 
 ### 4.4 Checkout & Orders Engine
-- **Storefront Pages**: `src/app/(store)/checkout/page.tsx`, `src/app/(store)/account/orders/[id]/page.tsx`
+- **Storefront Pages**: `src/app/(store)/checkout/page.tsx`, `src/app/(store)/checkout/success/[id]/page.tsx`, `src/app/(store)/account/orders/[id]/page.tsx`
 - **Admin Pages**: `src/app/(admin)/admin/orders/page.tsx`, `src/app/(admin)/admin/orders/[id]/page.tsx`
-- **API Endpoints**: `src/app/api/checkout/route.ts`, `src/app/api/orders/route.ts`
-- **Services**: `src/lib/orders/deriveOrderStatus.ts`, `src/lib/payments/`, `src/lib/pdf/InvoicePDF.tsx`, `src/lib/email/OrderStatusEmail.tsx`
+- **API Endpoints**: `src/app/api/checkout/route.ts`, `src/app/api/checkout/abandoned/route.ts`, `src/app/api/orders/[id]/route.ts`, `src/app/api/admin/orders/route.ts`
+- **Services & Emails**: `src/lib/email/index.ts` (`sendOrderConfirmationEmail`, `sendFulfillmentUpdateEmail`), `src/lib/payments/`, `src/lib/validation/abandonedCheckout.ts`
 - **Tracking Hook**: `InitiateCheckout` on checkout view, `Purchase` on order creation
 
 ### 4.5 Payment Gateway Abstraction Layer
 - **Architecture**: `src/lib/payments/types.ts` defines `IPaymentGateway` contract (`initiatePayment`, `capturePayment`, `refundPayment`)
 - **Implementations**:
   - `src/lib/payments/adapters/CodAdapter.ts` (Cash on Delivery)
-  - `src/lib/payments/adapters/PaypalAdapter.ts` (PayPal capture/validation)
 - **Extensibility**: Adding JazzCash, Easypaisa, or Stripe requires only implementing `IPaymentGateway` and registering in `registry.ts`
 
-### 4.6 Customer Account Management
-- **Storefront Pages**: `src/app/(store)/account/page.tsx`, `src/app/(store)/login/page.tsx`, `src/app/(store)/register/page.tsx`
+### 4.6 Customer Account & Auth Management
+- **Storefront Pages**: `src/app/(store)/account/page.tsx`, `src/app/(store)/account/login/page.tsx`, `src/app/(store)/account/register/page.tsx`, `src/app/(store)/forgot-password/page.tsx`, `src/app/(store)/account/reset-password/page.tsx`
 - **Admin Pages**: `src/app/(admin)/admin/customers/page.tsx`
-- **Context**: `src/contexts/CustomerAuthContext.tsx`
-- **API Endpoints**: `src/app/api/auth/customer/`
+- **API Endpoints**: `src/app/api/auth/customer/login`, `src/app/api/auth/customer/register`, `src/app/api/auth/customer/forgot-password`, `src/app/api/auth/customer/reset-password`
+- **Validation**: `src/lib/validation/customer.ts`, `src/lib/validation/passwordReset.ts`
 
 ### 4.7 Staff & Admin Administration
 - **Admin Pages**: `src/app/(admin)/admin/page.tsx`, `src/app/(admin)/admin/staff/page.tsx`

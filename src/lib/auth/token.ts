@@ -116,3 +116,26 @@ export async function verifyOrderAccessToken(token: string): Promise<OrderAccess
     return null;
   }
 }
+
+export interface PasswordResetTokenPayload {
+  customerId: string;
+  email: string;
+}
+
+export async function signPasswordResetToken(payload: PasswordResetTokenPayload): Promise<string> {
+  return new SignJWT({ ...payload })
+    .setProtectedHeader({ alg: 'HS256' })
+    .setIssuedAt()
+    .setExpirationTime('1h')
+    .sign(CUSTOMER_SECRET_KEY);
+}
+
+export async function verifyPasswordResetToken(token: string): Promise<PasswordResetTokenPayload | null> {
+  try {
+    const { payload } = await jwtVerify(token, CUSTOMER_SECRET_KEY);
+    return payload as unknown as PasswordResetTokenPayload;
+  } catch (error) {
+    return null;
+  }
+}
+

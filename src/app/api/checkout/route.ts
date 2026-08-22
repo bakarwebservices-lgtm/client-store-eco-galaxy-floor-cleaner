@@ -5,6 +5,7 @@ import { checkoutSchema } from '@/lib/validation/checkout';
 import { getSetting } from '@/lib/settings';
 import { getPaymentGateway } from '@/lib/payments/registry';
 import { signOrderAccessToken } from '@/lib/auth/token';
+import { sendOrderConfirmationEmail } from '@/lib/email';
 import { DiscountType, PaymentStatus, FulfillmentStatus, ProductStatus } from '@prisma/client';
 
 import crypto from 'crypto';
@@ -281,6 +282,54 @@ export async function POST(req: NextRequest) {
 
 if (!orderResult) {
   throw lastError || new Error('Failed to process checkout after multiple attempts.');
+}
+
+// Dispatch order confirmation email (resilient / error-safe)
+try {
+  await sendOrderConfirmationEmail({
+    id: orderResult.id,
+    orderNumber: orderResult.orderNumber,
+    email: shippingAddress.email,
+    currency: orderResult.currency,
+    subtotal: orderResult.subtotal,
+    shippingFee: orderResult.shippingAmount,
+    discountTotal: orderResult.discountAmount,
+    totalPrice: orderResult.totalPrice,
+    paymentMethod: orderResult.paymentMethod,
+    items: orderResult.items.map((it: any) => ({
+      productTitle: it.productTitle,
+      variantTitle: it.variantTitle,
+      sku: it.sku,
+      quantity: it.quantity,
+      unitPrice: it.unitPrice,
+      totalPrice: it.totalPrice,
+    })),
+    shippingAddress: {
+      firstName: shippingAddress.firstName,
+      lastName: shippingAddress.lastName,
+      addressLine1: shippingAddress.address,
+      addressLine2: shippingAddress.apartment,
+      city: shippingAddress.city,
+      province: shippingAddress.province,
+      postalCode: shippingAddress.postalCode,
+      phone: shippingAddress.phone,
+    },
+  });
+} catch (emailErr) {
+  console.error('[Checkout] Failed to dispatch order confirmation email:', emailErr);
+}
+
+// Mark any abandoned checkout session as recovered
+try {
+  const checkoutSessionId = (body as any)?.sessionId || (body as any)?.checkoutSessionId;
+  if (checkoutSessionId) {
+    await db.abandonedCheckout.updateMany({
+      where: { sessionId: checkoutSessionId, recoveredAt: null },
+      data: { recoveredAt: new Date() },
+    });
+  }
+} catch (abandonedErr) {
+  console.warn('[Checkout] Failed to mark abandoned checkout recovered:', abandonedErr);
 }
 
 // Generate signed Order Access Token to authorize access to confirmation page

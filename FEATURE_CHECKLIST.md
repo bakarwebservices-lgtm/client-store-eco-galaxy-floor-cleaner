@@ -88,10 +88,16 @@ This document tracks every UI element, intended action, route handler, and its e
 | **Backorder / Waitlist (Admin)** | Waitlist & Restock Management (`src/app/(admin)/admin/waitlist/page.tsx`) | Product/variant subscriber totals, ETA restock scheduler, manual batch alert sender | `GET/POST /api/waitlist` | `Connected` |
 | **Backorder / Waitlist (Engine)** | Restock Alert Auto-Dispatcher (`src/lib/email/restock.ts`) | Server-side after() hook on inventory replenishment with RestockNotification logs | Internal Email Dispatcher | `Connected` |
 | **Store Settings (Admin)** | Settings Hub (`src/app/(admin)/admin/settings/page.tsx`) | 6-tab configuration (Identity, Contact, Theme tokens with color picker & live swatch preview, Shipping/Tax, GA4/Pixel, Socials), MediaUploadModal logo picker, Zod validation, atomic batch upsert | `GET/PUT /api/admin/settings` | `Connected` |
+| **Transactional Emails** | Order Confirmation Email (`src/lib/email/index.ts`) | HTML order receipt with snapshot items, address, subtotal/shipping/discount breakdown, dispatched on checkout | Dispatched on `POST /api/checkout` | `Connected` |
+| **Transactional Emails** | Fulfillment Status Email (`src/lib/email/index.ts`) | Dispatched when order `fulfillmentStatus` transitions to `FULFILLED` in admin | Dispatched on `PATCH /api/admin/orders/[id]` | `Connected` |
+| **Customer Auth** | Forgot Password Form (`src/app/(store)/forgot-password/page.tsx`) | Rate-limited request endpoint issuing 1h signed JWT token and sending email link | `POST /api/auth/customer/forgot-password` | `Connected` |
+| **Customer Auth** | Reset Password Form (`src/app/(store)/account/reset-password/page.tsx`) | Token validation, min 8-char rule, bcrypt hash update, and show/hide password toggle | `POST /api/auth/customer/reset-password` | `Connected` |
+| **Abandoned Checkout** | Abandoned Session Capture (`src/app/(store)/checkout/page.tsx`) | Debounced capture of partial contact info and cart items into `AbandonedCheckout` model; marked recovered on order placement | `POST /api/checkout/abandoned` | `Connected` |
 
 ---
 
 ## 2. Status Legend
 - `Connected`: Fully wired, route handler implemented, database integrated, edge cases verified.
 - `Not Connected`: UI scaffolded or route drafted, not yet fully integrated or verified.
+
 

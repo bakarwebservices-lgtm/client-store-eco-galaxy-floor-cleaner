@@ -3,7 +3,7 @@
 import React, { useState, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
-import { UserPlus, AlertCircle, Loader2 } from 'lucide-react';
+import { UserPlus, AlertCircle, Loader2, Eye, EyeOff } from 'lucide-react';
 import { useCart } from '@/context/CartContext';
 import { safeFetch } from '@/lib/apiClient';
 
@@ -20,6 +20,7 @@ function CustomerRegisterForm() {
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -131,18 +132,28 @@ function CustomerRegisterForm() {
 
         <div className="space-y-1.5">
           <label htmlFor="reg-password" className="block text-xs font-semibold text-foreground">Password *</label>
-          <input
-            id="reg-password"
-            type="password"
-            required
-            aria-required="true"
-            autoComplete="new-password"
-            minLength={6}
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            placeholder="At least 6 characters"
-            className="w-full rounded-lg border border-input bg-background p-2.5 text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20"
-          />
+          <div className="relative">
+            <input
+              id="reg-password"
+              type={showPassword ? 'text' : 'password'}
+              required
+              aria-required="true"
+              autoComplete="new-password"
+              minLength={8}
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="••••••••"
+              className="w-full rounded-lg border border-input bg-background p-2.5 pr-10 text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20"
+            />
+            <button
+              type="button"
+              onClick={() => setShowPassword(!showPassword)}
+              aria-label={showPassword ? 'Hide password' : 'Show password'}
+              className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground p-1 transition-colors"
+            >
+              {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+            </button>
+          </div>
         </div>
 
         <button

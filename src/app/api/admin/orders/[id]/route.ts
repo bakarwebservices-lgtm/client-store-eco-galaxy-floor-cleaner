@@ -4,6 +4,8 @@ import { requireAdminAuth } from '@/lib/auth/admin';
 import { PaymentStatus, FulfillmentStatus } from '@prisma/client';
 import { z } from 'zod';
 
+import { sendFulfillmentUpdateEmail } from '@/lib/email';
+
 export const dynamic = 'force-dynamic';
 
 const updateOrderSchema = z.object({
@@ -66,6 +68,16 @@ export async function PATCH(
 
     const { paymentStatus, fulfillmentStatus, notes } = parsed.data;
 
+    // Fetch previous order state to detect fulfillment transition
+    const existing = await db.order.findUnique({
+      where: { id },
+      include: { customer: true },
+    });
+
+    if (!existing) {
+      return NextResponse.json({ error: 'Order not found' }, { status: 404 });
+    }
+
     const updated = await db.order.update({
       where: { id },
       data: {
@@ -74,6 +86,37 @@ export async function PATCH(
         ...(typeof notes === 'string' ? { notes } : {}),
       },
     });
+
+    // If transitioned to FULFILLED, dispatch fulfillment notification email
+    if (
+      fulfillmentStatus === FulfillmentStatus.FULFILLED &&
+      existing.fulfillmentStatus !== FulfillmentStatus.FULFILLED
+    ) {
+      try {
+        const addr = (existing.shippingAddress as any) || {};
+        const targetEmail = existing.customer?.email || addr.email;
+        if (targetEmail) {
+          await sendFulfillmentUpdateEmail({
+            orderNumber: existing.orderNumber,
+            email: targetEmail,
+            currency: existing.currency,
+            totalPrice: existing.totalPrice,
+            shippingAddress: {
+              firstName: addr.firstName || '',
+              lastName: addr.lastName || '',
+              addressLine1: addr.addressLine1 || '',
+              addressLine2: addr.addressLine2,
+              city: addr.city || '',
+              province: addr.province,
+              postalCode: addr.postalCode,
+              phone: addr.phone,
+            },
+          });
+        }
+      } catch (emailErr) {
+        console.error('[Admin Orders] Failed to dispatch fulfillment update email:', emailErr);
+      }
+    }
 
     return NextResponse.json({ success: true, order: updated });
   } catch (error: any) {

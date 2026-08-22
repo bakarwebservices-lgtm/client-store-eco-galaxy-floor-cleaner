@@ -3,7 +3,7 @@
 import React, { useState, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
-import { User, Lock, ArrowRight, AlertCircle, Loader2 } from 'lucide-react';
+import { User, Lock, ArrowRight, AlertCircle, Loader2, Eye, EyeOff } from 'lucide-react';
 import { useCart } from '@/context/CartContext';
 import { safeFetch } from '@/lib/apiClient';
 
@@ -17,6 +17,7 @@ function CustomerLoginForm() {
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -82,18 +83,36 @@ function CustomerLoginForm() {
         </div>
 
         <div className="space-y-1.5">
-          <label htmlFor="login-password" className="block text-xs font-semibold text-foreground">Password</label>
-          <input
-            id="login-password"
-            type="password"
-            required
-            aria-required="true"
-            autoComplete="current-password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            placeholder="••••••••"
-            className="w-full rounded-lg border border-input bg-background p-2.5 text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20"
-          />
+          <div className="flex items-center justify-between">
+            <label htmlFor="login-password" className="block text-xs font-semibold text-foreground">Password</label>
+            <Link
+              href="/forgot-password"
+              className="text-[11px] font-medium text-primary hover:underline"
+            >
+              Forgot password?
+            </Link>
+          </div>
+          <div className="relative">
+            <input
+              id="login-password"
+              type={showPassword ? 'text' : 'password'}
+              required
+              aria-required="true"
+              autoComplete="current-password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="••••••••"
+              className="w-full rounded-lg border border-input bg-background p-2.5 pr-10 text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20"
+            />
+            <button
+              type="button"
+              onClick={() => setShowPassword(!showPassword)}
+              aria-label={showPassword ? 'Hide password' : 'Show password'}
+              className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground p-1 transition-colors"
+            >
+              {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+            </button>
+          </div>
         </div>
 
         <button

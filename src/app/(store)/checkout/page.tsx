@@ -42,6 +42,73 @@ export default function CheckoutPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [checkoutError, setCheckoutError] = useState<string | null>(null);
 
+  // Abandoned Checkout Session ID
+  const [sessionId, setSessionId] = useState<string>('');
+
+  useEffect(() => {
+    try {
+      let currentSessionId = sessionStorage.getItem('aw_checkout_session');
+      if (!currentSessionId) {
+        currentSessionId = `chk_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
+        sessionStorage.setItem('aw_checkout_session', currentSessionId);
+      }
+      setSessionId(currentSessionId);
+    } catch {
+      setSessionId(`chk_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`);
+    }
+  }, []);
+
+  const shippingCost = subtotal >= freeShippingThreshold ? 0 : 250;
+  const discountAmount = appliedCoupon?.discountAmount || 0;
+  const grandTotal = Math.max(0, subtotal - discountAmount + shippingCost);
+
+  // Debounced abandoned checkout capture on checkout page
+  useEffect(() => {
+    if (!sessionId || items.length === 0) return;
+
+    const timeout = setTimeout(() => {
+      safeFetch('/api/checkout/abandoned', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          sessionId,
+          name: [firstName.trim(), lastName.trim()].filter(Boolean).join(' ') || null,
+          email: email.trim() || null,
+          phone: phone.trim() || null,
+          address: [address.trim(), apartment.trim()].filter(Boolean).join(', ') || null,
+          city: city.trim() || null,
+          province: province.trim() || null,
+          cart: items.map((i) => ({
+            productId: i.productId,
+            variantId: i.variantId,
+            quantity: i.quantity,
+            title: i.productName || i.variantTitle || 'Item',
+            price: i.price || 0,
+          })),
+          subtotal,
+          discount: discountAmount,
+          total: grandTotal,
+        }),
+      }).catch(() => {});
+    }, 1200);
+
+    return () => clearTimeout(timeout);
+  }, [
+    sessionId,
+    items,
+    firstName,
+    lastName,
+    email,
+    phone,
+    address,
+    apartment,
+    city,
+    province,
+    subtotal,
+    discountAmount,
+    grandTotal,
+  ]);
+
   // Track InitiateCheckout on load
   useEffect(() => {
     if (items.length > 0) {
@@ -53,10 +120,6 @@ export default function CheckoutPage() {
       });
     }
   }, [items, subtotal, totalItems, currency]);
-
-  const shippingCost = subtotal >= freeShippingThreshold ? 0 : 250;
-  const discountAmount = appliedCoupon?.discountAmount || 0;
-  const grandTotal = Math.max(0, subtotal - discountAmount + shippingCost);
 
   const handleApplyCoupon = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -103,6 +166,7 @@ export default function CheckoutPage() {
     setIsSubmitting(true);
 
     const payload = {
+      sessionId,
       shippingAddress: {
         firstName: firstName.trim(),
         lastName: lastName.trim(),
