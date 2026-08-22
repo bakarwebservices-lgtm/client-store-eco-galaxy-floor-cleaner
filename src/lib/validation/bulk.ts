@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { PaymentStatus, FulfillmentStatus } from '@prisma/client';
 
 export const BulkIdsSchema = z.object({
   ids: z.array(z.string().min(1)).min(1, 'Select at least one item'),
@@ -7,8 +8,8 @@ export const BulkIdsSchema = z.object({
 export const BulkOrderActionSchema = z.object({
   ids: z.array(z.string().min(1)).min(1, 'Select at least one order'),
   action: z.enum(['UPDATE_FULFILLMENT', 'UPDATE_PAYMENT', 'CANCEL', 'DELETE']),
-  fulfillmentStatus: z.enum(['UNFULFILLED', 'PARTIALLY_FULFILLED', 'FULFILLED', 'RETURNED', 'CANCELLED']).optional(),
-  paymentStatus: z.enum(['PENDING', 'AUTHORIZED', 'PAID', 'PARTIALLY_REFUNDED', 'REFUNDED', 'FAILED']).optional(),
+  fulfillmentStatus: z.nativeEnum(FulfillmentStatus).optional(),
+  paymentStatus: z.nativeEnum(PaymentStatus).optional(),
   sendNotification: z.boolean().default(true),
 });
 

@@ -16,21 +16,21 @@ export async function POST(req: NextRequest) {
     const { ids, action } = parsed.data;
 
     if (action === 'MARK_READ' || action === 'MARK_UNREAD') {
-      const read = action === 'MARK_READ';
-      const updated = await db.contactInquiry.updateMany({
+      const isRead = action === 'MARK_READ';
+      const updated = await db.contactMessage.updateMany({
         where: { id: { in: ids } },
-        data: { read },
+        data: { isRead },
       });
 
       return NextResponse.json({
         success: true,
         count: updated.count,
-        message: `Marked ${updated.count} messages as ${read ? 'read' : 'unread'}.`,
+        message: `Marked ${updated.count} messages as ${isRead ? 'read' : 'unread'}.`,
       });
     }
 
     if (action === 'DELETE') {
-      const deleted = await db.contactInquiry.deleteMany({
+      const deleted = await db.contactMessage.deleteMany({
         where: { id: { in: ids } },
       });
 

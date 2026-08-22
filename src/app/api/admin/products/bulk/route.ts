@@ -44,12 +44,12 @@ export async function POST(req: NextRequest) {
     if (action === 'DELETE') {
       const deleted = await db.$transaction(async (tx) => {
         // Remove relationships
-        await tx.productCategory.deleteMany({ where: { productId: { in: ids } } });
+        await tx.categoryProduct.deleteMany({ where: { productId: { in: ids } } });
         await tx.collectionProduct.deleteMany({ where: { productId: { in: ids } } });
         await tx.productVariant.deleteMany({ where: { productId: { in: ids } } });
         await tx.productImage.deleteMany({ where: { productId: { in: ids } } });
         await tx.review.deleteMany({ where: { productId: { in: ids } } });
-        await tx.waitlistEntry.deleteMany({ where: { productId: { in: ids } } });
+        await tx.waitlistSubscription.deleteMany({ where: { productId: { in: ids } } });
 
         return tx.product.deleteMany({
           where: { id: { in: ids } },

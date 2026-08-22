@@ -26,8 +26,13 @@ export async function POST(req: NextRequest) {
         select: {
           id: true,
           orderNumber: true,
-          email: true,
+          currency: true,
+          totalPrice: true,
+          shippingAddress: true,
           fulfillmentStatus: true,
+          customer: {
+            select: { email: true },
+          },
         },
       });
 
@@ -41,12 +46,25 @@ export async function POST(req: NextRequest) {
       // If status is FULFILLED and sendNotification is true, dispatch notifications
       if (fulfillmentStatus === 'FULFILLED' && sendNotification) {
         for (const ord of orders) {
-          if (ord.email && ord.fulfillmentStatus !== 'FULFILLED') {
+          const addr = (ord.shippingAddress as any) || {};
+          const targetEmail = ord.customer?.email || addr.email;
+          if (targetEmail && ord.fulfillmentStatus !== 'FULFILLED') {
             try {
               await sendFulfillmentUpdateEmail({
                 orderNumber: ord.orderNumber,
-                email: ord.email,
-                fulfillmentStatus: 'FULFILLED',
+                email: targetEmail,
+                currency: ord.currency,
+                totalPrice: ord.totalPrice,
+                shippingAddress: {
+                  firstName: addr.firstName || '',
+                  lastName: addr.lastName || '',
+                  addressLine1: addr.addressLine1 || '',
+                  addressLine2: addr.addressLine2,
+                  city: addr.city || '',
+                  province: addr.province,
+                  postalCode: addr.postalCode,
+                  phone: addr.phone,
+                },
               });
             } catch (emailErr) {
               console.warn(`[BulkOrders] Failed to dispatch email for order ${ord.orderNumber}:`, emailErr);
@@ -82,7 +100,7 @@ export async function POST(req: NextRequest) {
         return tx.order.updateMany({
           where: { id: { in: ids } },
           data: {
-            fulfillmentStatus: 'CANCELLED',
+            cancelledAt: new Date(),
           },
         });
       });

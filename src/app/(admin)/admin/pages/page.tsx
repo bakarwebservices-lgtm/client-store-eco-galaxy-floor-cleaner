@@ -233,7 +233,7 @@ export default function AdminPagesPage() {
                       <td className="py-3 px-4">
                         <span
                           className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold uppercase ${
-                            p.status === 'PUBLISHED'
+                            p.status === PageStatus.ACTIVE
                               ? 'bg-success/10 text-success'
                               : 'bg-muted text-muted-foreground'
                           }`}
@@ -249,7 +249,7 @@ export default function AdminPagesPage() {
                       </td>
                       <td className="py-3 px-4 text-right">
                         <div className="flex items-center justify-end gap-2">
-                          {p.status === 'PUBLISHED' && (
+                          {p.status === PageStatus.ACTIVE && (
                             <Link
                               href={`/pages/${p.slug}`}
                               target="_blank"

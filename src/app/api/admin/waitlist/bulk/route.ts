@@ -16,24 +16,21 @@ export async function POST(req: NextRequest) {
     const { ids, action } = parsed.data;
 
     if (action === 'ACTIVATE' || action === 'DEACTIVATE') {
-      const notified = action === 'ACTIVATE';
-      const updated = await db.waitlistEntry.updateMany({
+      const isActive = action === 'ACTIVATE';
+      const updated = await db.waitlistSubscription.updateMany({
         where: { id: { in: ids } },
-        data: {
-          notified,
-          notifiedAt: notified ? new Date() : null,
-        },
+        data: { isActive },
       });
 
       return NextResponse.json({
         success: true,
         count: updated.count,
-        message: `Marked ${updated.count} waitlist entries as ${notified ? 'notified' : 'pending'}.`,
+        message: `Marked ${updated.count} waitlist entries as ${isActive ? 'active' : 'inactive'}.`,
       });
     }
 
     if (action === 'DELETE') {
-      const deleted = await db.waitlistEntry.deleteMany({
+      const deleted = await db.waitlistSubscription.deleteMany({
         where: { id: { in: ids } },
       });
 

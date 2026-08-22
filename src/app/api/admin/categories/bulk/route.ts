@@ -31,7 +31,7 @@ export async function POST(req: NextRequest) {
 
     if (action === 'DELETE') {
       const deleted = await db.$transaction(async (tx) => {
-        await tx.productCategory.deleteMany({ where: { categoryId: { in: ids } } });
+        await tx.categoryProduct.deleteMany({ where: { categoryId: { in: ids } } });
         return tx.category.deleteMany({ where: { id: { in: ids } } });
       });
 

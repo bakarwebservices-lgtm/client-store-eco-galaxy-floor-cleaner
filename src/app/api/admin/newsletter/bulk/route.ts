@@ -16,21 +16,21 @@ export async function POST(req: NextRequest) {
     const { ids, action } = parsed.data;
 
     if (action === 'SUBSCRIBE' || action === 'UNSUBSCRIBE') {
-      const active = action === 'SUBSCRIBE';
-      const updated = await db.newsletterSubscriber.updateMany({
+      const isActive = action === 'SUBSCRIBE';
+      const updated = await db.newsletter.updateMany({
         where: { id: { in: ids } },
-        data: { active },
+        data: { isActive },
       });
 
       return NextResponse.json({
         success: true,
         count: updated.count,
-        message: `${active ? 'Resubscribed' : 'Unsubscribed'} ${updated.count} subscribers.`,
+        message: `${isActive ? 'Resubscribed' : 'Unsubscribed'} ${updated.count} subscribers.`,
       });
     }
 
     if (action === 'DELETE') {
-      const deleted = await db.newsletterSubscriber.deleteMany({
+      const deleted = await db.newsletter.deleteMany({
         where: { id: { in: ids } },
       });
 

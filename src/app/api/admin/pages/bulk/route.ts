@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { requireAdminAuth } from '@/lib/auth/admin';
 import { BulkBlogPageActionSchema } from '@/lib/validation/bulk';
+import { PageStatus } from '@prisma/client';
 
 export async function POST(req: NextRequest) {
   try {
@@ -16,16 +17,16 @@ export async function POST(req: NextRequest) {
     const { ids, action } = parsed.data;
 
     if (action === 'PUBLISH' || action === 'DRAFT') {
-      const published = action === 'PUBLISH';
+      const status = action === 'PUBLISH' ? PageStatus.ACTIVE : PageStatus.HIDDEN;
       const updated = await db.page.updateMany({
         where: { id: { in: ids } },
-        data: { published },
+        data: { status },
       });
 
       return NextResponse.json({
         success: true,
         count: updated.count,
-        message: `${published ? 'Published' : 'Drafted'} ${updated.count} custom pages.`,
+        message: `${action === 'PUBLISH' ? 'Published' : 'Hidden'} ${updated.count} custom pages.`,
       });
     }
 

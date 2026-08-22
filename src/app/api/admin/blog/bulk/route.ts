@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { requireAdminAuth } from '@/lib/auth/admin';
 import { BulkBlogPageActionSchema } from '@/lib/validation/bulk';
+import { BlogStatus } from '@prisma/client';
 
 export async function POST(req: NextRequest) {
   try {
@@ -16,24 +17,24 @@ export async function POST(req: NextRequest) {
     const { ids, action } = parsed.data;
 
     if (action === 'PUBLISH' || action === 'DRAFT') {
-      const published = action === 'PUBLISH';
-      const updated = await db.blogPost.updateMany({
+      const isPublish = action === 'PUBLISH';
+      const updated = await db.blogArticle.updateMany({
         where: { id: { in: ids } },
         data: {
-          published,
-          publishedAt: published ? new Date() : null,
+          status: isPublish ? BlogStatus.PUBLISHED : BlogStatus.DRAFT,
+          publishedAt: isPublish ? new Date() : null,
         },
       });
 
       return NextResponse.json({
         success: true,
         count: updated.count,
-        message: `${published ? 'Published' : 'Drafted'} ${updated.count} blog articles.`,
+        message: `${isPublish ? 'Published' : 'Drafted'} ${updated.count} blog articles.`,
       });
     }
 
     if (action === 'DELETE') {
-      const deleted = await db.blogPost.deleteMany({
+      const deleted = await db.blogArticle.deleteMany({
         where: { id: { in: ids } },
       });
 
