@@ -11,8 +11,11 @@ import {
   Trash2,
   ExternalLink,
   Loader2,
-  ArrowLeft,
+  CheckCircle,
+  AlertCircle,
 } from 'lucide-react';
+import { BulkActionBar, BulkActionOption } from '@/components/admin/BulkActionBar';
+import { safeFetch } from '@/lib/apiClient';
 
 interface PageItem {
   id: string;
@@ -32,6 +35,10 @@ export default function AdminPagesPage() {
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [notification, setNotification] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
+  // Bulk state
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [isBulkLoading, setIsBulkLoading] = useState(false);
+
   const fetchPages = async () => {
     setLoading(true);
     try {
@@ -39,6 +46,7 @@ export default function AdminPagesPage() {
       if (!res.ok) throw new Error('Failed to load pages');
       const data = await res.json();
       setPages(data.pages || []);
+      setSelectedIds([]);
     } catch (err: any) {
       setNotification({ type: 'error', text: err.message || 'Error loading pages' });
     } finally {
@@ -74,177 +82,235 @@ export default function AdminPagesPage() {
     }
   };
 
+  const toggleSelect = (id: string) => {
+    setSelectedIds((prev) =>
+      prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]
+    );
+  };
+
+  const toggleSelectAllVisible = () => {
+    if (selectedIds.length === pages.length) {
+      setSelectedIds([]);
+    } else {
+      setSelectedIds(pages.map((p) => p.id));
+    }
+  };
+
+  const handleExecuteBulkAction = async (actionKey: string) => {
+    if (selectedIds.length === 0) return;
+    setIsBulkLoading(true);
+
+    try {
+      const { ok, error } = await safeFetch('/api/admin/pages/bulk', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ids: selectedIds,
+          action: actionKey,
+        }),
+      });
+
+      if (!ok) {
+        setNotification({ type: 'error', text: error || 'Bulk action failed' });
+      } else {
+        setNotification({ type: 'success', text: 'Bulk page action completed successfully.' });
+        await fetchPages();
+      }
+    } catch (err: any) {
+      setNotification({ type: 'error', text: err?.message || 'Bulk action failed' });
+    } finally {
+      setIsBulkLoading(false);
+    }
+  };
+
+  const bulkActions: BulkActionOption[] = [
+    { label: 'Publish Selected', actionKey: 'PUBLISH', variant: 'success' },
+    { label: 'Draft Selected', actionKey: 'DRAFT', variant: 'outline' },
+    {
+      label: 'Delete Selected',
+      actionKey: 'DELETE',
+      variant: 'destructive',
+      icon: Trash2,
+      confirmMessage: `Permanently delete ${selectedIds.length} selected pages?`,
+    },
+  ];
+
   return (
-    <div className="min-h-screen bg-background text-foreground">
-      {/* Top Header */}
-      <header className="sticky top-0 z-30 border-b border-border bg-card/95 backdrop-blur">
-        <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center gap-6">
-            <Link
-              href="/admin"
-              className="flex items-center gap-2 text-xs font-semibold text-muted-foreground hover:text-foreground transition-colors"
-            >
-              <ArrowLeft className="h-4 w-4" />
-              <span>Admin Hub</span>
-            </Link>
-            <div className="h-4 w-px bg-border hidden sm:block" />
-            <div>
-              <h1 className="text-base font-bold leading-tight">Custom Pages</h1>
-              <p className="text-xs text-muted-foreground">Manage static CMS pages (About, Policies, Terms)</p>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-3">
-            <Link
-              href="/admin/pages/new"
-              className="inline-flex items-center gap-1.5 rounded-xl bg-primary px-4 py-2 text-xs font-bold text-primary-foreground shadow hover:bg-primary-hover transition-colors"
-            >
-              <Plus className="h-4 w-4" />
-              <span>New Page</span>
-            </Link>
-          </div>
-        </div>
-      </header>
-
-      {/* Main Content */}
-      <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8 space-y-6">
-        {notification && (
-          <div
-            className={`rounded-xl border p-4 text-xs font-medium flex items-center justify-between ${
-              notification.type === 'success'
-                ? 'border-success/30 bg-success/10 text-success'
-                : 'border-destructive/30 bg-destructive/10 text-destructive'
-            }`}
-          >
-            <span>{notification.text}</span>
-            <button onClick={() => setNotification(null)} className="text-xs font-bold hover:underline">
-              Dismiss
-            </button>
-          </div>
-        )}
-
-        {/* Toolbar */}
-        <div className="flex items-center justify-between gap-4 border-b border-border pb-4">
-          <form onSubmit={handleSearchSubmit} className="relative flex-1 max-w-sm">
-            <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
-            <input
-              type="text"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search title or slug..."
-              className="w-full rounded-lg border border-input bg-card pl-9 pr-3 py-2 text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20"
-            />
-          </form>
-
-          <div className="text-xs text-muted-foreground font-medium">
-            {pages.length} {pages.length === 1 ? 'Page' : 'Pages'}
-          </div>
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-border pb-4">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight text-foreground">Custom Pages</h1>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            Manage static CMS pages (About, Policies, Terms, Brand Story).
+          </p>
         </div>
 
-        {/* Pages Table */}
+        <Link
+          href="/admin/pages/new"
+          className="flex items-center gap-1.5 rounded-lg bg-primary px-3.5 py-1.5 text-xs font-semibold text-primary-foreground hover:bg-primary-hover shadow-sm transition-colors w-fit"
+        >
+          <Plus className="h-4 w-4" />
+          <span>New Page</span>
+        </Link>
+      </div>
+
+      {notification && (
+        <div
+          className={`flex items-center gap-2 rounded-xl p-4 text-xs font-medium ${
+            notification.type === 'success'
+              ? 'border border-success/30 bg-success/10 text-success'
+              : 'border border-destructive/30 bg-destructive/10 text-destructive'
+          }`}
+        >
+          {notification.type === 'success' ? <CheckCircle className="h-4 w-4" /> : <AlertCircle className="h-4 w-4" />}
+          <span>{notification.text}</span>
+        </div>
+      )}
+
+      {/* Filter and Search */}
+      <div className="flex flex-col sm:flex-row items-center justify-between gap-3 bg-card p-4 rounded-xl border border-border shadow-sm">
+        <form onSubmit={handleSearchSubmit} className="relative flex-1 w-full max-w-md">
+          <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
+          <input
+            type="text"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search pages by title or slug..."
+            className="w-full rounded-lg border border-input bg-background py-2 pl-9 pr-3 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/20"
+          />
+        </form>
+      </div>
+
+      {/* Pages Table */}
+      <div className="overflow-hidden rounded-xl border border-border bg-card shadow-sm">
         {loading ? (
-          <div className="p-16 text-center text-xs text-muted-foreground space-y-2">
-            <Loader2 className="h-6 w-6 animate-spin mx-auto text-primary" />
-            <p>Loading custom pages...</p>
+          <div className="py-16 text-center text-xs text-muted-foreground animate-pulse flex items-center justify-center gap-2">
+            <Loader2 className="h-4 w-4 animate-spin text-primary" />
+            <span>Loading custom pages...</span>
           </div>
-        ) : pages.length === 0 ? (
-          <div className="rounded-2xl border border-dashed border-border bg-card p-16 text-center space-y-3">
-            <FileText className="h-8 w-8 text-muted-foreground mx-auto" />
-            <h2 className="text-sm font-bold text-foreground">No pages created yet</h2>
-            <p className="text-xs text-muted-foreground max-w-sm mx-auto">
-              Create essential store policy and information pages like About Us, Shipping & Returns.
-            </p>
-            <Link
-              href="/admin/pages/new"
-              className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-4 py-2 text-xs font-bold text-primary-foreground shadow hover:bg-primary-hover"
-            >
-              <Plus className="h-4 w-4" />
-              <span>Create Custom Page</span>
-            </Link>
-          </div>
-        ) : (
-          <div className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
+        ) : pages.length > 0 ? (
+          <div className="overflow-x-auto">
             <table className="w-full text-left text-xs">
-              <thead className="border-b border-border bg-muted/40 text-[11px] font-bold text-muted-foreground uppercase tracking-wider">
+              <thead className="border-b border-border bg-muted/40 text-muted-foreground uppercase tracking-wider font-semibold text-[11px]">
                 <tr>
-                  <th className="px-5 py-3">Page Title</th>
-                  <th className="px-5 py-3">Slug</th>
-                  <th className="px-5 py-3 text-center">Status</th>
-                  <th className="px-5 py-3">Last Updated</th>
-                  <th className="px-5 py-3 text-right">Actions</th>
+                  <th className="py-3 px-4 w-10">
+                    <input
+                      type="checkbox"
+                      checked={pages.length > 0 && selectedIds.length === pages.length}
+                      onChange={toggleSelectAllVisible}
+                      aria-label="Select all pages"
+                      className="h-3.5 w-3.5 rounded border-border text-primary focus:ring-primary/20"
+                    />
+                  </th>
+                  <th className="py-3 px-4">Page Title</th>
+                  <th className="py-3 px-4">Status</th>
+                  <th className="py-3 px-4">URL Slug</th>
+                  <th className="py-3 px-4">Last Updated</th>
+                  <th className="py-3 px-4 text-right">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
-                {pages.map((page) => (
-                  <tr key={page.id} className="hover:bg-muted/30 transition-colors">
-                    <td className="px-5 py-3.5 font-bold text-foreground">
-                      <div className="flex items-center gap-2.5">
-                        <FileText className="h-4 w-4 text-primary shrink-0" />
-                        <span>{page.title}</span>
-                      </div>
-                    </td>
-
-                    <td className="px-5 py-3.5 font-mono text-[11px] text-muted-foreground">
-                      /pages/{page.slug}
-                    </td>
-
-                    <td className="px-5 py-3.5 text-center">
-                      {page.status === PageStatus.ACTIVE ? (
-                        <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-2.5 py-0.5 text-[10px] font-bold text-emerald-700">
-                          Active
-                        </span>
-                      ) : (
-                        <span className="inline-flex items-center gap-1 rounded-full bg-muted px-2.5 py-0.5 text-[10px] font-medium text-muted-foreground">
-                          Hidden
-                        </span>
-                      )}
-                    </td>
-
-                    <td className="px-5 py-3.5 text-muted-foreground text-[11px]">
-                      {new Date(page.updatedAt).toLocaleDateString()}
-                    </td>
-
-                    <td className="px-5 py-3.5 text-right">
-                      <div className="flex items-center justify-end gap-2">
-                        {page.status === PageStatus.ACTIVE && (
-                          <Link
-                            href={`/pages/${page.slug}`}
-                            target="_blank"
-                            className="rounded-lg p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
-                            title="View live page"
-                          >
-                            <ExternalLink className="h-3.5 w-3.5" />
-                          </Link>
-                        )}
-                        <Link
-                          href={`/admin/pages/${page.id}`}
-                          className="rounded-lg p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
-                          title="Edit page"
+                {pages.map((p) => {
+                  const isSelected = selectedIds.includes(p.id);
+                  return (
+                    <tr
+                      key={p.id}
+                      className={`hover:bg-muted/20 transition-colors ${isSelected ? 'bg-primary/5' : ''}`}
+                    >
+                      <td className="py-3 px-4">
+                        <input
+                          type="checkbox"
+                          checked={isSelected}
+                          onChange={() => toggleSelect(p.id)}
+                          aria-label={`Select page ${p.title}`}
+                          className="h-3.5 w-3.5 rounded border-border text-primary focus:ring-primary/20"
+                        />
+                      </td>
+                      <td className="py-3 px-4 font-semibold text-foreground">
+                        {p.title}
+                      </td>
+                      <td className="py-3 px-4">
+                        <span
+                          className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold uppercase ${
+                            p.status === 'PUBLISHED'
+                              ? 'bg-success/10 text-success'
+                              : 'bg-muted text-muted-foreground'
+                          }`}
                         >
-                          <Edit2 className="h-3.5 w-3.5" />
-                        </Link>
-                        <button
-                          type="button"
-                          disabled={deletingId === page.id}
-                          onClick={() => handleDelete(page.id, page.title)}
-                          className="rounded-lg p-1.5 text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors disabled:opacity-50"
-                          title="Delete page"
-                        >
-                          {deletingId === page.id ? (
-                            <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                          ) : (
-                            <Trash2 className="h-3.5 w-3.5" />
+                          {p.status}
+                        </span>
+                      </td>
+                      <td className="py-3 px-4 font-mono text-muted-foreground">
+                        /pages/{p.slug}
+                      </td>
+                      <td className="py-3 px-4 text-muted-foreground font-mono">
+                        {new Date(p.updatedAt).toLocaleDateString()}
+                      </td>
+                      <td className="py-3 px-4 text-right">
+                        <div className="flex items-center justify-end gap-2">
+                          {p.status === 'PUBLISHED' && (
+                            <Link
+                              href={`/pages/${p.slug}`}
+                              target="_blank"
+                              className="rounded-md border border-border p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+                              title="View on Storefront"
+                            >
+                              <ExternalLink className="h-3.5 w-3.5" />
+                            </Link>
                           )}
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
+                          <Link
+                            href={`/admin/pages/${p.id}`}
+                            className="rounded-md border border-border p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+                            aria-label={`Edit ${p.title}`}
+                          >
+                            <Edit2 className="h-3.5 w-3.5" />
+                          </Link>
+                          <button
+                            onClick={() => handleDelete(p.id, p.title)}
+                            disabled={deletingId === p.id}
+                            className="rounded-md border border-border p-1.5 text-muted-foreground hover:bg-destructive/10 hover:text-destructive hover:border-destructive/30 transition-colors disabled:opacity-50"
+                            aria-label={`Delete ${p.title}`}
+                          >
+                            {deletingId === p.id ? (
+                              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                            ) : (
+                              <Trash2 className="h-3.5 w-3.5" />
+                            )}
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
+        ) : (
+          <div className="py-16 text-center space-y-3">
+            <FileText className="mx-auto h-8 w-8 text-muted-foreground/60" />
+            <p className="text-xs text-muted-foreground">No pages created yet.</p>
+            <Link
+              href="/admin/pages/new"
+              className="inline-block rounded-lg bg-primary px-3.5 py-1.5 text-xs font-medium text-primary-foreground shadow"
+            >
+              Create First Page
+            </Link>
+          </div>
         )}
-      </main>
+      </div>
+
+      {/* Floating Bulk Action Bar */}
+      <BulkActionBar
+        selectedCount={selectedIds.length}
+        totalCount={pages.length}
+        onClearSelection={() => setSelectedIds([])}
+        onSelectAll={() => setSelectedIds(pages.map((p) => p.id))}
+        isAllSelected={selectedIds.length === pages.length}
+        isLoading={isBulkLoading}
+        actions={bulkActions}
+        onExecuteAction={handleExecuteBulkAction}
+      />
     </div>
   );
 }

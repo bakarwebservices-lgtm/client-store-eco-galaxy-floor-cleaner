@@ -12,9 +12,12 @@ import {
   Trash2,
   ExternalLink,
   Loader2,
-  ArrowLeft,
   Calendar,
+  AlertCircle,
+  CheckCircle,
 } from 'lucide-react';
+import { BulkActionBar, BulkActionOption } from '@/components/admin/BulkActionBar';
+import { safeFetch } from '@/lib/apiClient';
 
 interface ArticleItem {
   id: string;
@@ -39,6 +42,10 @@ export default function AdminBlogPage() {
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [notification, setNotification] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
+  // Bulk state
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [isBulkLoading, setIsBulkLoading] = useState(false);
+
   const fetchArticles = async () => {
     setLoading(true);
     try {
@@ -46,6 +53,7 @@ export default function AdminBlogPage() {
       if (!res.ok) throw new Error('Failed to load articles');
       const data = await res.json();
       setArticles(data.articles || []);
+      setSelectedIds([]);
     } catch (err: any) {
       setNotification({ type: 'error', text: err.message || 'Error loading articles' });
     } finally {
@@ -81,210 +89,253 @@ export default function AdminBlogPage() {
     }
   };
 
+  const toggleSelect = (id: string) => {
+    setSelectedIds((prev) =>
+      prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]
+    );
+  };
+
+  const toggleSelectAllVisible = () => {
+    if (selectedIds.length === articles.length) {
+      setSelectedIds([]);
+    } else {
+      setSelectedIds(articles.map((a) => a.id));
+    }
+  };
+
+  const handleExecuteBulkAction = async (actionKey: string) => {
+    if (selectedIds.length === 0) return;
+    setIsBulkLoading(true);
+
+    try {
+      const { ok, error } = await safeFetch('/api/admin/blog/bulk', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ids: selectedIds,
+          action: actionKey,
+        }),
+      });
+
+      if (!ok) {
+        setNotification({ type: 'error', text: error || 'Bulk action failed' });
+      } else {
+        setNotification({ type: 'success', text: 'Bulk blog action completed successfully.' });
+        await fetchArticles();
+      }
+    } catch (err: any) {
+      setNotification({ type: 'error', text: err?.message || 'Bulk action failed' });
+    } finally {
+      setIsBulkLoading(false);
+    }
+  };
+
+  const bulkActions: BulkActionOption[] = [
+    { label: 'Publish Selected', actionKey: 'PUBLISH', variant: 'success' },
+    { label: 'Draft Selected', actionKey: 'DRAFT', variant: 'outline' },
+    {
+      label: 'Delete Selected',
+      actionKey: 'DELETE',
+      variant: 'destructive',
+      icon: Trash2,
+      confirmMessage: `Permanently delete ${selectedIds.length} selected blog articles?`,
+    },
+  ];
+
   return (
-    <div className="min-h-screen bg-background text-foreground">
-      {/* Top Header */}
-      <header className="sticky top-0 z-30 border-b border-border bg-card/95 backdrop-blur">
-        <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center gap-6">
-            <Link
-              href="/admin"
-              className="flex items-center gap-2 text-xs font-semibold text-muted-foreground hover:text-foreground transition-colors"
-            >
-              <ArrowLeft className="h-4 w-4" />
-              <span>Admin Hub</span>
-            </Link>
-            <div className="h-4 w-px bg-border hidden sm:block" />
-            <div>
-              <h1 className="text-base font-bold leading-tight">Blog & Editorial</h1>
-              <p className="text-xs text-muted-foreground">Manage journal articles, guides, and brand stories</p>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-3">
-            <Link
-              href="/admin/blog/new"
-              className="inline-flex items-center gap-1.5 rounded-xl bg-primary px-4 py-2 text-xs font-bold text-primary-foreground shadow hover:bg-primary-hover transition-colors"
-            >
-              <Plus className="h-4 w-4" />
-              <span>New Article</span>
-            </Link>
-          </div>
-        </div>
-      </header>
-
-      {/* Main Content */}
-      <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8 space-y-6">
-        {notification && (
-          <div
-            className={`rounded-xl border p-4 text-xs font-medium flex items-center justify-between ${
-              notification.type === 'success'
-                ? 'border-success/30 bg-success/10 text-success'
-                : 'border-destructive/30 bg-destructive/10 text-destructive'
-            }`}
-          >
-            <span>{notification.text}</span>
-            <button onClick={() => setNotification(null)} className="text-xs font-bold hover:underline">
-              Dismiss
-            </button>
-          </div>
-        )}
-
-        {/* Toolbar */}
-        <div className="flex items-center justify-between gap-4 border-b border-border pb-4">
-          <form onSubmit={handleSearchSubmit} className="relative flex-1 max-w-sm">
-            <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
-            <input
-              type="text"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search title or excerpt..."
-              className="w-full rounded-lg border border-input bg-card pl-9 pr-3 py-2 text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20"
-            />
-          </form>
-
-          <div className="text-xs text-muted-foreground font-medium">
-            {articles.length} {articles.length === 1 ? 'Article' : 'Articles'}
-          </div>
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-border pb-4">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight text-foreground">Blog & Editorial</h1>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            Manage journal articles, guides, and brand stories.
+          </p>
         </div>
 
-        {/* Articles Table */}
+        <Link
+          href="/admin/blog/new"
+          className="flex items-center gap-1.5 rounded-lg bg-primary px-3.5 py-1.5 text-xs font-semibold text-primary-foreground hover:bg-primary-hover shadow-sm transition-colors w-fit"
+        >
+          <Plus className="h-4 w-4" />
+          <span>New Article</span>
+        </Link>
+      </div>
+
+      {notification && (
+        <div
+          className={`flex items-center gap-2 rounded-xl p-4 text-xs font-medium ${
+            notification.type === 'success'
+              ? 'border border-success/30 bg-success/10 text-success'
+              : 'border border-destructive/30 bg-destructive/10 text-destructive'
+          }`}
+        >
+          {notification.type === 'success' ? <CheckCircle className="h-4 w-4" /> : <AlertCircle className="h-4 w-4" />}
+          <span>{notification.text}</span>
+        </div>
+      )}
+
+      {/* Filter and Search */}
+      <div className="flex flex-col sm:flex-row items-center justify-between gap-3 bg-card p-4 rounded-xl border border-border shadow-sm">
+        <form onSubmit={handleSearchSubmit} className="relative flex-1 w-full max-w-md">
+          <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
+          <input
+            type="text"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search articles by title, tag, or excerpt..."
+            className="w-full rounded-lg border border-input bg-background py-2 pl-9 pr-3 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/20"
+          />
+        </form>
+      </div>
+
+      {/* Articles Table */}
+      <div className="overflow-hidden rounded-xl border border-border bg-card shadow-sm">
         {loading ? (
-          <div className="p-16 text-center text-xs text-muted-foreground space-y-2">
-            <Loader2 className="h-6 w-6 animate-spin mx-auto text-primary" />
-            <p>Loading articles...</p>
+          <div className="py-16 text-center text-xs text-muted-foreground animate-pulse flex items-center justify-center gap-2">
+            <Loader2 className="h-4 w-4 animate-spin text-primary" />
+            <span>Loading articles...</span>
           </div>
-        ) : articles.length === 0 ? (
-          <div className="rounded-2xl border border-dashed border-border bg-card p-16 text-center space-y-3">
-            <BookOpen className="h-8 w-8 text-muted-foreground mx-auto" />
-            <h2 className="text-sm font-bold text-foreground">No articles created yet</h2>
-            <p className="text-xs text-muted-foreground max-w-sm mx-auto">
-              Start building your content marketing strategy with editorial journal articles.
-            </p>
-            <Link
-              href="/admin/blog/new"
-              className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-4 py-2 text-xs font-bold text-primary-foreground shadow hover:bg-primary-hover"
-            >
-              <Plus className="h-4 w-4" />
-              <span>Create Article</span>
-            </Link>
-          </div>
-        ) : (
-          <div className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
+        ) : articles.length > 0 ? (
+          <div className="overflow-x-auto">
             <table className="w-full text-left text-xs">
-              <thead className="border-b border-border bg-muted/40 text-[11px] font-bold text-muted-foreground uppercase tracking-wider">
+              <thead className="border-b border-border bg-muted/40 text-muted-foreground uppercase tracking-wider font-semibold text-[11px]">
                 <tr>
-                  <th className="px-5 py-3">Article</th>
-                  <th className="px-5 py-3">Author</th>
-                  <th className="px-5 py-3">Slug</th>
-                  <th className="px-5 py-3 text-center">Status</th>
-                  <th className="px-5 py-3">Date</th>
-                  <th className="px-5 py-3 text-right">Actions</th>
+                  <th className="py-3 px-4 w-10">
+                    <input
+                      type="checkbox"
+                      checked={articles.length > 0 && selectedIds.length === articles.length}
+                      onChange={toggleSelectAllVisible}
+                      aria-label="Select all articles"
+                      className="h-3.5 w-3.5 rounded border-border text-primary focus:ring-primary/20"
+                    />
+                  </th>
+                  <th className="py-3 px-4">Article</th>
+                  <th className="py-3 px-4">Status</th>
+                  <th className="py-3 px-4">Author</th>
+                  <th className="py-3 px-4">Published Date</th>
+                  <th className="py-3 px-4 text-right">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
-                {articles.map((article) => (
-                  <tr key={article.id} className="hover:bg-muted/30 transition-colors">
-                    {/* Thumbnail & Title */}
-                    <td className="px-5 py-3.5">
-                      <div className="flex items-center gap-3">
-                        {article.featuredImageUrl ? (
-                          <div className="relative h-10 w-10 overflow-hidden rounded-lg border border-border bg-muted shrink-0">
-                            <Image
-                              src={article.featuredImageUrl}
-                              alt={article.featuredImageAlt || article.title}
-                              fill
-                              className="object-cover"
-                            />
+                {articles.map((art) => {
+                  const isSelected = selectedIds.includes(art.id);
+                  return (
+                    <tr
+                      key={art.id}
+                      className={`hover:bg-muted/20 transition-colors ${isSelected ? 'bg-primary/5' : ''}`}
+                    >
+                      <td className="py-3 px-4">
+                        <input
+                          type="checkbox"
+                          checked={isSelected}
+                          onChange={() => toggleSelect(art.id)}
+                          aria-label={`Select article ${art.title}`}
+                          className="h-3.5 w-3.5 rounded border-border text-primary focus:ring-primary/20"
+                        />
+                      </td>
+                      <td className="py-3 px-4">
+                        <div className="flex items-center gap-3">
+                          <div className="relative h-10 w-10 shrink-0 overflow-hidden rounded-lg border border-border bg-muted/20 flex items-center justify-center">
+                            {art.featuredImageUrl ? (
+                              <Image
+                                src={art.featuredImageUrl}
+                                alt={art.featuredImageAlt || art.title}
+                                fill
+                                sizes="40px"
+                                className="object-cover object-center"
+                              />
+                            ) : (
+                              <BookOpen className="h-4 w-4 text-muted-foreground" />
+                            )}
                           </div>
-                        ) : (
-                          <div className="flex h-10 w-10 items-center justify-center rounded-lg border border-border bg-muted text-muted-foreground font-bold shrink-0">
-                            <BookOpen className="h-4 w-4" />
+                          <div>
+                            <p className="font-semibold text-foreground text-xs line-clamp-1">{art.title}</p>
+                            <p className="text-[11px] text-muted-foreground">slug: {art.slug}</p>
                           </div>
-                        )}
-                        <div>
-                          <span className="font-bold text-foreground block">{article.title}</span>
-                          {article.excerpt && (
-                            <span className="text-[11px] text-muted-foreground line-clamp-1">
-                              {article.excerpt}
-                            </span>
-                          )}
                         </div>
-                      </div>
-                    </td>
-
-                    {/* Author */}
-                    <td className="px-5 py-3.5 text-muted-foreground">
-                      {article.author || 'Editorial'}
-                    </td>
-
-                    {/* Slug */}
-                    <td className="px-5 py-3.5 font-mono text-[11px] text-muted-foreground">
-                      /blog/{article.slug}
-                    </td>
-
-                    {/* Status */}
-                    <td className="px-5 py-3.5 text-center">
-                      {article.status === BlogStatus.PUBLISHED ? (
-                        <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-2.5 py-0.5 text-[10px] font-bold text-emerald-700">
-                          Published
-                        </span>
-                      ) : (
-                        <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/10 px-2.5 py-0.5 text-[10px] font-bold text-amber-700">
-                          Draft
-                        </span>
-                      )}
-                    </td>
-
-                    {/* Date */}
-                    <td className="px-5 py-3.5 text-muted-foreground text-[11px]">
-                      {article.publishedAt
-                        ? new Date(article.publishedAt).toLocaleDateString()
-                        : 'Unpublished'}
-                    </td>
-
-                    {/* Actions */}
-                    <td className="px-5 py-3.5 text-right">
-                      <div className="flex items-center justify-end gap-2">
-                        {article.status === BlogStatus.PUBLISHED && (
-                          <Link
-                            href={`/blog/${article.slug}`}
-                            target="_blank"
-                            className="rounded-lg p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
-                            title="View live article"
-                          >
-                            <ExternalLink className="h-3.5 w-3.5" />
-                          </Link>
-                        )}
-                        <Link
-                          href={`/admin/blog/${article.id}`}
-                          className="rounded-lg p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
-                          title="Edit article"
+                      </td>
+                      <td className="py-3 px-4">
+                        <span
+                          className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold uppercase ${
+                            art.status === 'PUBLISHED'
+                              ? 'bg-success/10 text-success'
+                              : 'bg-muted text-muted-foreground'
+                          }`}
                         >
-                          <Edit2 className="h-3.5 w-3.5" />
-                        </Link>
-                        <button
-                          type="button"
-                          disabled={deletingId === article.id}
-                          onClick={() => handleDelete(article.id, article.title)}
-                          className="rounded-lg p-1.5 text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors disabled:opacity-50"
-                          title="Delete article"
-                        >
-                          {deletingId === article.id ? (
-                            <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                          ) : (
-                            <Trash2 className="h-3.5 w-3.5" />
+                          {art.status}
+                        </span>
+                      </td>
+                      <td className="py-3 px-4 text-muted-foreground">
+                        {art.author || 'Admin Staff'}
+                      </td>
+                      <td className="py-3 px-4 text-muted-foreground font-mono">
+                        {art.publishedAt ? new Date(art.publishedAt).toLocaleDateString() : 'Draft'}
+                      </td>
+                      <td className="py-3 px-4 text-right">
+                        <div className="flex items-center justify-end gap-2">
+                          {art.status === 'PUBLISHED' && (
+                            <Link
+                              href={`/blog/${art.slug}`}
+                              target="_blank"
+                              className="rounded-md border border-border p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+                              title="View on Storefront"
+                            >
+                              <ExternalLink className="h-3.5 w-3.5" />
+                            </Link>
                           )}
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
+                          <Link
+                            href={`/admin/blog/${art.id}`}
+                            className="rounded-md border border-border p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+                            aria-label={`Edit ${art.title}`}
+                          >
+                            <Edit2 className="h-3.5 w-3.5" />
+                          </Link>
+                          <button
+                            onClick={() => handleDelete(art.id, art.title)}
+                            disabled={deletingId === art.id}
+                            className="rounded-md border border-border p-1.5 text-muted-foreground hover:bg-destructive/10 hover:text-destructive hover:border-destructive/30 transition-colors disabled:opacity-50"
+                            aria-label={`Delete ${art.title}`}
+                          >
+                            {deletingId === art.id ? (
+                              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                            ) : (
+                              <Trash2 className="h-3.5 w-3.5" />
+                            )}
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
+        ) : (
+          <div className="py-16 text-center space-y-3">
+            <BookOpen className="mx-auto h-8 w-8 text-muted-foreground/60" />
+            <p className="text-xs text-muted-foreground">No articles published yet.</p>
+            <Link
+              href="/admin/blog/new"
+              className="inline-block rounded-lg bg-primary px-3.5 py-1.5 text-xs font-medium text-primary-foreground shadow"
+            >
+              Create First Article
+            </Link>
+          </div>
         )}
-      </main>
+      </div>
+
+      {/* Floating Bulk Action Bar */}
+      <BulkActionBar
+        selectedCount={selectedIds.length}
+        totalCount={articles.length}
+        onClearSelection={() => setSelectedIds([])}
+        onSelectAll={() => setSelectedIds(articles.map((a) => a.id))}
+        isAllSelected={selectedIds.length === articles.length}
+        isLoading={isBulkLoading}
+        actions={bulkActions}
+        onExecuteAction={handleExecuteBulkAction}
+      />
     </div>
   );
 }

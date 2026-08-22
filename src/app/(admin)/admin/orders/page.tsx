@@ -1,9 +1,11 @@
 'use client';
-import { formatCurrency } from '@/lib/format';
 
+import { formatCurrency } from '@/lib/format';
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { Search, Eye, Filter, RefreshCw, AlertCircle, ShoppingBag, Clock, CheckCircle, XCircle } from 'lucide-react';
+import { Search, Eye, Filter, RefreshCw, AlertCircle, ShoppingBag, CheckCircle, XCircle, Trash2, CheckSquare } from 'lucide-react';
+import { BulkActionBar, BulkActionOption } from '@/components/admin/BulkActionBar';
+import { safeFetch } from '@/lib/apiClient';
 
 export const dynamic = 'force-dynamic';
 
@@ -14,6 +16,11 @@ export default function AdminOrdersPage() {
   const [fulfillmentFilter, setFulfillmentFilter] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  // Bulk state
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [isBulkLoading, setIsBulkLoading] = useState(false);
+  const [sendNotification, setSendNotification] = useState(true);
 
   const fetchOrders = async () => {
     setLoading(true);
@@ -30,6 +37,7 @@ export default function AdminOrdersPage() {
       }
       const data = await res.json();
       setOrders(data.orders || []);
+      setSelectedIds([]);
     } catch (err: any) {
       setError(err.message || 'Error loading orders');
     } finally {
@@ -45,6 +53,99 @@ export default function AdminOrdersPage() {
     e.preventDefault();
     fetchOrders();
   };
+
+  // Toggle single item
+  const toggleSelect = (id: string) => {
+    setSelectedIds((prev) =>
+      prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]
+    );
+  };
+
+  // Toggle all visible
+  const toggleSelectAllVisible = () => {
+    if (selectedIds.length === orders.length) {
+      setSelectedIds([]);
+    } else {
+      setSelectedIds(orders.map((o) => o.id));
+    }
+  };
+
+  const handleExecuteBulkAction = async (actionKey: string) => {
+    if (selectedIds.length === 0) return;
+    setIsBulkLoading(true);
+    setError(null);
+
+    let payload: any = { ids: selectedIds };
+
+    if (actionKey === 'FULFILL') {
+      payload = {
+        ids: selectedIds,
+        action: 'UPDATE_FULFILLMENT',
+        fulfillmentStatus: 'FULFILLED',
+        sendNotification,
+      };
+    } else if (actionKey === 'UNFULFILL') {
+      payload = {
+        ids: selectedIds,
+        action: 'UPDATE_FULFILLMENT',
+        fulfillmentStatus: 'UNFULFILLED',
+        sendNotification: false,
+      };
+    } else if (actionKey === 'PAID') {
+      payload = {
+        ids: selectedIds,
+        action: 'UPDATE_PAYMENT',
+        paymentStatus: 'PAID',
+      };
+    } else if (actionKey === 'CANCEL') {
+      payload = {
+        ids: selectedIds,
+        action: 'CANCEL',
+      };
+    } else if (actionKey === 'DELETE') {
+      payload = {
+        ids: selectedIds,
+        action: 'DELETE',
+      };
+    }
+
+    try {
+      const { ok, error: reqErr } = await safeFetch('/api/admin/orders/bulk', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+
+      if (!ok) {
+        throw new Error(reqErr || 'Failed to perform bulk action');
+      }
+
+      await fetchOrders();
+    } catch (err: any) {
+      setError(err.message || 'Bulk operation failed');
+    } finally {
+      setIsBulkLoading(false);
+    }
+  };
+
+  const bulkActions: BulkActionOption[] = [
+    { label: 'Mark Fulfilled', actionKey: 'FULFILL', variant: 'success', icon: CheckCircle },
+    { label: 'Mark Unfulfilled', actionKey: 'UNFULFILL', variant: 'outline' },
+    { label: 'Mark Paid', actionKey: 'PAID', variant: 'outline' },
+    {
+      label: 'Cancel Orders',
+      actionKey: 'CANCEL',
+      variant: 'destructive',
+      confirmMessage: `Are you sure you want to cancel ${selectedIds.length} selected orders?`,
+    },
+    {
+      label: 'Delete',
+      actionKey: 'DELETE',
+      variant: 'destructive',
+      icon: Trash2,
+      confirmMessage: `Are you sure you want to permanently delete ${selectedIds.length} selected orders?`,
+    },
+  ];
 
   return (
     <div className="space-y-6">
@@ -118,6 +219,15 @@ export default function AdminOrdersPage() {
           <table className="w-full text-left text-xs">
             <thead className="bg-muted/40 border-b border-border text-muted-foreground uppercase text-[10px] tracking-wider">
               <tr>
+                <th className="p-3.5 w-10">
+                  <input
+                    type="checkbox"
+                    checked={orders.length > 0 && selectedIds.length === orders.length}
+                    onChange={toggleSelectAllVisible}
+                    aria-label="Select all visible orders"
+                    className="h-3.5 w-3.5 rounded border-border text-primary focus:ring-primary/20"
+                  />
+                </th>
                 <th className="p-3.5 font-bold">Order #</th>
                 <th className="p-3.5 font-bold">Date</th>
                 <th className="p-3.5 font-bold">Customer</th>
@@ -131,15 +241,28 @@ export default function AdminOrdersPage() {
             <tbody className="divide-y divide-border">
               {loading ? (
                 <tr>
-                  <td colSpan={8} className="p-12 text-center text-muted-foreground">
+                  <td colSpan={9} className="p-12 text-center text-muted-foreground">
                     Loading orders...
                   </td>
                 </tr>
               ) : orders.length > 0 ? (
                 orders.map((order) => {
+                  const isSelected = selectedIds.includes(order.id);
                   const isCancelled = Boolean(order.cancelledAt);
                   return (
-                    <tr key={order.id} className="hover:bg-muted/20 transition-colors">
+                    <tr
+                      key={order.id}
+                      className={`hover:bg-muted/20 transition-colors ${isSelected ? 'bg-primary/5' : ''}`}
+                    >
+                      <td className="p-3.5">
+                        <input
+                          type="checkbox"
+                          checked={isSelected}
+                          onChange={() => toggleSelect(order.id)}
+                          aria-label={`Select order ${order.orderNumber}`}
+                          className="h-3.5 w-3.5 rounded border-border text-primary focus:ring-primary/20"
+                        />
+                      </td>
                       <td className="p-3.5 font-mono font-bold text-foreground">
                         <Link href={`/admin/orders/${order.id}`} className="hover:text-primary hover:underline">
                           {order.orderNumber}
@@ -205,7 +328,7 @@ export default function AdminOrdersPage() {
                 })
               ) : (
                 <tr>
-                  <td colSpan={8} className="p-12 text-center space-y-2">
+                  <td colSpan={9} className="p-12 text-center space-y-2">
                     <ShoppingBag className="mx-auto h-8 w-8 text-muted-foreground" />
                     <p className="text-sm font-semibold text-foreground">No orders found</p>
                     <p className="text-xs text-muted-foreground">Customer orders will appear here once placed.</p>
@@ -216,6 +339,29 @@ export default function AdminOrdersPage() {
           </table>
         </div>
       </div>
+
+      {/* Floating Bulk Action Bar */}
+      <BulkActionBar
+        selectedCount={selectedIds.length}
+        totalCount={orders.length}
+        onClearSelection={() => setSelectedIds([])}
+        onSelectAll={() => setSelectedIds(orders.map((o) => o.id))}
+        isAllSelected={selectedIds.length === orders.length}
+        isLoading={isBulkLoading}
+        actions={bulkActions}
+        onExecuteAction={handleExecuteBulkAction}
+        extraControls={
+          <label className="flex items-center gap-1.5 text-xs text-muted-foreground cursor-pointer select-none mr-2">
+            <input
+              type="checkbox"
+              checked={sendNotification}
+              onChange={(e) => setSendNotification(e.target.checked)}
+              className="h-3.5 w-3.5 rounded border-border text-primary focus:ring-primary/20"
+            />
+            <span>Email customer on fulfill</span>
+          </label>
+        }
+      />
     </div>
   );
 }

@@ -13,8 +13,11 @@ import {
   Loader2,
   AlertCircle,
   CheckCircle,
-  ArrowLeft,
+  ToggleLeft,
+  ToggleRight,
 } from 'lucide-react';
+import { BulkActionBar, BulkActionOption } from '@/components/admin/BulkActionBar';
+import { safeFetch } from '@/lib/apiClient';
 
 interface CategoryItem {
   id: string;
@@ -39,6 +42,10 @@ export default function AdminCategoriesPage() {
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [notification, setNotification] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
+  // Bulk state
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [isBulkLoading, setIsBulkLoading] = useState(false);
+
   const fetchCategories = async () => {
     setLoading(true);
     try {
@@ -46,6 +53,7 @@ export default function AdminCategoriesPage() {
       if (!res.ok) throw new Error('Failed to load categories');
       const data = await res.json();
       setCategories(data.categories || []);
+      setSelectedIds([]);
     } catch (err: any) {
       setNotification({ type: 'error', text: err.message || 'Error loading categories' });
     } finally {
@@ -83,206 +91,249 @@ export default function AdminCategoriesPage() {
     c.slug.toLowerCase().includes(search.toLowerCase())
   );
 
+  const toggleSelect = (id: string) => {
+    setSelectedIds((prev) =>
+      prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]
+    );
+  };
+
+  const toggleSelectAllVisible = () => {
+    if (selectedIds.length === filteredCategories.length) {
+      setSelectedIds([]);
+    } else {
+      setSelectedIds(filteredCategories.map((c) => c.id));
+    }
+  };
+
+  const handleExecuteBulkAction = async (actionKey: string) => {
+    if (selectedIds.length === 0) return;
+    setIsBulkLoading(true);
+
+    try {
+      const { ok, error } = await safeFetch('/api/admin/categories/bulk', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ids: selectedIds,
+          action: actionKey,
+        }),
+      });
+
+      if (!ok) {
+        setNotification({ type: 'error', text: error || 'Bulk action failed' });
+      } else {
+        setNotification({ type: 'success', text: `Bulk action completed successfully.` });
+        await fetchCategories();
+      }
+    } catch (err: any) {
+      setNotification({ type: 'error', text: err?.message || 'Bulk action failed' });
+    } finally {
+      setIsBulkLoading(false);
+    }
+  };
+
+  const bulkActions: BulkActionOption[] = [
+    { label: 'Activate', actionKey: 'ACTIVATE', variant: 'success' },
+    { label: 'Deactivate', actionKey: 'DEACTIVATE', variant: 'outline' },
+    {
+      label: 'Delete Selected',
+      actionKey: 'DELETE',
+      variant: 'destructive',
+      icon: Trash2,
+      confirmMessage: `Are you sure you want to delete ${selectedIds.length} selected categories?`,
+    },
+  ];
+
   return (
-    <div className="min-h-screen bg-background text-foreground">
-      {/* Admin Top Header */}
-      <header className="sticky top-0 z-30 border-b border-border bg-card/95 backdrop-blur">
-        <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center gap-6">
-            <Link
-              href="/admin"
-              className="flex items-center gap-2 text-xs font-semibold text-muted-foreground hover:text-foreground transition-colors"
-            >
-              <ArrowLeft className="h-4 w-4" />
-              <span>Admin Hub</span>
-            </Link>
-            <div className="h-4 w-px bg-border hidden sm:block" />
-            <div>
-              <h1 className="text-base font-bold leading-tight">Categories</h1>
-              <p className="text-xs text-muted-foreground">Manage storefront taxonomy and navigation</p>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-3">
-            <Link
-              href="/admin/collections"
-              className="rounded-lg border border-border px-3 py-1.5 text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
-            >
-              Collections
-            </Link>
-            <Link
-              href="/admin/categories/new"
-              className="inline-flex items-center gap-1.5 rounded-xl bg-primary px-4 py-2 text-xs font-bold text-primary-foreground shadow hover:bg-primary-hover transition-colors"
-            >
-              <Plus className="h-4 w-4" />
-              <span>New Category</span>
-            </Link>
-          </div>
-        </div>
-      </header>
-
-      {/* Main Content Area */}
-      <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8 space-y-6">
-        {notification && (
-          <div
-            className={`rounded-xl border p-4 text-xs font-medium flex items-center justify-between ${
-              notification.type === 'success'
-                ? 'border-success/30 bg-success/10 text-success'
-                : 'border-destructive/30 bg-destructive/10 text-destructive'
-            }`}
-          >
-            <span>{notification.text}</span>
-            <button onClick={() => setNotification(null)} className="text-xs font-bold hover:underline">
-              Dismiss
-            </button>
-          </div>
-        )}
-
-        {/* Toolbar */}
-        <div className="flex items-center justify-between gap-4 border-b border-border pb-4">
-          <div className="relative flex-1 max-w-sm">
-            <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
-            <input
-              type="text"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search category name or slug..."
-              className="w-full rounded-lg border border-input bg-card pl-9 pr-3 py-2 text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20"
-            />
-          </div>
-
-          <div className="text-xs text-muted-foreground font-medium">
-            {filteredCategories.length} {filteredCategories.length === 1 ? 'Category' : 'Categories'}
-          </div>
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-border pb-4">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight text-foreground">Categories Management</h1>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            Organize products into hierarchical storefront taxonomy.
+          </p>
         </div>
 
-        {/* Categories Table */}
+        <Link
+          href="/admin/categories/new"
+          className="flex items-center gap-1.5 rounded-lg bg-primary px-3.5 py-1.5 text-xs font-semibold text-primary-foreground hover:bg-primary-hover shadow-sm transition-colors w-fit"
+        >
+          <Plus className="h-4 w-4" />
+          <span>New Category</span>
+        </Link>
+      </div>
+
+      {notification && (
+        <div
+          className={`flex items-center gap-2 rounded-xl p-4 text-xs font-medium ${
+            notification.type === 'success'
+              ? 'border border-success/30 bg-success/10 text-success'
+              : 'border border-destructive/30 bg-destructive/10 text-destructive'
+          }`}
+        >
+          {notification.type === 'success' ? <CheckCircle className="h-4 w-4" /> : <AlertCircle className="h-4 w-4" />}
+          <span>{notification.text}</span>
+        </div>
+      )}
+
+      {/* Filter and Search */}
+      <div className="flex flex-col sm:flex-row items-center justify-between gap-3 bg-card p-4 rounded-xl border border-border shadow-sm">
+        <div className="relative flex-1 w-full">
+          <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
+          <input
+            type="text"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search categories by name or slug..."
+            className="w-full rounded-lg border border-input bg-background py-2 pl-9 pr-3 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/20"
+          />
+        </div>
+      </div>
+
+      {/* Categories Table */}
+      <div className="overflow-hidden rounded-xl border border-border bg-card shadow-sm">
         {loading ? (
-          <div className="p-16 text-center text-xs text-muted-foreground space-y-2">
-            <Loader2 className="h-6 w-6 animate-spin mx-auto text-primary" />
-            <p>Loading categories...</p>
+          <div className="py-16 text-center text-xs text-muted-foreground animate-pulse flex items-center justify-center gap-2">
+            <Loader2 className="h-4 w-4 animate-spin text-primary" />
+            <span>Loading categories...</span>
           </div>
-        ) : filteredCategories.length === 0 ? (
-          <div className="rounded-2xl border border-dashed border-border bg-card p-16 text-center space-y-3">
-            <FolderTree className="h-8 w-8 text-muted-foreground mx-auto" />
-            <h2 className="text-sm font-bold text-foreground">No categories found</h2>
-            <p className="text-xs text-muted-foreground max-w-sm mx-auto">
-              Get started by creating your first product category for catalog organization and storefront navigation.
-            </p>
-            <Link
-              href="/admin/categories/new"
-              className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-4 py-2 text-xs font-bold text-primary-foreground shadow hover:bg-primary-hover"
-            >
-              <Plus className="h-4 w-4" />
-              <span>Create Category</span>
-            </Link>
-          </div>
-        ) : (
-          <div className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
+        ) : filteredCategories.length > 0 ? (
+          <div className="overflow-x-auto">
             <table className="w-full text-left text-xs">
-              <thead className="border-b border-border bg-muted/40 text-[11px] font-bold text-muted-foreground uppercase tracking-wider">
+              <thead className="border-b border-border bg-muted/40 text-muted-foreground uppercase tracking-wider font-semibold text-[11px]">
                 <tr>
-                  <th className="px-5 py-3">Category</th>
-                  <th className="px-5 py-3">Slug</th>
-                  <th className="px-5 py-3 text-center">Products</th>
-                  <th className="px-5 py-3 text-center">Sort Order</th>
-                  <th className="px-5 py-3 text-center">Status</th>
-                  <th className="px-5 py-3 text-right">Actions</th>
+                  <th className="py-3 px-4 w-10">
+                    <input
+                      type="checkbox"
+                      checked={filteredCategories.length > 0 && selectedIds.length === filteredCategories.length}
+                      onChange={toggleSelectAllVisible}
+                      aria-label="Select all categories"
+                      className="h-3.5 w-3.5 rounded border-border text-primary focus:ring-primary/20"
+                    />
+                  </th>
+                  <th className="py-3 px-4">Category</th>
+                  <th className="py-3 px-4">Status</th>
+                  <th className="py-3 px-4 text-center">Products</th>
+                  <th className="py-3 px-4 text-center">Sort Order</th>
+                  <th className="py-3 px-4 text-right">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
-                {filteredCategories.map((cat) => (
-                  <tr key={cat.id} className="hover:bg-muted/30 transition-colors">
-                    <td className="px-5 py-3.5">
-                      <div className="flex items-center gap-3">
-                        {cat.imageUrl ? (
-                          <div className="relative h-10 w-10 overflow-hidden rounded-lg border border-border bg-muted shrink-0">
-                            <Image
-                              src={cat.imageUrl}
-                              alt={cat.imageAlt || cat.name}
-                              fill
-                              className="object-cover"
-                            />
+                {filteredCategories.map((c) => {
+                  const isSelected = selectedIds.includes(c.id);
+                  return (
+                    <tr
+                      key={c.id}
+                      className={`hover:bg-muted/20 transition-colors ${isSelected ? 'bg-primary/5' : ''}`}
+                    >
+                      <td className="py-3 px-4">
+                        <input
+                          type="checkbox"
+                          checked={isSelected}
+                          onChange={() => toggleSelect(c.id)}
+                          aria-label={`Select category ${c.name}`}
+                          className="h-3.5 w-3.5 rounded border-border text-primary focus:ring-primary/20"
+                        />
+                      </td>
+                      <td className="py-3 px-4">
+                        <div className="flex items-center gap-3">
+                          <div className="relative h-10 w-10 shrink-0 overflow-hidden rounded-lg border border-border bg-muted/20 flex items-center justify-center">
+                            {c.imageUrl ? (
+                              <Image
+                                src={c.imageUrl}
+                                alt={c.imageAlt || c.name}
+                                fill
+                                sizes="40px"
+                                className="object-cover object-center"
+                              />
+                            ) : (
+                              <FolderTree className="h-4 w-4 text-muted-foreground" />
+                            )}
                           </div>
-                        ) : (
-                          <div className="flex h-10 w-10 items-center justify-center rounded-lg border border-border bg-muted text-muted-foreground font-bold shrink-0">
-                            <FolderTree className="h-4 w-4" />
+                          <div>
+                            <p className="font-semibold text-foreground text-xs line-clamp-1">{c.name}</p>
+                            <p className="text-[11px] text-muted-foreground">slug: {c.slug}</p>
                           </div>
-                        )}
-                        <div>
-                          <span className="font-bold text-foreground block">{cat.name}</span>
-                          {cat.description && (
-                            <span className="text-[11px] text-muted-foreground line-clamp-1">
-                              {cat.description}
-                            </span>
-                          )}
                         </div>
-                      </div>
-                    </td>
-
-                    <td className="px-5 py-3.5 font-mono text-[11px] text-muted-foreground">
-                      /categories/{cat.slug}
-                    </td>
-
-                    <td className="px-5 py-3.5 text-center font-semibold text-foreground">
-                      {cat._count?.products || 0}
-                    </td>
-
-                    <td className="px-5 py-3.5 text-center text-muted-foreground font-medium">
-                      {cat.sortOrder}
-                    </td>
-
-                    <td className="px-5 py-3.5 text-center">
-                      {cat.isActive ? (
-                        <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-2.5 py-0.5 text-[10px] font-bold text-emerald-700">
-                          Active
+                      </td>
+                      <td className="py-3 px-4">
+                        <span
+                          className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold uppercase ${
+                            c.isActive ? 'bg-success/10 text-success' : 'bg-muted text-muted-foreground'
+                          }`}
+                        >
+                          {c.isActive ? 'Active' : 'Inactive'}
                         </span>
-                      ) : (
-                        <span className="inline-flex items-center gap-1 rounded-full bg-muted px-2.5 py-0.5 text-[10px] font-medium text-muted-foreground">
-                          Hidden
-                        </span>
-                      )}
-                    </td>
-
-                    <td className="px-5 py-3.5 text-right">
-                      <div className="flex items-center justify-end gap-2">
-                        <Link
-                          href={`/categories/${cat.slug}`}
-                          target="_blank"
-                          className="rounded-lg p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
-                          title="View on storefront"
-                        >
-                          <ExternalLink className="h-3.5 w-3.5" />
-                        </Link>
-                        <Link
-                          href={`/admin/categories/${cat.id}`}
-                          className="rounded-lg p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
-                          title="Edit category"
-                        >
-                          <Edit2 className="h-3.5 w-3.5" />
-                        </Link>
-                        <button
-                          type="button"
-                          disabled={deletingId === cat.id}
-                          onClick={() => handleDelete(cat.id, cat.name)}
-                          className="rounded-lg p-1.5 text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors disabled:opacity-50"
-                          title="Delete category"
-                        >
-                          {deletingId === cat.id ? (
-                            <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                          ) : (
-                            <Trash2 className="h-3.5 w-3.5" />
-                          )}
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
+                      </td>
+                      <td className="py-3 px-4 text-center font-medium text-muted-foreground">
+                        {c._count?.products || 0}
+                      </td>
+                      <td className="py-3 px-4 text-center text-muted-foreground font-mono">
+                        {c.sortOrder}
+                      </td>
+                      <td className="py-3 px-4 text-right">
+                        <div className="flex items-center justify-end gap-2">
+                          <Link
+                            href={`/categories/${c.slug}`}
+                            target="_blank"
+                            className="rounded-md border border-border p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+                            title="View on Storefront"
+                          >
+                            <ExternalLink className="h-3.5 w-3.5" />
+                          </Link>
+                          <Link
+                            href={`/admin/categories/${c.id}`}
+                            className="rounded-md border border-border p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+                            aria-label={`Edit ${c.name}`}
+                          >
+                            <Edit2 className="h-3.5 w-3.5" />
+                          </Link>
+                          <button
+                            onClick={() => handleDelete(c.id, c.name)}
+                            disabled={deletingId === c.id}
+                            className="rounded-md border border-border p-1.5 text-muted-foreground hover:bg-destructive/10 hover:text-destructive hover:border-destructive/30 transition-colors disabled:opacity-50"
+                            aria-label={`Delete ${c.name}`}
+                          >
+                            {deletingId === c.id ? (
+                              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                            ) : (
+                              <Trash2 className="h-3.5 w-3.5" />
+                            )}
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
+        ) : (
+          <div className="py-16 text-center space-y-3">
+            <FolderTree className="mx-auto h-8 w-8 text-muted-foreground/60" />
+            <p className="text-xs text-muted-foreground">No categories found.</p>
+            <Link
+              href="/admin/categories/new"
+              className="inline-block rounded-lg bg-primary px-3.5 py-1.5 text-xs font-medium text-primary-foreground shadow"
+            >
+              Create Category
+            </Link>
+          </div>
         )}
-      </main>
+      </div>
+
+      {/* Floating Bulk Action Bar */}
+      <BulkActionBar
+        selectedCount={selectedIds.length}
+        totalCount={filteredCategories.length}
+        onClearSelection={() => setSelectedIds([])}
+        onSelectAll={() => setSelectedIds(filteredCategories.map((c) => c.id))}
+        isAllSelected={selectedIds.length === filteredCategories.length}
+        isLoading={isBulkLoading}
+        actions={bulkActions}
+        onExecuteAction={handleExecuteBulkAction}
+      />
     </div>
   );
 }

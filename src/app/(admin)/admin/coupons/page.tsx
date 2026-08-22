@@ -13,11 +13,12 @@ import {
   Loader2,
   Percent,
   Coins,
-  ArrowLeft,
   Calendar,
   AlertCircle,
   CheckCircle,
 } from 'lucide-react';
+import { BulkActionBar, BulkActionOption } from '@/components/admin/BulkActionBar';
+import { safeFetch } from '@/lib/apiClient';
 
 interface CouponItem {
   id: string;
@@ -46,6 +47,10 @@ export default function AdminCouponsPage() {
   const [togglingId, setTogglingId] = useState<string | null>(null);
   const [notification, setNotification] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
+  // Bulk state
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [isBulkLoading, setIsBulkLoading] = useState(false);
+
   const fetchCoupons = async () => {
     setLoading(true);
     try {
@@ -57,6 +62,7 @@ export default function AdminCouponsPage() {
       if (!res.ok) throw new Error('Failed to load coupons');
       const data = await res.json();
       setCoupons(data.coupons || []);
+      setSelectedIds([]);
     } catch (err: any) {
       setNotification({ type: 'error', text: err.message || 'Error loading coupons' });
     } finally {
@@ -105,7 +111,7 @@ export default function AdminCouponsPage() {
     try {
       const res = await fetch(`/api/admin/coupons/${coupon.id}`, { method: 'DELETE' });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Failed to remove coupon');
+      if (!res.ok) throw new Error(data.error || 'Failed to delete coupon');
 
       setNotification({ type: 'success', text: data.message });
       fetchCoupons();
@@ -116,77 +122,115 @@ export default function AdminCouponsPage() {
     }
   };
 
+  const toggleSelect = (id: string) => {
+    setSelectedIds((prev) =>
+      prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]
+    );
+  };
+
+  const toggleSelectAllVisible = () => {
+    if (selectedIds.length === coupons.length) {
+      setSelectedIds([]);
+    } else {
+      setSelectedIds(coupons.map((c) => c.id));
+    }
+  };
+
+  const handleExecuteBulkAction = async (actionKey: string) => {
+    if (selectedIds.length === 0) return;
+    setIsBulkLoading(true);
+
+    try {
+      const { ok, error } = await safeFetch('/api/admin/coupons/bulk', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ids: selectedIds,
+          action: actionKey,
+        }),
+      });
+
+      if (!ok) {
+        setNotification({ type: 'error', text: error || 'Bulk action failed' });
+      } else {
+        setNotification({ type: 'success', text: `Bulk action completed successfully.` });
+        await fetchCoupons();
+      }
+    } catch (err: any) {
+      setNotification({ type: 'error', text: err?.message || 'Bulk action failed' });
+    } finally {
+      setIsBulkLoading(false);
+    }
+  };
+
+  const bulkActions: BulkActionOption[] = [
+    { label: 'Activate', actionKey: 'ACTIVATE', variant: 'success' },
+    { label: 'Deactivate', actionKey: 'DEACTIVATE', variant: 'outline' },
+    {
+      label: 'Delete Selected',
+      actionKey: 'DELETE',
+      variant: 'destructive',
+      icon: Trash2,
+      confirmMessage: `Process delete for ${selectedIds.length} selected coupons? (Used coupons will be safely deactivated).`,
+    },
+  ];
+
   return (
-    <div className="min-h-screen bg-background text-foreground">
-      {/* Top Header */}
-      <header className="sticky top-0 z-30 border-b border-border bg-card/95 backdrop-blur">
-        <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center gap-6">
-            <Link
-              href="/admin"
-              className="flex items-center gap-2 text-xs font-semibold text-muted-foreground hover:text-foreground transition-colors"
-            >
-              <ArrowLeft className="h-4 w-4" />
-              <span>Admin Hub</span>
-            </Link>
-            <div className="h-4 w-px bg-border hidden sm:block" />
-            <div>
-              <h1 className="text-base font-bold leading-tight">Coupons & Discounts</h1>
-              <p className="text-xs text-muted-foreground">Manage promotional codes, percentage discounts, and fixed vouchers</p>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-3">
-            <Link
-              href="/admin/coupons/new"
-              className="inline-flex items-center gap-1.5 rounded-xl bg-primary px-4 py-2 text-xs font-bold text-primary-foreground shadow hover:bg-primary-hover transition-colors"
-            >
-              <Plus className="h-4 w-4" />
-              <span>Create Coupon</span>
-            </Link>
-          </div>
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-border pb-4">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight text-foreground">Discount Coupons</h1>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            Create and track promotional coupon codes, percentage/fixed deductions, and usage rules.
+          </p>
         </div>
-      </header>
 
-      {/* Main Content */}
-      <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8 space-y-6">
-        {notification && (
-          <div
-            className={`rounded-xl border p-4 text-xs font-medium flex items-center justify-between ${
-              notification.type === 'success'
-                ? 'border-success/30 bg-success/10 text-success'
-                : 'border-destructive/30 bg-destructive/10 text-destructive'
-            }`}
-          >
-            <span>{notification.text}</span>
-            <button onClick={() => setNotification(null)} className="text-xs font-bold hover:underline">
-              Dismiss
-            </button>
-          </div>
-        )}
+        <Link
+          href="/admin/coupons/new"
+          className="flex items-center gap-1.5 rounded-lg bg-primary px-3.5 py-1.5 text-xs font-semibold text-primary-foreground hover:bg-primary-hover shadow-sm transition-colors w-fit"
+        >
+          <Plus className="h-4 w-4" />
+          <span>New Coupon</span>
+        </Link>
+      </div>
 
-        {/* Toolbar & Filter Tabs */}
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-border pb-4">
-          <form onSubmit={handleSearchSubmit} className="relative flex-1 max-w-sm w-full">
-            <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
-            <input
-              type="text"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search coupon code or description..."
-              className="w-full rounded-lg border border-input bg-card pl-9 pr-3 py-2 text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20"
-            />
-          </form>
+      {notification && (
+        <div
+          className={`flex items-center gap-2 rounded-xl p-4 text-xs font-medium ${
+            notification.type === 'success'
+              ? 'border border-success/30 bg-success/10 text-success'
+              : 'border border-destructive/30 bg-destructive/10 text-destructive'
+          }`}
+        >
+          {notification.type === 'success' ? <CheckCircle className="h-4 w-4" /> : <AlertCircle className="h-4 w-4" />}
+          <span>{notification.text}</span>
+        </div>
+      )}
 
-          {/* Status Tabs */}
-          <div className="flex items-center gap-1 rounded-xl border border-border bg-card p-1 text-xs">
-            {(['all', 'active', 'expired', 'inactive'] as const).map((tab) => (
+      {/* Filters and Search Bar */}
+      <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3 bg-card p-4 rounded-xl border border-border shadow-sm">
+        <form onSubmit={handleSearchSubmit} className="relative flex-1 max-w-md">
+          <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
+          <input
+            type="text"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search code or description..."
+            className="w-full rounded-lg border border-input bg-background py-2 pl-9 pr-3 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/20"
+          />
+        </form>
+
+        <div className="flex items-center gap-2">
+          <div className="flex rounded-lg border border-border bg-muted/40 p-1 text-xs">
+            {(['all', 'active', 'inactive', 'expired'] as const).map((tab) => (
               <button
                 key={tab}
+                type="button"
                 onClick={() => setStatusFilter(tab)}
-                className={`rounded-lg px-3 py-1.5 font-semibold capitalize transition-colors ${
+                className={`rounded-md px-3 py-1 font-medium capitalize transition-colors ${
                   statusFilter === tab
-                    ? 'bg-primary text-primary-foreground shadow-sm'
+                    ? 'bg-card text-foreground shadow-sm'
                     : 'text-muted-foreground hover:text-foreground'
                 }`}
               >
@@ -195,169 +239,140 @@ export default function AdminCouponsPage() {
             ))}
           </div>
         </div>
+      </div>
 
-        {/* Coupons Table */}
+      {/* Coupons Table */}
+      <div className="overflow-hidden rounded-xl border border-border bg-card shadow-sm">
         {loading ? (
-          <div className="p-16 text-center text-xs text-muted-foreground space-y-2">
-            <Loader2 className="h-6 w-6 animate-spin mx-auto text-primary" />
-            <p>Loading coupons...</p>
+          <div className="py-16 text-center text-xs text-muted-foreground animate-pulse flex items-center justify-center gap-2">
+            <Loader2 className="h-4 w-4 animate-spin text-primary" />
+            <span>Loading coupons...</span>
           </div>
-        ) : coupons.length === 0 ? (
-          <div className="rounded-2xl border border-dashed border-border bg-card p-16 text-center space-y-3">
-            <Tag className="h-8 w-8 text-muted-foreground mx-auto" />
-            <h2 className="text-sm font-bold text-foreground">No coupons found</h2>
-            <p className="text-xs text-muted-foreground max-w-sm mx-auto">
-              Create your first promotional discount coupon to drive campaigns and customer loyalty.
-            </p>
-            <Link
-              href="/admin/coupons/new"
-              className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-4 py-2 text-xs font-bold text-primary-foreground shadow hover:bg-primary-hover"
-            >
-              <Plus className="h-4 w-4" />
-              <span>Create Coupon</span>
-            </Link>
-          </div>
-        ) : (
-          <div className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
+        ) : coupons.length > 0 ? (
+          <div className="overflow-x-auto">
             <table className="w-full text-left text-xs">
-              <thead className="border-b border-border bg-muted/40 text-[11px] font-bold text-muted-foreground uppercase tracking-wider">
+              <thead className="border-b border-border bg-muted/40 text-muted-foreground uppercase tracking-wider font-semibold text-[11px]">
                 <tr>
-                  <th className="px-5 py-3">Code & Campaign</th>
-                  <th className="px-5 py-3">Discount</th>
-                  <th className="px-5 py-3">Min Order</th>
-                  <th className="px-5 py-3 text-center">Usage</th>
-                  <th className="px-5 py-3">Validity</th>
-                  <th className="px-5 py-3 text-center">Status</th>
-                  <th className="px-5 py-3 text-right">Actions</th>
+                  <th className="py-3 px-4 w-10">
+                    <input
+                      type="checkbox"
+                      checked={coupons.length > 0 && selectedIds.length === coupons.length}
+                      onChange={toggleSelectAllVisible}
+                      aria-label="Select all coupons"
+                      className="h-3.5 w-3.5 rounded border-border text-primary focus:ring-primary/20"
+                    />
+                  </th>
+                  <th className="py-3 px-4">Coupon Code</th>
+                  <th className="py-3 px-4">Discount</th>
+                  <th className="py-3 px-4">Status</th>
+                  <th className="py-3 px-4 text-center">Usage</th>
+                  <th className="py-3 px-4">Validity</th>
+                  <th className="py-3 px-4 text-right">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
-                {coupons.map((coupon) => (
-                  <tr key={coupon.id} className="hover:bg-muted/30 transition-colors">
-                    {/* Code & Description */}
-                    <td className="px-5 py-3.5">
-                      <div className="space-y-0.5">
-                        <span className="font-mono text-xs font-bold tracking-wider text-foreground block">
-                          {coupon.code}
-                        </span>
-                        {coupon.description && (
-                          <span className="text-[11px] text-muted-foreground line-clamp-1">
-                            {coupon.description}
+                {coupons.map((c) => {
+                  const isSelected = selectedIds.includes(c.id);
+                  return (
+                    <tr
+                      key={c.id}
+                      className={`hover:bg-muted/20 transition-colors ${isSelected ? 'bg-primary/5' : ''}`}
+                    >
+                      <td className="py-3 px-4">
+                        <input
+                          type="checkbox"
+                          checked={isSelected}
+                          onChange={() => toggleSelect(c.id)}
+                          aria-label={`Select coupon ${c.code}`}
+                          className="h-3.5 w-3.5 rounded border-border text-primary focus:ring-primary/20"
+                        />
+                      </td>
+                      <td className="py-3 px-4">
+                        <div className="flex items-center gap-2">
+                          <span className="font-mono font-bold text-foreground bg-muted/50 px-2 py-0.5 rounded border border-border">
+                            {c.code}
                           </span>
+                        </div>
+                        {c.description && (
+                          <p className="text-[11px] text-muted-foreground line-clamp-1 mt-0.5">{c.description}</p>
                         )}
-                      </div>
-                    </td>
-
-                    {/* Discount Type & Value */}
-                    <td className="px-5 py-3.5">
-                      {coupon.discountType === DiscountType.PERCENTAGE ? (
-                        <div className="flex items-center gap-1.5 font-bold text-primary">
-                          <Percent className="h-3.5 w-3.5" />
-                          <span>{coupon.discountValue}% Off</span>
-                        </div>
-                      ) : (
-                        <div className="flex items-center gap-1.5 font-bold text-emerald-700">
-                          <Coins className="h-3.5 w-3.5" />
-                          <span>{formatCurrency(coupon.discountValue, 'PKR')} Off</span>
-                        </div>
-                      )}
-                    </td>
-
-                    {/* Min Order Amount */}
-                    <td className="px-5 py-3.5 text-muted-foreground">
-                      {coupon.minOrderAmount
-                        ? formatCurrency(coupon.minOrderAmount, 'PKR')
-                        : 'None'}
-                    </td>
-
-                    {/* Usage Meter */}
-                    <td className="px-5 py-3.5 text-center">
-                      <div className="inline-block space-y-1">
-                        <span className="font-semibold text-foreground">
-                          {coupon.usedCount} {coupon.maxUses ? `/ ${coupon.maxUses}` : 'uses'}
+                      </td>
+                      <td className="py-3 px-4 font-semibold text-foreground">
+                        {c.discountType === 'PERCENTAGE' ? `${c.discountValue}% OFF` : `${formatCurrency(c.discountValue)} OFF`}
+                      </td>
+                      <td className="py-3 px-4">
+                        <span
+                          className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold uppercase ${
+                            c.isActive ? 'bg-success/10 text-success' : 'bg-muted text-muted-foreground'
+                          }`}
+                        >
+                          {c.isActive ? 'Active' : 'Inactive'}
                         </span>
-                        {coupon.maxUses && (
-                          <div className="w-16 bg-muted rounded-full h-1 overflow-hidden mx-auto">
-                            <div
-                              className="bg-primary h-full rounded-full"
-                              style={{
-                                width: `${Math.min(100, (coupon.usedCount / coupon.maxUses) * 100)}%`,
-                              }}
-                            />
-                          </div>
-                        )}
-                      </div>
-                    </td>
-
-                    {/* Validity Dates */}
-                    <td className="px-5 py-3.5 text-muted-foreground text-[11px]">
-                      {coupon.expiresAt ? (
-                        <div className="flex items-center gap-1">
-                          <Calendar className="h-3 w-3 text-muted-foreground shrink-0" />
-                          <span>Exp: {new Date(coupon.expiresAt).toLocaleDateString()}</span>
-                        </div>
-                      ) : (
-                        <span className="text-muted-foreground">No expiration</span>
-                      )}
-                    </td>
-
-                    {/* Status Badge & Quick Toggle */}
-                    <td className="px-5 py-3.5 text-center">
-                      <button
-                        type="button"
-                        disabled={togglingId === coupon.id}
-                        onClick={() => handleToggleActive(coupon.id)}
-                        className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[10px] font-bold transition-transform active:scale-95 ${
-                          coupon.computedState === 'ACTIVE'
-                            ? 'bg-emerald-500/10 text-emerald-700 hover:bg-emerald-500/20'
-                            : coupon.computedState === 'EXPIRED'
-                            ? 'bg-destructive/10 text-destructive'
-                            : coupon.computedState === 'DEPLETED'
-                            ? 'bg-amber-500/10 text-amber-700'
-                            : 'bg-muted text-muted-foreground hover:bg-muted/80'
-                        }`}
-                        title="Click to toggle active state"
-                      >
-                        {togglingId === coupon.id ? (
-                          <Loader2 className="h-3 w-3 animate-spin" />
-                        ) : (
-                          coupon.computedState
-                        )}
-                      </button>
-                    </td>
-
-                    {/* Actions */}
-                    <td className="px-5 py-3.5 text-right">
-                      <div className="flex items-center justify-end gap-2">
-                        <Link
-                          href={`/admin/coupons/${coupon.id}`}
-                          className="rounded-lg p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
-                          title="Edit coupon"
-                        >
-                          <Edit2 className="h-3.5 w-3.5" />
-                        </Link>
-                        <button
-                          type="button"
-                          disabled={deletingId === coupon.id}
-                          onClick={() => handleDelete(coupon)}
-                          className="rounded-lg p-1.5 text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors disabled:opacity-50"
-                          title={coupon.usedCount > 0 ? 'Deactivate coupon (used in orders)' : 'Delete coupon permanently'}
-                        >
-                          {deletingId === coupon.id ? (
-                            <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                          ) : (
+                      </td>
+                      <td className="py-3 px-4 text-center font-medium text-muted-foreground">
+                        {c.usedCount} {c.maxUses ? `/ ${c.maxUses}` : 'uses'}
+                      </td>
+                      <td className="py-3 px-4 text-muted-foreground text-[11px]">
+                        {c.expiresAt ? `Expires: ${new Date(c.expiresAt).toLocaleDateString()}` : 'No expiry'}
+                      </td>
+                      <td className="py-3 px-4 text-right">
+                        <div className="flex items-center justify-end gap-2">
+                          <button
+                            type="button"
+                            onClick={() => handleToggleActive(c.id)}
+                            disabled={togglingId === c.id}
+                            className="rounded-md border border-border px-2 py-1 text-[11px] font-medium text-muted-foreground hover:text-foreground hover:bg-muted transition-colors disabled:opacity-50"
+                          >
+                            {c.isActive ? 'Deactivate' : 'Activate'}
+                          </button>
+                          <Link
+                            href={`/admin/coupons/${c.id}`}
+                            className="rounded-md border border-border p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+                            aria-label={`Edit ${c.code}`}
+                          >
+                            <Edit2 className="h-3.5 w-3.5" />
+                          </Link>
+                          <button
+                            onClick={() => handleDelete(c)}
+                            disabled={deletingId === c.id}
+                            className="rounded-md border border-border p-1.5 text-muted-foreground hover:bg-destructive/10 hover:text-destructive hover:border-destructive/30 transition-colors disabled:opacity-50"
+                            aria-label={`Delete ${c.code}`}
+                          >
                             <Trash2 className="h-3.5 w-3.5" />
-                          )}
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
+        ) : (
+          <div className="py-16 text-center space-y-3">
+            <Tag className="mx-auto h-8 w-8 text-muted-foreground/60" />
+            <p className="text-xs text-muted-foreground">No coupons found.</p>
+            <Link
+              href="/admin/coupons/new"
+              className="inline-block rounded-lg bg-primary px-3.5 py-1.5 text-xs font-medium text-primary-foreground shadow"
+            >
+              Create Coupon
+            </Link>
+          </div>
         )}
-      </main>
+      </div>
+
+      {/* Floating Bulk Action Bar */}
+      <BulkActionBar
+        selectedCount={selectedIds.length}
+        totalCount={coupons.length}
+        onClearSelection={() => setSelectedIds([])}
+        onSelectAll={() => setSelectedIds(coupons.map((c) => c.id))}
+        isAllSelected={selectedIds.length === coupons.length}
+        isLoading={isBulkLoading}
+        actions={bulkActions}
+        onExecuteAction={handleExecuteBulkAction}
+      />
     </div>
   );
 }
