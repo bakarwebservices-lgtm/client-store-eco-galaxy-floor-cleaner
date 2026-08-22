@@ -311,7 +311,7 @@ export default function AdminMediaPage() {
         <MediaUploadModal
           isOpen={modalOpen}
           onClose={() => setModalOpen(false)}
-          onSuccess={() => {
+          onSelect={() => {
             fetchAssets();
             setModalOpen(false);
           }}
