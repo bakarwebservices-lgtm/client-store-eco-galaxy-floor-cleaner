@@ -79,6 +79,19 @@ enum PageStatus {
   HIDDEN
 }
 
+enum ShipmentStatus {
+  PENDING
+  BOOKED
+  PICKED_UP
+  IN_TRANSIT
+  OUT_FOR_DELIVERY
+  DELIVERED
+  FAILED_ATTEMPT
+  RETURNED_TO_ORIGIN
+  CANCELLED
+  ON_HOLD
+}
+
 // =============================================================================
 // ADMIN USER
 // Completely separate from Customer — per BUILD_STANDARDS 2.2
@@ -447,6 +460,7 @@ model Order {
 
   customer Customer    @relation(fields: [customerId], references: [id])
   items    OrderItem[]
+  shipments Shipment[]
 
   @@index([customerId])
   @@index([paymentStatus])
@@ -471,6 +485,7 @@ model OrderItem {
   productTitle String  @map("product_title") // product name at time of purchase
   variantTitle String? @map("variant_title") // variant label at time of purchase (null if no variant)
   sku          String  // SKU at time of purchase
+  weightKg     Float?  @map("weight_kg")     // Weight per unit (kg) snapshot at purchase time
 
   quantity   Int
   unitPrice  Float @map("unit_price")
@@ -789,6 +804,113 @@ model MediaAsset {
 }
 
 // =============================================================================
+// COURIER INTEGRATION & SHIPPING
+// Multi-courier infrastructure with encrypted credentials and event timeline
+// =============================================================================
+
+model CourierAccount {
+  id               String   @id @default(uuid())
+  courierCode      String   @map("courier_code") // "POSTEX" | "LEOPARDS" | "TCS" | "TRAX" | "MANUAL"
+  accountTitle     String   @map("account_title") // e.g. "PostEx Primary Lahore", "TCS Corporate"
+  isActive         Boolean  @default(true) @map("is_active")
+  isDefault        Boolean  @default(false) @map("is_default")
+
+  // Encrypted JSON config containing sensitive API keys/secrets (AES-256-GCM)
+  encryptedConfig  String   @map("encrypted_config") @db.Text
+  configIv         String   @map("config_iv")
+  configTag        String   @map("config_tag")
+
+  // Masked preview for Admin UI (e.g. "••••••••3a8f")
+  maskedIdentifier String?  @map("masked_identifier")
+
+  webhookSecret    String?  @map("webhook_secret")
+
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
+
+  shipments        Shipment[]
+
+  @@index([courierCode])
+  @@index([isActive])
+  @@map("courier_accounts")
+}
+
+model Shipment {
+  id                String         @id @default(uuid())
+  orderId           String         @map("order_id")
+  courierAccountId  String?        @map("courier_account_id")
+
+  courierCode       String         @map("courier_code") // "POSTEX", "LEOPARDS", "TCS", "MANUAL"
+  courierName       String         @map("courier_name") // Display name e.g. "PostEx Courier"
+  trackingNumber    String         @unique @map("tracking_number") // Standardized Consignment / Waybill #
+
+  status            ShipmentStatus @default(BOOKED)
+  rawCourierStatus  String?        @map("raw_courier_status")
+
+  // Financials & COD
+  isCod             Boolean        @default(false) @map("is_cod")
+  codAmount         Float          @default(0) @map("cod_amount")
+  currency          String         @default("PKR")
+
+  // Courier charges breakdown (prepares for settlement reconciliation)
+  shippingCharges   Float          @default(0) @map("shipping_charges")
+  fuelSurcharge     Float          @default(0) @map("fuel_surcharge")
+  gst               Float          @default(0) @map("gst")
+  netAmount         Float          @default(0) @map("net_amount")
+
+  // Physical parcel details snapshot
+  weightKg          Float?         @map("weight_kg")
+  pieces            Int            @default(1)
+  pickupAddressCode String?        @map("pickup_address_code")
+
+  // Logistics metadata & documentation
+  labelUrl          String?        @map("label_url") // Downloadable Airway Bill URL or cached PDF
+  trackingUrl       String?        @map("tracking_url") // Direct courier tracking portal link
+  courierMeta       Json?          @map("courier_meta") // Raw provider response (pickup ID, route code, etc.)
+
+  // Timestamps
+  bookedAt          DateTime       @default(now()) @map("booked_at")
+  pickedUpAt        DateTime?      @map("picked_up_at")
+  deliveredAt       DateTime?      @map("delivered_at")
+  cancelledAt       DateTime?      @map("cancelled_at")
+
+  createdAt         DateTime       @default(now()) @map("created_at")
+  updatedAt         DateTime       @updatedAt @map("updated_at")
+
+  order             Order          @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  courierAccount    CourierAccount? @relation(fields: [courierAccountId], references: [id], onDelete: SetNull)
+  events            TrackingEvent[]
+
+  @@index([orderId])
+  @@index([trackingNumber])
+  @@index([status])
+  @@index([courierCode])
+  @@map("shipments")
+}
+
+model TrackingEvent {
+  id              String         @id @default(uuid())
+  shipmentId      String         @map("shipment_id")
+
+  status          ShipmentStatus
+  rawStatus       String?        @map("raw_status")
+  description     String         @db.Text
+  location        String?
+
+  eventTime       DateTime       @map("event_time")
+  createdAt       DateTime       @default(now()) @map("created_at")
+
+  // Deduplication hash: sha256(shipmentId + status + eventTime.toISOString() + (location || ''))
+  idempotencyKey  String         @unique @map("idempotency_key")
+
+  shipment        Shipment       @relation(fields: [shipmentId], references: [id], onDelete: Cascade)
+
+  @@index([shipmentId])
+  @@index([eventTime])
+  @@map("tracking_events")
+}
+
+// =============================================================================
 // EXCLUDED FROM BASE PRODUCT — documented here for clarity
 // The following models from the reference projects are NOT included.
 // They are future paid add-ons per client.
@@ -799,10 +921,9 @@ model MediaAsset {
 //   PostexSettlement   — courier CPR reconciliation
 //   FulfillmentCost    — per-order courier cost breakdown
 //   SkuCostHistory     — COGS tracking per variant over time
-//   Shipment           — PostEx / courier booking
-//   TrackingEvent      — live shipment status events
 //   AnalyticsEvent     — server-side pixel event log
 //   LegalContent       — bilingual DE/EN legal CMS (Attireburg client-specific)
 //
 // Ref: BUILD_STANDARDS.md section 2.13 & 3.2
 // =============================================================================
+

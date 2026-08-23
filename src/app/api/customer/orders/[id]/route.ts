@@ -29,6 +29,14 @@ export async function GET(
             product: { select: { slug: true, images: { take: 1 } } },
           },
         },
+        shipments: {
+          include: {
+            events: {
+              orderBy: { eventTime: 'asc' },
+            },
+          },
+          orderBy: { createdAt: 'desc' },
+        },
       },
     });
 

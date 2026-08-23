@@ -34,6 +34,7 @@ export function Footer() {
           <div className="space-y-2">
             <h3 className="text-xs font-semibold uppercase tracking-wider text-foreground">Customer Support</h3>
             <ul className="space-y-1.5 text-xs text-muted-foreground">
+              <li><Link href="/track" className="hover:text-foreground transition-colors font-medium text-primary">Track Order</Link></li>
               <li><Link href="/contact" className="hover:text-foreground transition-colors">Contact Us</Link></li>
               <li><Link href="/pages/shipping-policy" className="hover:text-foreground transition-colors">Shipping Policy</Link></li>
               <li><Link href="/pages/returns" className="hover:text-foreground transition-colors">Returns & Refunds</Link></li>

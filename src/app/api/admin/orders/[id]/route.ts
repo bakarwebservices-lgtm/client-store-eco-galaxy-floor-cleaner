@@ -35,6 +35,14 @@ export async function GET(
             variant: { select: { id: true, title: true, sku: true, inventoryQty: true } },
           },
         },
+        shipments: {
+          include: {
+            events: {
+              orderBy: { eventTime: 'desc' },
+            },
+          },
+          orderBy: { createdAt: 'desc' },
+        },
       },
     });
 

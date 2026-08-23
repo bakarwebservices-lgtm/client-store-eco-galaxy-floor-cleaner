@@ -24,6 +24,7 @@ import {
   Sparkles,
 } from 'lucide-react';
 import { MediaUploadModal } from '@/components/admin/MediaUploadModal';
+import { CourierSettingsTab } from '@/components/admin/CourierSettingsTab';
 import {
   allSettingsSchema,
   DEFAULT_SETTINGS,
@@ -33,13 +34,14 @@ import {
 } from '@/lib/validation/settings';
 import { safeFetch } from '@/lib/apiClient';
 
-type SettingsTab = 'identity' | 'contact' | 'theme' | 'shipping' | 'tracking' | 'social';
+type SettingsTab = 'identity' | 'contact' | 'theme' | 'shipping' | 'couriers' | 'tracking' | 'social';
 
 const TABS: { id: SettingsTab; label: string; icon: React.ComponentType<{ className?: string }> }[] = [
   { id: 'identity', label: 'Store Identity', icon: Building2 },
   { id: 'contact', label: 'Contact Details', icon: Phone },
   { id: 'theme', label: 'Theme & Styling', icon: Palette },
-  { id: 'shipping', label: 'Shipping & Taxes', icon: Truck },
+  { id: 'shipping', label: 'Shipping & Taxes', icon: DollarSign },
+  { id: 'couriers', label: 'Couriers & Logistics', icon: Truck },
   { id: 'tracking', label: 'Analytics & Pixels', icon: BarChart3 },
   { id: 'social', label: 'Social Channels', icon: Share2 },
 ];
@@ -747,6 +749,9 @@ export default function AdminSettingsPage() {
             </div>
           </div>
         )}
+
+        {/* Tab: Couriers & Logistics */}
+        {activeTab === 'couriers' && <CourierSettingsTab />}
 
         {/* Tab 5: Analytics & Tracking */}
         {activeTab === 'tracking' && (

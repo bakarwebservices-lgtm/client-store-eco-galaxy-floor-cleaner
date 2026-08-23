@@ -90,6 +90,9 @@ export function Navbar() {
             <Link href="/products?featured=true" className="transition-colors hover:text-foreground">
               Featured
             </Link>
+            <Link href="/track" className="transition-colors hover:text-foreground text-primary font-medium">
+              Track
+            </Link>
             <Link href="/faq" className="transition-colors hover:text-foreground">
               FAQ
             </Link>
@@ -189,6 +192,13 @@ export function Navbar() {
             className="block text-sm font-medium text-foreground py-1.5"
           >
             Featured Items
+          </Link>
+          <Link
+            href="/track"
+            onClick={() => setMobileMenuOpen(false)}
+            className="block text-sm font-medium text-primary py-1.5"
+          >
+            Track Shipment
           </Link>
           <Link
             href="/faq"

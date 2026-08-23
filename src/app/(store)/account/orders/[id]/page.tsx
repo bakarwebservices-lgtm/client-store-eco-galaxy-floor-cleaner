@@ -7,6 +7,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { ArrowLeft, Package, Truck, ShieldCheck, AlertCircle } from 'lucide-react';
 import { Breadcrumbs } from '@/components/storefront/Breadcrumbs';
+import { TrackingStepper } from '@/components/storefront/TrackingStepper';
 
 export const dynamic = 'force-dynamic';
 
@@ -53,6 +54,7 @@ export default function CustomerOrderDetailPage() {
   }
 
   const shippingAddr: any = order.shippingAddress;
+  const activeShipment = order.shipments?.find((s: any) => s.status !== 'CANCELLED') || order.shipments?.[0];
 
   return (
     <main className="mx-auto max-w-4xl px-4 py-8 sm:px-6 lg:px-8 space-y-6">
@@ -81,6 +83,31 @@ export default function CustomerOrderDetailPage() {
           </span>
         </div>
       </div>
+
+      {/* Live Courier Logistics Tracking Stepper */}
+      {activeShipment && (
+        <TrackingStepper
+          shipment={{
+            trackingNumber: activeShipment.trackingNumber,
+            courierName: activeShipment.courierName,
+            courierCode: activeShipment.courierCode,
+            status: activeShipment.status,
+            rawStatus: activeShipment.rawCourierStatus,
+            isCod: activeShipment.isCod,
+            codAmount: activeShipment.codAmount,
+            currency: activeShipment.currency,
+            bookedAt: activeShipment.bookedAt,
+            deliveredAt: activeShipment.deliveredAt,
+            trackingUrl: activeShipment.trackingUrl,
+            recipient: {
+              name: shippingAddr?.name,
+              city: shippingAddr?.city,
+              country: shippingAddr?.country,
+            },
+            events: activeShipment.events || [],
+          }}
+        />
+      )}
 
       <div className="grid grid-cols-1 gap-6 md:grid-cols-12">
         {/* Left 7 Cols: Items */}

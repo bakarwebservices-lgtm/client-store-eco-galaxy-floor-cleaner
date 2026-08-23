@@ -13,6 +13,12 @@ const envSchema = z.object({
   ADMIN_JWT_SECRET: z.preprocess(emptyToUndefined, z.string().min(16, 'ADMIN_JWT_SECRET must be at least 16 characters').default('dev-admin-jwt-secret-key-min-32-chars!!')),
   CUSTOMER_JWT_SECRET: z.preprocess(emptyToUndefined, z.string().min(16, 'CUSTOMER_JWT_SECRET must be at least 16 characters').default('dev-customer-jwt-secret-key-min-32-chars!!')),
 
+  // Credential Encryption Secret (32 bytes = 64 hex characters for AES-256-GCM)
+  ENCRYPTION_MASTER_KEY: z.preprocess(
+    emptyToUndefined,
+    z.string().regex(/^[0-9a-fA-F]{64}$/, 'ENCRYPTION_MASTER_KEY must be a 64-character hex string (32 bytes)').default('0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef')
+  ),
+
   // Base URL
   NEXT_PUBLIC_APP_URL: z.preprocess(
     (val) => (typeof val === 'string' && val.trim() !== '' ? val : 'http://localhost:3000'),

@@ -222,6 +222,16 @@ This document outlines the architectural design, directory structure, and domain
 - **Components**: `src/components/admin/MediaUploadModal.tsx` (enforces alt text entry)
 - **API Endpoints**: `src/app/api/upload/route.ts`
 
+### 4.13 Multi-Courier Shipping & Logistics Infrastructure
+- **Architecture**: `src/lib/couriers/types.ts` defines `ICourierAdapter` contract (`validateCredentials`, `createShipment`, `cancelShipment`, `getTracking`, `parseWebhook`, `getShippingLabel`)
+- **Credential Security**: Sensitive API tokens/secrets encrypted at rest using AES-256-GCM (`src/lib/couriers/encryption.ts`)
+- **Implementations**:
+  - `src/lib/couriers/adapters/PostExAdapter.ts` (PostEx REST API integration)
+  - `src/lib/couriers/adapters/ManualAdapter.ts` (Custom/Self-delivery support)
+- **Registry**: `src/lib/couriers/registry.ts` manages runtime courier adapter lookup
+- **Admin Dispatch**: `src/app/(admin)/admin/orders/[id]/page.tsx` modal for manual booking with COD calculation and instant airway bill generation
+- **Customer Tracking**: Live interactive delivery stepper on `/account/orders/[id]` and public guest tracking lookup at `/track`
+
 ---
 
 ## 5. Build Standards Compliance Matrix
@@ -231,6 +241,7 @@ This document outlines the architectural design, directory structure, and domain
 | **Vertical Feature Building** | UI + Route + Logic built simultaneously | `FEATURE_CHECKLIST.md` tracking |
 | **Template Config Architecture** | `Setting` table + `theme.config.ts` | Zero hardcoded client values in code |
 | **Payment Abstraction** | `IPaymentGateway` adapter pattern | Pluggable interface in `src/lib/payments/` |
+| **Courier Abstraction** | `ICourierAdapter` + AES-256-GCM encryption | Pluggable interface in `src/lib/couriers/` |
 | **Dual Order Status** | `paymentStatus` + `fulfillmentStatus` + `cancelledAt` | Helper `deriveOrderStatus.ts` (no duplicate status storage) |
 | **Regional Independence** | `store.country` & `store.currency` in `Setting` | No DB-level currency/country defaults |
 | **SEO Hygiene** | Sitemap, robots, canonicals, breadcrumbs, 404/500 | Standard components & Next.js metadata |
@@ -254,4 +265,8 @@ Admin editable models (Products, Collections, Categories, Blog Articles) current
 
 ### 6.4 Unified API Route Namespace Restructuring (MED-3)
 Currently, admin routes are split between dedicated admin namespaces (e.g. `/api/admin/coupons`, `/api/admin/orders`, `/api/admin/reviews`) and dual-purpose root endpoints (e.g. `/api/blog`, `/api/products`, `/api/categories` utilizing `?admin=true` query parameters). Future iterations should completely separate storefront endpoints under `/api/store/*` and admin management endpoints under `/api/admin/*` to enforce absolute structural isolation.
+
+### 6.5 Automated COD Payment Status Transition vs. Payout Settlement Reconciliation (INFO-3)
+When a courier webhook or tracking sync reports a COD shipment as `DELIVERED`, the system automatically transitions the associated `Order.paymentStatus` from `UNPAID` to `PAID`. This represents an operational e-commerce simplification acknowledging that the courier collected the physical cash upon handover. However, this is not an authoritative financial settlement confirmation (actual CPR/bank disbursement by the courier often takes 3-7 business days after courier fee and tax deductions). For advanced accounting workflows, the `PostexSettlement` / financial reconciliation module can track exact merchant bank payouts independently.
+
 

@@ -86,6 +86,20 @@ This document provides a comprehensive breakdown of the database schema for the 
 | `ACTIVE` | Publicly published static CMS page |
 | `HIDDEN` | Unpublished / draft CMS page |
 
+### `ShipmentStatus`
+| Value | Description |
+| :--- | :--- |
+| `PENDING` | Created locally, not yet booked with courier |
+| `BOOKED` | Consignment number generated, awaiting warehouse pickup |
+| `PICKED_UP` | Courier has collected parcel from warehouse |
+| `IN_TRANSIT` | Parcel traveling between courier distribution hubs |
+| `OUT_FOR_DELIVERY` | Parcel assigned to delivery courier/rider |
+| `DELIVERED` | Successfully delivered to recipient |
+| `FAILED_ATTEMPT` | Delivery attempted but failed (customer unavailable/rescheduled) |
+| `RETURNED_TO_ORIGIN` | Parcel returned to merchant warehouse (RTO) |
+| `CANCELLED` | Shipment booking cancelled before dispatch |
+| `ON_HOLD` | Delivery exception or address clarification required |
+
 ---
 
 ## 3. Data Models (Tables)
@@ -361,13 +375,13 @@ Complete order record with dual-status tracking (`paymentStatus` + `fulfillmentS
 | `updatedAt` | `DateTime` | `@updatedAt @map("updated_at")` | Order modification timestamp |
 | `deletedAt` | `DateTime?` | Optional, `@map("deleted_at")` | Soft delete timestamp |
 
-**Relationships:** `customer` (belongs to `Customer`), `items` (1-M `OrderItem`).  
+**Relationships:** `customer` (belongs to `Customer`), `items` (1-M `OrderItem`), `shipments` (1-M `Shipment`).  
 **Indexes:** `customerId`, `paymentStatus`, `fulfillmentStatus`, `orderNumber`, `createdAt`.
 
 ---
 
 ### 15. `OrderItem` (`order_items`)
-Line items of an order storing immutable snapshots of product name, variant title, and SKU at purchase time.
+Line items of an order storing immutable snapshots of product name, variant title, SKU, and unit weight at purchase time.
 | Field | Type | Attributes | Description |
 | :--- | :--- | :--- | :--- |
 | `id` | `String` | `@id @default(uuid())` | Primary key |
@@ -377,6 +391,7 @@ Line items of an order storing immutable snapshots of product name, variant titl
 | `productTitle` | `String` | `@map("product_title")` | **Snapshot:** Product title at purchase time |
 | `variantTitle` | `String?` | Optional, `@map("variant_title")` | **Snapshot:** Variant title at purchase time |
 | `sku` | `String` | — | **Snapshot:** SKU at purchase time |
+| `weightKg` | `Float?` | Optional, `@map("weight_kg")` | **Snapshot:** Unit weight in kg at purchase time |
 | `quantity` | `Int` | — | Quantity purchased |
 | `unitPrice` | `Float` | `@map("unit_price")` | Price per unit at purchase time |
 | `totalPrice` | `Float` | `@map("total_price")` | `quantity * unitPrice` |
@@ -638,6 +653,84 @@ Centralized library of uploaded media assets with required admin alt text suppor
 
 ---
 
+### 29. `CourierAccount` (`courier_accounts`)
+Multi-courier account credentials and configuration store. All sensitive API tokens and credentials are encrypted at rest using AES-256-GCM.
+| Field | Type | Attributes | Description |
+| :--- | :--- | :--- | :--- |
+| `id` | `String` | `@id @default(uuid())` | Primary key |
+| `courierCode` | `String` | `@map("courier_code")` | Courier identifier ("POSTEX", "LEOPARDS", "TCS", "MANUAL") |
+| `accountTitle` | `String` | `@map("account_title")` | Merchant account display label (e.g. "PostEx Primary Lahore") |
+| `isActive` | `Boolean` | `@default(true) @map("is_active")` | Account enabled status |
+| `isDefault` | `Boolean` | `@default(false) @map("is_default")` | Primary default courier flag |
+| `encryptedConfig`| `String` | `@db.Text @map("encrypted_config")`| AES-256-GCM ciphertext payload |
+| `configIv` | `String` | `@map("config_iv")` | 12-byte initialization vector (hex) |
+| `configTag` | `String` | `@map("config_tag")` | 16-byte GCM authentication tag (hex) |
+| `maskedIdentifier`| `String?`| Optional, `@map("masked_identifier")`| Masked credential preview for Admin UI (e.g. "••••••••3a8f") |
+| `webhookSecret` | `String?` | Optional, `@map("webhook_secret")` | Inbound webhook verification token |
+| `createdAt` | `DateTime` | `@default(now()) @map("created_at")` | Record creation timestamp |
+| `updatedAt` | `DateTime` | `@updatedAt @map("updated_at")` | Record modification timestamp |
+
+**Relationships:** `shipments` (1-M `Shipment`).  
+**Indexes:** `courierCode`, `isActive`.
+
+---
+
+### 30. `Shipment` (`shipments`)
+Individual shipment dispatch record connecting orders to courier consignments with financial breakdowns and label metadata.
+| Field | Type | Attributes | Description |
+| :--- | :--- | :--- | :--- |
+| `id` | `String` | `@id @default(uuid())` | Primary key |
+| `orderId` | `String` | FK, `@map("order_id")` | References `Order.id` (onDelete: Cascade) |
+| `courierAccountId`| `String?`| FK, Optional, `@map("courier_account_id")` | References `CourierAccount.id` (onDelete: SetNull) |
+| `courierCode` | `String` | `@map("courier_code")` | Courier provider code ("POSTEX", "LEOPARDS", "TCS", "MANUAL") |
+| `courierName` | `String` | `@map("courier_name")` | Display name ("PostEx Courier", "TCS Express") |
+| `trackingNumber` | `String` | `@unique @map("tracking_number")` | Courier consignment / airway bill tracking number |
+| `status` | `ShipmentStatus`| `@default(BOOKED)` | Normalized delivery state |
+| `rawCourierStatus`| `String?`| Optional, `@map("raw_courier_status")` | Unmodified status string returned by courier |
+| `isCod` | `Boolean` | `@default(false) @map("is_cod")` | Cash on Delivery flag |
+| `codAmount` | `Float` | `@default(0) @map("cod_amount")` | Payable COD amount upon delivery |
+| `currency` | `String` | `@default("PKR")` | Currency code |
+| `shippingCharges` | `Float` | `@default(0) @map("shipping_charges")` | Base courier delivery fee |
+| `fuelSurcharge` | `Float` | `@default(0) @map("fuel_surcharge")` | Fuel surcharge fee |
+| `gst` | `Float` | `@default(0) @map("gst")` | GST / Sales tax deduction |
+| `netAmount` | `Float` | `@default(0) @map("net_amount")` | Net payable after courier deduction |
+| `weightKg` | `Float?` | Optional, `@map("weight_kg")` | Parcel billable weight (kg) |
+| `pieces` | `Int` | `@default(1)` | Number of parcel packages |
+| `pickupAddressCode`| `String?`| Optional, `@map("pickup_address_code")`| Origin warehouse identifier |
+| `labelUrl` | `String?` | Optional, `@map("label_url")` | Airway Bill PDF URL or cached endpoint |
+| `trackingUrl` | `String?` | Optional, `@map("tracking_url")` | Public courier tracking link |
+| `courierMeta` | `Json?` | Optional, `@map("courier_meta")` | Provider-specific response blob |
+| `bookedAt` | `DateTime` | `@default(now()) @map("booked_at")` | Booking confirmation timestamp |
+| `pickedUpAt` | `DateTime?` | Optional, `@map("picked_up_at")` | Courier collection timestamp |
+| `deliveredAt` | `DateTime?` | Optional, `@map("delivered_at")` | Customer delivery confirmation timestamp |
+| `cancelledAt` | `DateTime?` | Optional, `@map("cancelled_at")` | Booking cancellation timestamp |
+| `createdAt` | `DateTime` | `@default(now()) @map("created_at")` | Record creation timestamp |
+| `updatedAt` | `DateTime` | `@updatedAt @map("updated_at")` | Record modification timestamp |
+
+**Relationships:** `order` (belongs to `Order`), `courierAccount` (belongs to `CourierAccount`), `events` (1-M `TrackingEvent`).  
+**Indexes:** `orderId`, `trackingNumber`, `status`, `courierCode`.
+
+---
+
+### 31. `TrackingEvent` (`tracking_events`)
+Granular real-time milestone events and journey history for shipments.
+| Field | Type | Attributes | Description |
+| :--- | :--- | :--- | :--- |
+| `id` | `String` | `@id @default(uuid())` | Primary key |
+| `shipmentId` | `String` | FK, `@map("shipment_id")` | References `Shipment.id` (onDelete: Cascade) |
+| `status` | `ShipmentStatus`| — | Normalized event status |
+| `rawStatus` | `String?` | Optional, `@map("raw_status")` | Original courier event description |
+| `description` | `String` | `@db.Text` | Human-readable timeline milestone message |
+| `location` | `String?` | Optional | Event location (hub, city, facility) |
+| `eventTime` | `DateTime` | `@map("event_time")` | Timestamp when milestone occurred |
+| `idempotencyKey` | `String` | `@unique @map("idempotency_key")` | SHA-256 deduplication hash preventing webhook duplicate events |
+| `createdAt` | `DateTime` | `@default(now()) @map("created_at")` | Record creation timestamp |
+
+**Relationships:** `shipment` (belongs to `Shipment`).  
+**Indexes:** `shipmentId`, `eventTime`.
+
+---
+
 ## 4. Summary of Decisions & Exclusions
 
 1. **UUID Standardization:** Every model uses `@default(uuid())`.
@@ -645,6 +738,7 @@ Centralized library of uploaded media assets with required admin alt text suppor
 3. **Guest / Account Union:** `Customer.passwordHash` is nullable to unite guest orders and user accounts seamlessly.
 4. **Dual Order Statuses:** `paymentStatus` and `fulfillmentStatus` are tracked independently. High-level order state is derived computationally via helper functions, eliminating stored state synchronization risks.
 5. **No Hardcoded Regional Defaults:** `CustomerAddress.country` and `Order.currency` have no database-level defaults and are dynamically populated from `Setting (store.country, store.currency)` at the application layer.
-6. **Snapshot Integrity:** `OrderItem` immutably captures product titles, variant labels, and SKUs at purchase time.
+6. **Snapshot Integrity:** `OrderItem` immutably captures product titles, variant labels, SKUs, and unit weight in kg at purchase time.
 7. **Key-Value Settings:** All client customization is driven by `Setting` without schema changes.
-8. **Explicit Exclusions:** Accounting (`AccountingExpense`, `AdSpend`, `OwnerTransaction`, `PostexSettlement`, `FulfillmentCost`, `SkuCostHistory`), Courier (`Shipment`, `TrackingEvent`), Server Pixel Log (`AnalyticsEvent`), and Bilingual CMS (`LegalContent`) are intentionally excluded from the base template.
+8. **Pluggable Logistics:** Multi-courier integration with encrypted credentials at rest (`CourierAccount`), structured consignments (`Shipment`), and deduplicated event streams (`TrackingEvent`).
+9. **Explicit Exclusions:** Accounting (`AccountingExpense`, `AdSpend`, `OwnerTransaction`, `PostexSettlement`, `FulfillmentCost`, `SkuCostHistory`), Server Pixel Log (`AnalyticsEvent`), and Bilingual CMS (`LegalContent`) are intentionally excluded from the base template.

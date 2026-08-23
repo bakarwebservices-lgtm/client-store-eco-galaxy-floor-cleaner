@@ -98,6 +98,13 @@ This document tracks every UI element, intended action, route handler, and its e
 | **Customer Auth** | Forgot Password Form (`src/app/(store)/forgot-password/page.tsx`) | Rate-limited request endpoint issuing 1h signed JWT token and sending email link | `POST /api/auth/customer/forgot-password` | `Connected` |
 | **Customer Auth** | Reset Password Form (`src/app/(store)/account/reset-password/page.tsx`) | Token validation, min 8-char rule, bcrypt hash update, and show/hide password toggle | `POST /api/auth/customer/reset-password` | `Connected` |
 | **Abandoned Checkout** | Abandoned Session Capture (`src/app/(store)/checkout/page.tsx`) | Debounced capture of partial contact info and cart items into `AbandonedCheckout` model; marked recovered on order placement | `POST /api/checkout/abandoned` | `Connected` |
+| **Couriers & Logistics** | Courier Accounts Manager (`src/components/admin/CourierSettingsTab.tsx`) | Multi-account AES-256-GCM encrypted API key manager, masked credential view, default courier switch | `GET/POST/DELETE /api/admin/couriers` | `Connected` |
+| **Couriers & Logistics** | Order Dispatch Modal (`src/app/(admin)/admin/orders/[id]/page.tsx`) | Dynamic booking dialog: courier selection, auto-weight calculation, COD calculation, Airway Bill generation | `POST /api/admin/orders/[id]/shipment` | `Connected` |
+| **Couriers & Logistics** | Active Shipment Management (`src/app/(admin)/admin/orders/[id]/page.tsx`) | Live tracking number, tracking status badge, cancel booking, sync tracking, print label | `DELETE /api/admin/orders/[id]/shipment`, `POST /api/admin/orders/[id]/shipment/sync`, `GET /api/admin/orders/[id]/shipment/label` | `Connected` |
+| **Couriers & Logistics** | Webhook Ingestion (`src/app/api/webhooks/couriers/[courier]/route.ts`) | Real-time multi-courier webhook processing with SHA-256 event deduplication, monotonic status updates, and auto-PAID transition on COD delivery | `POST /api/webhooks/couriers/[courier]` | `Connected` |
+| **Couriers & Logistics** | Public Tracking API (`src/app/api/tracking/route.ts`) | Public rate-limited tracking lookup with privacy masking, tracking number query, and orderNumber+contact verification | `GET /api/tracking` | `Connected` |
+| **Couriers & Logistics** | Customer Order Tracking Stepper (`src/app/(store)/account/orders/[id]/page.tsx`) | Embedded luxury tracking stepper & journey timeline for customer orders | `src/components/storefront/TrackingStepper.tsx` | `Connected` |
+| **Couriers & Logistics** | Public Guest Tracking Portal (`src/app/(store)/track/page.tsx`) | Real-time guest shipment lookup with dual search (Consignment # or Order # + Contact), URL auto-fill, and live stepper | `GET /track` | `Connected` |
 
 ---
 

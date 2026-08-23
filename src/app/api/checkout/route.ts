@@ -123,6 +123,7 @@ export async function POST(req: NextRequest) {
           productTitle: product.name,
           variantTitle,
           sku,
+          weightKg: product.weight ?? null,
           quantity: item.quantity,
           unitPrice,
           totalPrice: lineTotal,
