@@ -59,6 +59,7 @@ This document tracks every UI element, intended action, route handler, and its e
 | **Reviews (Storefront)** | Product Reviews Display (`src/components/storefront/ProductReviews.tsx`) | Star rating aggregate stats, verified badges, photo lightbox gallery | `GET /api/products/[id]/reviews` | `Connected` |
 | **Reviews (Storefront)** | Review Submission Form (`src/components/storefront/ProductReviews.tsx`) | 1-5 star picker, mandatory altText photo upload, verified buyer check, pending moderation | `POST /api/products/[id]/reviews` | `Connected` |
 | **Reviews (Admin)** | Moderation Queue (`src/app/(admin)/admin/reviews/page.tsx`) | Moderation tabs (pending, approved, all), search by reviewer/product, quick approve/reject | `GET /api/admin/reviews` | `Connected` |
+| **Reviews (Admin)** | Review CSV Import (`src/components/admin/ReviewCsvImportModal.tsx`) | Shopify/Judge.me/Loox format parser, SKU/slug product matcher, preview/validation modal, pending moderation batch commit | `POST /api/admin/reviews/import` | `Connected` |
 | **Reviews (Admin)** | Review Status Toggle | Approve or move review back to pending moderation | `PATCH /api/admin/reviews/[id]` | `Connected` |
 | **Reviews (Admin)** | Review Deletion | Permanently delete / reject abusive reviews | `DELETE /api/admin/reviews/[id]` | `Connected` |
 | **Reviews (Customer)** | Delete Own Review | Access-controlled deletion endpoint allowing customers to remove their own review | `DELETE /api/customer/reviews/[id]` | `Connected` |

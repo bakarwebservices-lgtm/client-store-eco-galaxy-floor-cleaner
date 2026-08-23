@@ -16,8 +16,10 @@ import {
   Loader2,
   ExternalLink,
   MessageSquare,
+  Upload,
 } from 'lucide-react';
 import { BulkActionBar, BulkActionOption } from '@/components/admin/BulkActionBar';
+import { ReviewCsvImportModal } from '@/components/admin/ReviewCsvImportModal';
 import { safeFetch } from '@/lib/apiClient';
 
 interface ReviewImage {
@@ -59,6 +61,7 @@ export default function AdminReviewsPage() {
   const [actionLoadingId, setActionLoadingId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [notification, setNotification] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [isImportModalOpen, setIsImportModalOpen] = useState(false);
 
   // Filters
   const [statusTab, setStatusTab] = useState<'PENDING' | 'APPROVED' | 'ALL'>('PENDING');
@@ -237,14 +240,25 @@ export default function AdminReviewsPage() {
           </p>
         </div>
 
-        <button
-          type="button"
-          onClick={() => fetchReviews(page, statusTab)}
-          className="flex items-center gap-1.5 rounded-lg border border-border bg-card px-3 py-1.5 text-xs font-semibold text-foreground hover:bg-muted transition-colors self-start sm:self-auto"
-        >
-          <RefreshCw className="h-3.5 w-3.5" />
-          <span>Refresh</span>
-        </button>
+        <div className="flex items-center gap-2 self-start sm:self-auto">
+          <button
+            type="button"
+            onClick={() => setIsImportModalOpen(true)}
+            className="flex items-center gap-1.5 rounded-lg bg-primary px-3.5 py-1.5 text-xs font-semibold text-primary-foreground hover:bg-primary-hover shadow-sm transition-colors"
+          >
+            <Upload className="h-3.5 w-3.5" />
+            <span>Import CSV</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => fetchReviews(page, statusTab)}
+            className="flex items-center gap-1.5 rounded-lg border border-border bg-card px-3 py-1.5 text-xs font-semibold text-foreground hover:bg-muted transition-colors"
+          >
+            <RefreshCw className="h-3.5 w-3.5" />
+            <span>Refresh</span>
+          </button>
+        </div>
       </div>
 
       {notification && (
@@ -568,6 +582,16 @@ export default function AdminReviewsPage() {
         isLoading={isBulkLoading}
         actions={bulkActions}
         onExecuteAction={handleExecuteBulkAction}
+      />
+
+      {/* Review CSV Import Modal */}
+      <ReviewCsvImportModal
+        isOpen={isImportModalOpen}
+        onClose={() => setIsImportModalOpen(false)}
+        onSuccess={() => {
+          fetchReviews(1, 'PENDING');
+          setStatusTab('PENDING');
+        }}
       />
     </div>
   );
