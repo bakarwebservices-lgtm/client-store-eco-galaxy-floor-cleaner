@@ -50,6 +50,10 @@ export function Navbar() {
               Catalog
             </Link>
 
+            <Link href="/collections" className="transition-colors hover:text-foreground">
+              Collections
+            </Link>
+
             {/* Categories Dropdown */}
             {categories.length > 0 && (
               <div
@@ -149,6 +153,14 @@ export function Navbar() {
             className="block text-sm font-medium text-foreground py-1.5"
           >
             All Products
+          </Link>
+
+          <Link
+            href="/collections"
+            onClick={() => setMobileMenuOpen(false)}
+            className="block text-sm font-medium text-foreground py-1.5"
+          >
+            Collections
           </Link>
 
           {categories.length > 0 && (

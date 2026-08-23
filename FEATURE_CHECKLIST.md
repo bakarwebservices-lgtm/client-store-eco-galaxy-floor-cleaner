@@ -65,6 +65,7 @@ This document tracks every UI element, intended action, route handler, and its e
 | **Reviews (Admin)** | Review Deletion | Permanently delete / reject abusive reviews | `DELETE /api/admin/reviews/[id]` | `Connected` |
 | **Reviews (Customer)** | Delete Own Review | Access-controlled deletion endpoint allowing customers to remove their own review | `DELETE /api/customer/reviews/[id]` | `Connected` |
 | **Taxonomy (Storefront)** | Category Menu & Navigation (`src/components/storefront/Navbar.tsx`) | Dynamic category links in desktop dropdown and mobile menu drawer | `GET /api/categories` | `Connected` |
+| **Taxonomy (Storefront)** | Collections Navigation & Index (`src/app/(store)/collections/page.tsx`) | Active collections card grid with cover images, product counts, and desktop/mobile Navbar links | `GET /collections` | `Connected` |
 | **Taxonomy (Storefront)** | Category Product Page (`src/app/(store)/categories/[slug]/page.tsx`) | Paginated category product grid, breadcrumbs, canonical tag, SEO fields | `GET /api/categories/[id]` | `Connected` |
 | **Taxonomy (Storefront)** | Collection Product Page (`src/app/(store)/collections/[slug]/page.tsx`) | Paginated collection product grid, SMART dynamic rule evaluation & MANUAL position order | `GET /api/collections/[id]` | `Connected` |
 | **Taxonomy (Admin)** | Category Management (`src/app/(admin)/admin/categories/page.tsx`) | Full Category CRUD with MediaUploadModal image/altText, sortOrder, SEO fields | `GET/POST/PUT/DELETE /api/categories` | `Connected` |
