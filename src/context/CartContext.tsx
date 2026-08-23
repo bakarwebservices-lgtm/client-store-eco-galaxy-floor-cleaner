@@ -38,6 +38,7 @@ interface CartContextType {
     quantity: number;
     productName: string;
     price: number;
+    openDrawer?: boolean;
   }) => Promise<{ success: boolean; error?: string }>;
   updateQuantity: (itemId: string, quantity: number) => Promise<void>;
   removeItem: (itemId: string) => Promise<void>;
@@ -59,9 +60,9 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     try {
       const { ok, data } = await safeFetch<any>('/api/cart');
       if (ok && data) {
-        setItems(data.items || []);
-        setTotalItems(data.totalItems || 0);
-        setSubtotal(data.subtotal || 0);
+        setItems(data.items || data.cart?.items || []);
+        setTotalItems(data.totalItems ?? data.cart?.itemCount ?? 0);
+        setSubtotal(data.subtotal ?? data.cart?.subtotal ?? 0);
         if (typeof data.freeShippingThreshold === 'number') {
           setFreeShippingThreshold(data.freeShippingThreshold);
         }
@@ -88,12 +89,14 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     quantity,
     productName,
     price,
+    openDrawer = true,
   }: {
     productId: string;
     variantId?: string | null;
     quantity: number;
     productName: string;
     price: number;
+    openDrawer?: boolean;
   }) => {
     setIsLoading(true);
     try {
@@ -110,7 +113,9 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
 
       await refreshCart();
       setIsLoading(false);
-      setIsOpen(true);
+      if (openDrawer) {
+        setIsOpen(true);
+      }
 
       // Non-blocking Analytics Tracking (BUILD_STANDARDS 4.4)
       track('AddToCart', {

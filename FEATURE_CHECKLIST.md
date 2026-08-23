@@ -18,6 +18,7 @@ This document tracks every UI element, intended action, route handler, and its e
 | **Admin Auth** | Seed Script (`prisma/seed.ts`) | Create / reset initial `AdminUser` with generated random password | Database Seeder | `Connected` |
 | **Products (Storefront)** | Product Catalog Grid (`src/app/(store)/products/page.tsx`) | Paginated product listing, 2-col mobile grid, category filter pills, sorting | `GET /api/products` | `Connected` |
 | **Products (Storefront)** | Product Detail View (`src/app/(store)/products/[slug]/page.tsx`) | Display product, breadcrumbs, JSON-LD schema, canonical tags, responsive gallery | `GET /api/products/[id]` | `Connected` |
+| **Products (Storefront)** | Buy Now Direct CTA (`src/app/(store)/products/[slug]/ProductDetailClient.tsx`) | Instant Buy Now button alongside Add to Bag bypassing drawer to route directly to `/checkout` | Client state & cart bridge | `Connected` |
 | **Products (Storefront)** | Variant Selector (`src/components/storefront/VariantSelector.tsx`) | Select variant SKU, dynamically update price, stock indicators, and variant image | Client state & cart bridge | `Connected` |
 | **Products (Storefront)** | Product Gallery (`src/components/storefront/ProductGallery.tsx`) | Interactive image viewer with required `altText` rendered on every `<img>` | Client gallery component | `Connected` |
 | **Products (Admin)** | Product Table View (`src/app/(admin)/admin/products/page.tsx`) | Search, filter by status, view SKU count, edit link, soft-delete archive trigger | `GET /api/products?admin=true` | `Connected` |

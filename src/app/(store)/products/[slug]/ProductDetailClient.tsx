@@ -1,16 +1,26 @@
 'use client';
-import { formatCurrency } from '@/lib/format';
 
 import React, { useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { formatCurrency } from '@/lib/format';
 import { ProductGallery } from '@/components/storefront/ProductGallery';
 import { VariantSelector, VariantOption } from '@/components/storefront/VariantSelector';
-import { ShoppingBag, Heart, ShieldCheck, Truck, RotateCcw, Loader2 } from 'lucide-react';
+import {
+  ShoppingBag,
+  Zap,
+  Heart,
+  ShieldCheck,
+  Truck,
+  RotateCcw,
+  Loader2,
+} from 'lucide-react';
 import { useCart } from '@/context/CartContext';
 import { useWishlist } from '@/context/WishlistContext';
 import { ProductWithRelations } from '@/types';
 
 export function ProductDetailClient({ product }: { product: ProductWithRelations }) {
-  const { addItem, isLoading } = useCart();
+  const router = useRouter();
+  const { addItem, closeCart, isLoading } = useCart();
   const { isInWishlist, toggleWishlist } = useWishlist();
   const isWishlisted = isInWishlist(product.id);
   const variants: VariantOption[] = product.variants || [];
@@ -19,6 +29,7 @@ export function ProductDetailClient({ product }: { product: ProductWithRelations
   );
   const [quantity, setQuantity] = useState(1);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [isBuyNowLoading, setIsBuyNowLoading] = useState(false);
 
   const currentPrice = selectedVariant?.price ?? product.price;
   const currentComparePrice = selectedVariant?.comparePrice ?? product.comparePrice;
@@ -33,10 +44,35 @@ export function ProductDetailClient({ product }: { product: ProductWithRelations
       quantity,
       productName: product.name,
       price: currentPrice,
+      openDrawer: true,
     });
 
     if (!res.success && res.error) {
       setErrorMsg(res.error);
+    }
+  };
+
+  const handleBuyNow = async () => {
+    setErrorMsg(null);
+    setIsBuyNowLoading(true);
+
+    const res = await addItem({
+      productId: product.id,
+      variantId: selectedVariant?.id || null,
+      quantity,
+      productName: product.name,
+      price: currentPrice,
+      openDrawer: false,
+    });
+
+    if (res.success) {
+      closeCart();
+      router.push('/checkout');
+    } else {
+      setIsBuyNowLoading(false);
+      if (res.error) {
+        setErrorMsg(res.error);
+      }
     }
   };
 
@@ -131,7 +167,7 @@ export function ProductDetailClient({ product }: { product: ProductWithRelations
           </div>
         )}
 
-        {/* Quantity and Actions */}
+        {/* Quantity and Action Buttons */}
         <div className="space-y-3 border-t border-border pt-4">
           {isOutOfStock ? (
             <div className="rounded-2xl border border-amber-500/30 bg-amber-500/10 p-5 space-y-3">
@@ -179,96 +215,113 @@ export function ProductDetailClient({ product }: { product: ProductWithRelations
               )}
             </div>
           ) : (
-            <div className="flex items-center gap-3">
-              {/* Quantity Stepper */}
-              <div className="flex items-center rounded-lg border border-border bg-card">
+            <div className="space-y-3">
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+                {/* Quantity Stepper */}
+                <div className="flex items-center justify-between sm:justify-start rounded-xl border border-border bg-card">
+                  <button
+                    type="button"
+                    onClick={() => setQuantity((q) => Math.max(1, q - 1))}
+                    className="px-3.5 py-2.5 text-sm font-bold text-muted-foreground hover:text-foreground transition-colors"
+                    aria-label="Decrease quantity"
+                  >
+                    -
+                  </button>
+                  <span className="px-2 text-sm font-semibold text-foreground min-w-[28px] text-center">
+                    {quantity}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setQuantity((q) => q + 1)}
+                    className="px-3.5 py-2.5 text-sm font-bold text-muted-foreground hover:text-foreground transition-colors"
+                    aria-label="Increase quantity"
+                  >
+                    +
+                  </button>
+                </div>
+
+                {/* Add to Bag Button */}
                 <button
                   type="button"
-                  onClick={() => setQuantity((q) => Math.max(1, q - 1))}
-                  className="px-3 py-2 text-sm text-muted-foreground hover:text-foreground"
-                  aria-label="Decrease quantity"
+                  disabled={isLoading || isBuyNowLoading}
+                  onClick={handleAddToCart}
+                  className="flex flex-1 items-center justify-center gap-2 rounded-xl border-2 border-primary bg-transparent py-3 px-4 text-xs sm:text-sm font-bold text-primary shadow-sm transition-all hover:bg-primary/10 active:scale-[0.98] disabled:pointer-events-none disabled:opacity-50"
                 >
-                  -
+                  {isLoading && !isBuyNowLoading ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <ShoppingBag className="h-4 w-4" />
+                  )}
+                  <span>Add to Bag</span>
                 </button>
-                <span className="px-2 text-sm font-semibold text-foreground min-w-[24px] text-center">
-                  {quantity}
-                </span>
+
+                {/* Buy Now Button (Direct to Checkout) */}
                 <button
                   type="button"
-                  onClick={() => setQuantity((q) => q + 1)}
-                  className="px-3 py-2 text-sm text-muted-foreground hover:text-foreground"
-                  aria-label="Increase quantity"
+                  disabled={isLoading || isBuyNowLoading}
+                  onClick={handleBuyNow}
+                  className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-primary py-3 px-4 text-xs sm:text-sm font-bold text-primary-foreground shadow-md transition-all hover:bg-primary-hover active:scale-[0.98] disabled:pointer-events-none disabled:opacity-50"
                 >
-                  +
+                  {isBuyNowLoading ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Zap className="h-4 w-4 fill-primary-foreground" />
+                  )}
+                  <span>Buy Now</span>
+                </button>
+
+                {/* Wishlist Button */}
+                <button
+                  type="button"
+                  onClick={() =>
+                    toggleWishlist({
+                      id: product.id,
+                      name: product.name,
+                      slug: product.slug,
+                      price: currentPrice,
+                      imageUrl: product.images?.[0]?.url,
+                    })
+                  }
+                  className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border transition-all ${
+                    isWishlisted
+                      ? 'border-red-200 bg-red-50 text-red-600 dark:border-red-900/40 dark:bg-red-950/30 dark:text-red-400'
+                      : 'border-border bg-card text-muted-foreground hover:text-destructive hover:border-destructive/30'
+                  }`}
+                  aria-label={isWishlisted ? 'Remove from wishlist' : 'Add to wishlist'}
+                  title={isWishlisted ? 'Saved in your wishlist' : 'Add to wishlist'}
+                >
+                  <Heart className={`h-5 w-5 ${isWishlisted ? 'fill-current' : ''}`} />
                 </button>
               </div>
-
-              {/* Add to Cart Button */}
-              <button
-                type="button"
-                disabled={isLoading}
-                onClick={handleAddToCart}
-                className="flex flex-1 items-center justify-center gap-2 rounded-lg bg-primary py-3 text-sm font-bold text-primary-foreground shadow transition-transform active:scale-[0.98] hover:bg-primary-hover disabled:pointer-events-none disabled:opacity-50"
-              >
-                {isLoading ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <ShoppingBag className="h-4 w-4" />
-                )}
-                <span>Add to Bag</span>
-              </button>
-
-              {/* Wishlist Button */}
-              <button
-                type="button"
-                onClick={() =>
-                  toggleWishlist({
-                    id: product.id,
-                    name: product.name,
-                    slug: product.slug,
-                    price: currentPrice,
-                    imageUrl: product.images?.[0]?.url,
-                  })
-                }
-                className={`flex h-11 w-11 items-center justify-center rounded-lg border transition-all ${
-                  isWishlisted
-                    ? 'border-red-200 bg-red-50 text-red-600 dark:border-red-900/40 dark:bg-red-950/30 dark:text-red-400'
-                    : 'border-border bg-card text-muted-foreground hover:text-destructive hover:border-destructive/30'
-                }`}
-                aria-label={isWishlisted ? 'Remove from wishlist' : 'Add to wishlist'}
-                title={isWishlisted ? 'Saved in your wishlist' : 'Add to wishlist'}
-              >
-                <Heart className={`h-4 w-4 transition-transform ${isWishlisted ? 'fill-red-500 text-red-500 scale-110' : ''}`} />
-              </button>
             </div>
           )}
         </div>
 
-        {/* Value Props & Trust Badges */}
-        <div className="grid grid-cols-3 gap-2 border-t border-border pt-4 text-center text-xs text-muted-foreground">
-          <div className="flex flex-col items-center gap-1 p-2 rounded-lg bg-muted/20">
-            <Truck className="h-4 w-4 text-primary" />
-            <span>Fast Delivery</span>
+        {/* Value Propositions / Badges */}
+        <div className="grid grid-cols-3 gap-2 border-t border-border pt-4">
+          <div className="flex flex-col items-center justify-center rounded-xl bg-muted/30 p-3 text-center">
+            <Truck className="mb-1 h-4 w-4 text-muted-foreground" />
+            <span className="text-[10px] font-semibold text-foreground">Express Delivery</span>
           </div>
-          <div className="flex flex-col items-center gap-1 p-2 rounded-lg bg-muted/20">
-            <RotateCcw className="h-4 w-4 text-primary" />
-            <span>Easy Returns</span>
+          <div className="flex flex-col items-center justify-center rounded-xl bg-muted/30 p-3 text-center">
+            <RotateCcw className="mb-1 h-4 w-4 text-muted-foreground" />
+            <span className="text-[10px] font-semibold text-foreground">Easy Returns</span>
           </div>
-          <div className="flex flex-col items-center gap-1 p-2 rounded-lg bg-muted/20">
-            <ShieldCheck className="h-4 w-4 text-primary" />
-            <span>Authentic</span>
+          <div className="flex flex-col items-center justify-center rounded-xl bg-muted/30 p-3 text-center">
+            <ShieldCheck className="mb-1 h-4 w-4 text-muted-foreground" />
+            <span className="text-[10px] font-semibold text-foreground">100% Authentic</span>
           </div>
         </div>
 
-        {/* Product Description */}
-        <div className="border-t border-border pt-6 space-y-2">
-          <h2 className="text-sm font-semibold uppercase tracking-wider text-foreground">
-            Product Overview
-          </h2>
-          <div className="prose prose-sm text-muted-foreground leading-relaxed whitespace-pre-line">
-            {product.description}
+        {/* Description */}
+        {product.description && (
+          <div className="border-t border-border pt-4 space-y-2">
+            <h2 className="text-sm font-bold text-foreground">Product Description</h2>
+            <div className="prose prose-sm text-xs leading-relaxed text-muted-foreground whitespace-pre-line">
+              {product.description}
+            </div>
           </div>
-        </div>
+        )}
       </div>
     </div>
   );
