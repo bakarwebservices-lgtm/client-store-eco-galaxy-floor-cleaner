@@ -4,6 +4,8 @@ import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { ArrowLeft, MapPin, Plus, Trash2, Check, AlertCircle } from 'lucide-react';
 import { Breadcrumbs } from '@/components/storefront/Breadcrumbs';
+import { AddressFields } from '@/components/storefront/AddressFields';
+import { normalizePhone, normalizeCity, isPhoneValid, validateAddressLine } from '@/lib/geo';
 import { safeFetch } from '@/lib/apiClient';
 
 export const dynamic = 'force-dynamic';
@@ -46,13 +48,36 @@ export default function CustomerAddressesPage() {
 
   const handleCreateAddress = async (e: React.FormEvent) => {
     e.preventDefault();
-    setSaving(true);
     setError(null);
+
+    const addrCheck = validateAddressLine(address, 'Pakistan');
+    if (!addrCheck.valid) {
+      setError(addrCheck.error || 'Please enter a complete street address');
+      return;
+    }
+
+    if (!isPhoneValid(phone, 'Pakistan')) {
+      setError('Please provide a valid 11-digit mobile number (e.g. 0300 1234567)');
+      return;
+    }
+
+    setSaving(true);
     try {
       const { ok, data, error: fetchErr } = await safeFetch<any>('/api/customer/addresses', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ firstName, lastName, label, phone, address, city, province, postalCode, isDefault }),
+        body: JSON.stringify({
+          firstName: firstName.trim(),
+          lastName: lastName.trim(),
+          label: label.trim() || undefined,
+          phone: normalizePhone(phone, 'Pakistan'),
+          address: address.trim(),
+          city: normalizeCity(city, 'Pakistan'),
+          province: province.trim() || undefined,
+          postalCode: postalCode.trim() || undefined,
+          country: 'Pakistan',
+          isDefault,
+        }),
       });
 
       if (!ok) {
@@ -154,92 +179,33 @@ export default function CustomerAddressesPage() {
             </div>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div className="space-y-1">
-              <label htmlFor="addr-label" className="block text-[11px] font-semibold text-muted-foreground">Label (Optional)</label>
-              <input
-                id="addr-label"
-                type="text"
-                value={label}
-                onChange={(e) => setLabel(e.target.value)}
-                placeholder="Home / Office"
-                className="w-full rounded-lg border border-input bg-background p-2.5 text-xs text-foreground focus:outline-none"
-              />
-            </div>
-
-            <div className="space-y-1">
-              <label htmlFor="addr-phone" className="block text-[11px] font-semibold text-muted-foreground">Phone Number *</label>
-              <input
-                id="addr-phone"
-                type="tel"
-                required
-                aria-required="true"
-                autoComplete="tel"
-                value={phone}
-                onChange={(e) => setPhone(e.target.value)}
-                placeholder="03001234567"
-                className="w-full rounded-lg border border-input bg-background p-2.5 text-xs text-foreground focus:outline-none"
-              />
-            </div>
-          </div>
-
           <div className="space-y-1">
-            <label htmlFor="addr-street" className="block text-[11px] font-semibold text-muted-foreground">Street Address *</label>
+            <label htmlFor="addr-label" className="block text-[11px] font-semibold text-muted-foreground">Address Label (Optional)</label>
             <input
-              id="addr-street"
+              id="addr-label"
               type="text"
-              required
-              aria-required="true"
-              autoComplete="street-address"
-              value={address}
-              onChange={(e) => setAddress(e.target.value)}
-              placeholder="House #, Street, Block/Sector"
+              value={label}
+              onChange={(e) => setLabel(e.target.value)}
+              placeholder="Home / Office / Warehouse"
               className="w-full rounded-lg border border-input bg-background p-2.5 text-xs text-foreground focus:outline-none"
             />
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-            <div className="space-y-1">
-              <label htmlFor="addr-city" className="block text-[11px] font-semibold text-muted-foreground">City *</label>
-              <input
-                id="addr-city"
-                type="text"
-                required
-                aria-required="true"
-                autoComplete="address-level2"
-                value={city}
-                onChange={(e) => setCity(e.target.value)}
-                placeholder="Lahore"
-                className="w-full rounded-lg border border-input bg-background p-2.5 text-xs text-foreground focus:outline-none"
-              />
-            </div>
-
-            <div className="space-y-1">
-              <label htmlFor="addr-province" className="block text-[11px] font-semibold text-muted-foreground">Province</label>
-              <input
-                id="addr-province"
-                type="text"
-                autoComplete="address-level1"
-                value={province}
-                onChange={(e) => setProvince(e.target.value)}
-                placeholder="Punjab"
-                className="w-full rounded-lg border border-input bg-background p-2.5 text-xs text-foreground focus:outline-none"
-              />
-            </div>
-
-            <div className="space-y-1">
-              <label htmlFor="addr-postal-code" className="block text-[11px] font-semibold text-muted-foreground">Postal Code</label>
-              <input
-                id="addr-postal-code"
-                type="text"
-                autoComplete="postal-code"
-                value={postalCode}
-                onChange={(e) => setPostalCode(e.target.value)}
-                placeholder="54000"
-                className="w-full rounded-lg border border-input bg-background p-2.5 text-xs text-foreground focus:outline-none"
-              />
-            </div>
-          </div>
+          {/* Standardized Country-Aware Address & Geo Fields */}
+          <AddressFields
+            idPrefix="addr"
+            country="Pakistan"
+            address={address}
+            setAddress={setAddress}
+            city={city}
+            setCity={setCity}
+            province={province}
+            setProvince={setProvince}
+            postalCode={postalCode}
+            setPostalCode={setPostalCode}
+            phone={phone}
+            setPhone={setPhone}
+          />
 
           <label className="flex items-center gap-2 text-xs font-semibold text-foreground cursor-pointer pt-1">
             <input

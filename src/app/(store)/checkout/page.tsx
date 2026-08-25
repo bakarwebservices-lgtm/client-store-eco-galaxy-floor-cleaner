@@ -10,6 +10,8 @@ import { useCart } from '@/context/CartContext';
 import { track } from '@/lib/tracking/events';
 import { safeFetch } from '@/lib/apiClient';
 import { Breadcrumbs } from '@/components/storefront/Breadcrumbs';
+import { AddressFields } from '@/components/storefront/AddressFields';
+import { normalizePhone, normalizeCity, isPhoneValid, validateAddressLine } from '@/lib/geo';
 
 export const dynamic = 'force-dynamic';
 
@@ -163,6 +165,17 @@ export default function CheckoutPage() {
       return;
     }
 
+    const addrCheck = validateAddressLine(address, 'Pakistan');
+    if (!addrCheck.valid) {
+      setCheckoutError(addrCheck.error || 'Please provide a complete street address');
+      return;
+    }
+
+    if (!isPhoneValid(phone, 'Pakistan')) {
+      setCheckoutError('Please provide a valid 11-digit mobile number (e.g. 0300 1234567)');
+      return;
+    }
+
     setIsSubmitting(true);
 
     const payload = {
@@ -171,12 +184,13 @@ export default function CheckoutPage() {
         firstName: firstName.trim(),
         lastName: lastName.trim(),
         email: email.trim(),
-        phone: phone.trim(),
+        phone: normalizePhone(phone, 'Pakistan'),
         address: address.trim(),
         apartment: apartment.trim() || null,
-        city: city.trim(),
+        city: normalizeCity(city, 'Pakistan'),
         province: province.trim() || null,
         postalCode: postalCode.trim() || null,
+        country: 'Pakistan',
       },
       paymentMethod,
       couponCode: appliedCoupon?.code || null,
@@ -254,36 +268,20 @@ export default function CheckoutPage() {
               1. Customer Contact
             </h2>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div className="space-y-1">
-                <label htmlFor="checkout-email" className="block text-[11px] font-semibold text-muted-foreground">Email Address *</label>
-                <input
-                  id="checkout-email"
-                  type="email"
-                  required
-                  aria-required="true"
-                  autoComplete="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="name@example.com"
-                  className="w-full rounded-lg border border-input bg-background p-2.5 text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20"
-                />
-              </div>
-
-              <div className="space-y-1">
-                <label htmlFor="checkout-phone" className="block text-[11px] font-semibold text-muted-foreground">Phone Number *</label>
-                <input
-                  id="checkout-phone"
-                  type="tel"
-                  required
-                  aria-required="true"
-                  autoComplete="tel"
-                  value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
-                  placeholder="03001234567"
-                  className="w-full rounded-lg border border-input bg-background p-2.5 text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20"
-                />
-              </div>
+            <div className="space-y-1">
+              <label htmlFor="checkout-email" className="block text-[11px] font-semibold text-muted-foreground">Email Address *</label>
+              <input
+                id="checkout-email"
+                type="email"
+                required
+                aria-required="true"
+                autoComplete="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="name@example.com"
+                className="w-full rounded-lg border border-input bg-background p-2.5 text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20"
+              />
+              <p className="text-[10px] text-muted-foreground">Order receipts and dispatch updates will be sent to this email.</p>
             </div>
           </div>
 
@@ -325,72 +323,30 @@ export default function CheckoutPage() {
               </div>
             </div>
 
-            <div className="space-y-1">
-              <label htmlFor="checkout-address" className="block text-[11px] font-semibold text-muted-foreground">Street Address *</label>
-              <input
-                id="checkout-address"
-                type="text"
-                required
-                aria-required="true"
-                autoComplete="street-address"
-                value={address}
-                onChange={(e) => setAddress(e.target.value)}
-                placeholder="House #, Street name, Sector/Area"
-                className="w-full rounded-lg border border-input bg-background p-2.5 text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20"
-              />
-            </div>
+            {/* Standardized Country-Aware Address & Geo Fields */}
+            <AddressFields
+              idPrefix="checkout"
+              country="Pakistan"
+              address={address}
+              setAddress={setAddress}
+              city={city}
+              setCity={setCity}
+              province={province}
+              setProvince={setProvince}
+              postalCode={postalCode}
+              setPostalCode={setPostalCode}
+              phone={phone}
+              setPhone={setPhone}
+            />
 
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-              <div className="space-y-1">
-                <label htmlFor="checkout-city" className="block text-[11px] font-semibold text-muted-foreground">City *</label>
-                <input
-                  id="checkout-city"
-                  type="text"
-                  required
-                  aria-required="true"
-                  autoComplete="address-level2"
-                  value={city}
-                  onChange={(e) => setCity(e.target.value)}
-                  placeholder="Lahore"
-                  className="w-full rounded-lg border border-input bg-background p-2.5 text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20"
-                />
-              </div>
-
-              <div className="space-y-1">
-                <label htmlFor="checkout-province" className="block text-[11px] font-semibold text-muted-foreground">Province / State</label>
-                <input
-                  id="checkout-province"
-                  type="text"
-                  autoComplete="address-level1"
-                  value={province}
-                  onChange={(e) => setProvince(e.target.value)}
-                  placeholder="Punjab"
-                  className="w-full rounded-lg border border-input bg-background p-2.5 text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20"
-                />
-              </div>
-
-              <div className="space-y-1">
-                <label htmlFor="checkout-postal-code" className="block text-[11px] font-semibold text-muted-foreground">Postal Code</label>
-                <input
-                  id="checkout-postal-code"
-                  type="text"
-                  autoComplete="postal-code"
-                  value={postalCode}
-                  onChange={(e) => setPostalCode(e.target.value)}
-                  placeholder="54000"
-                  className="w-full rounded-lg border border-input bg-background p-2.5 text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20"
-                />
-              </div>
-            </div>
-
-            <div className="space-y-1">
+            <div className="space-y-1 pt-1">
               <label htmlFor="checkout-notes" className="block text-[11px] font-semibold text-muted-foreground">Delivery Notes (Optional)</label>
               <textarea
                 id="checkout-notes"
                 rows={2}
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
-                placeholder="Gate code, landmarks, special delivery instructions..."
+                placeholder="Gate code, landmarks, special courier instructions..."
                 className="w-full rounded-lg border border-input bg-background p-2.5 text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20"
               />
             </div>

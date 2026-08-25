@@ -105,11 +105,14 @@ This document tracks every UI element, intended action, route handler, and its e
 | **Couriers & Logistics** | Public Tracking API (`src/app/api/tracking/route.ts`) | Public rate-limited tracking lookup with privacy masking, tracking number query, and orderNumber+contact verification | `GET /api/tracking` | `Connected` |
 | **Couriers & Logistics** | Customer Order Tracking Stepper (`src/app/(store)/account/orders/[id]/page.tsx`) | Embedded luxury tracking stepper & journey timeline for customer orders | `src/components/storefront/TrackingStepper.tsx` | `Connected` |
 | **Couriers & Logistics** | Public Guest Tracking Portal (`src/app/(store)/track/page.tsx`) | Real-time guest shipment lookup with dual search (Consignment # or Order # + Contact), URL auto-fill, and live stepper | `GET /track` | `Connected` |
+| **Geo & Logistics Hub** | Country-Agnostic Geo Engine (`src/lib/geo/`) | Modular country registry (`types.ts`, `registry.ts`, `countries/pk.ts`, `countries/default.ts`) for province/city definitions, alias resolution (`lhr`→Lahore), and phone normalizer | `src/lib/geo/index.ts` | `Connected` |
+| **Geo & Logistics Hub** | Storefront Address & City Combobox (`src/components/storefront/AddressFields.tsx`) | Dynamic Province dropdown, searchable City combobox with "Other / Custom City" fallback, phone mask/normalization, and min-8 char address validation | `src/app/(store)/checkout/page.tsx`, `src/app/(store)/account/addresses/page.tsx` | `Connected` |
 
 ---
 
 ## 2. Status Legend
 - `Connected`: Fully wired, route handler implemented, database integrated, edge cases verified.
 - `Not Connected`: UI scaffolded or route drafted, not yet fully integrated or verified.
+
 
 
