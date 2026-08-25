@@ -1,8 +1,8 @@
 'use client';
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { getGeoPack, getProvinces, getCities, normalizeCity } from '@/lib/geo';
-import { ChevronDown, MapPin } from 'lucide-react';
+import { Search, ChevronDown, Check, X, MapPin } from 'lucide-react';
 
 export interface AddressFieldsProps {
   idPrefix?: string;
@@ -41,53 +41,70 @@ export function AddressFields({
   const provinces = useMemo(() => getProvinces(country), [country]);
   const cities = useMemo(() => getCities(country), [country]);
 
-  // Is the current city in our structured list?
-  const matchedCity = useMemo(() => {
-    if (!city || !geo.hasStructuredCities) return null;
-    const norm = normalizeCity(city, country).toLowerCase();
-    return cities.find((c) => c.name.toLowerCase() === norm);
-  }, [city, cities, country, geo.hasStructuredCities]);
+  // City search combobox state
+  const [cityQuery, setCityQuery] = useState(city || '');
+  const [isCityDropdownOpen, setIsCityDropdownOpen] = useState(false);
+  const cityContainerRef = useRef<HTMLDivElement>(null);
 
-  const [isCustomCity, setIsCustomCity] = useState(false);
-  const [customCityText, setCustomCityText] = useState('');
-
-  // Initialize or update isCustomCity state when city or country changes
+  // Synchronize cityQuery if parent `city` prop changes externally
   useEffect(() => {
-    if (geo.hasStructuredCities) {
-      if (!city) {
-        setIsCustomCity(false);
-      } else if (!matchedCity && city !== '') {
-        setIsCustomCity(true);
-        setCustomCityText(city);
-      } else {
-        setIsCustomCity(false);
-      }
-    } else {
-      setIsCustomCity(false);
-    }
-  }, [city, matchedCity, geo.hasStructuredCities]);
+    setCityQuery(city || '');
+  }, [city]);
 
-  // Handle dropdown city change
-  const handleCitySelectChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const val = e.target.value;
-    if (val === '__OTHER__') {
-      setIsCustomCity(true);
-      setCity(customCityText || '');
-    } else {
-      setIsCustomCity(false);
-      setCity(val);
-      // Auto-set province if city has defined province and province is empty
-      const found = cities.find((c) => c.name === val);
-      if (found?.province && (!province || !provinces.some((p) => p.name === province))) {
-        setProvince(found.province);
+  // Filter cities based on search query
+  const filteredCities = useMemo(() => {
+    if (!cityQuery.trim()) return cities;
+    const q = cityQuery.toLowerCase().trim();
+    return cities.filter(
+      (c) =>
+        c.name.toLowerCase().includes(q) ||
+        (c.aliases && c.aliases.some((a) => a.toLowerCase().includes(q)))
+    );
+  }, [cities, cityQuery]);
+
+  // Close dropdown on outside click
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (
+        cityContainerRef.current &&
+        !cityContainerRef.current.contains(event.target as Node)
+      ) {
+        setIsCityDropdownOpen(false);
       }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const handleSelectCity = (selectedCityName: string) => {
+    setCity(selectedCityName);
+    setCityQuery(selectedCityName);
+    setIsCityDropdownOpen(false);
+
+    // Auto-fill province if city has a known province
+    const found = cities.find(
+      (c) => c.name.toLowerCase() === selectedCityName.toLowerCase()
+    );
+    if (found?.province) {
+      setProvince(found.province);
     }
   };
 
-  const handleCustomCityTextChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const val = e.target.value;
-    setCustomCityText(val);
-    setCity(val);
+  const handleCustomCityConfirm = () => {
+    if (cityQuery.trim()) {
+      const normalized = normalizeCity(cityQuery.trim(), country);
+      setCity(normalized);
+      setCityQuery(normalized);
+      setIsCityDropdownOpen(false);
+    }
+  };
+
+  // Restrict phone to numeric digits only
+  const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const rawDigits = e.target.value.replace(/\D/g, '');
+    // Allow maximum 11 digits (e.g. 03001234567)
+    const limited = rawDigits.slice(0, 11);
+    setPhone(limited);
   };
 
   return (
@@ -95,7 +112,10 @@ export function AddressFields({
       {/* Street Address */}
       <div className="space-y-1">
         <div className="flex items-center justify-between">
-          <label htmlFor={`${idPrefix}-street`} className="block text-[11px] font-semibold text-muted-foreground">
+          <label
+            htmlFor={`${idPrefix}-street`}
+            className="block text-[11px] font-semibold text-muted-foreground"
+          >
             Street Address *
           </label>
           <span className="text-[10px] text-muted-foreground">
@@ -111,7 +131,7 @@ export function AddressFields({
           autoComplete="street-address"
           value={address}
           onChange={(e) => setAddress(e.target.value)}
-          placeholder="House/Apartment #, Street/Road, Area/Sector"
+          placeholder="House/Apartment #, Street/Road, Sector/Area"
           className={`w-full rounded-lg border bg-background p-2.5 text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 ${
             errors.address ? 'border-destructive' : 'border-input'
           }`}
@@ -121,64 +141,120 @@ export function AddressFields({
         )}
       </div>
 
-      {/* Grid: City, Province/State, Postal Code */}
+      {/* Grid: Searchable City Combobox, Province Selector, Postal Code */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-        {/* City Field (Combobox/Select for PK, Input for International) */}
-        <div className="space-y-1">
-          <label htmlFor={`${idPrefix}-city`} className="block text-[11px] font-semibold text-muted-foreground">
+        {/* Searchable City Combobox */}
+        <div className="space-y-1 relative" ref={cityContainerRef}>
+          <label
+            htmlFor={`${idPrefix}-city`}
+            className="block text-[11px] font-semibold text-muted-foreground"
+          >
             City *
           </label>
 
           {geo.hasStructuredCities ? (
-            <div className="space-y-1.5">
-              <div className="relative">
-                <select
-                  id={`${idPrefix}-city-select`}
-                  disabled={disabled}
-                  value={isCustomCity ? '__OTHER__' : (matchedCity ? matchedCity.name : '')}
-                  onChange={handleCitySelectChange}
-                  className={`w-full rounded-lg border bg-background p-2.5 text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 font-medium appearance-none pr-8 ${
-                    errors.city ? 'border-destructive' : 'border-input'
-                  }`}
-                >
-                  <option value="" disabled>
-                    -- Select City --
-                  </option>
-                  <optgroup label="Major Metros">
-                    {cities
-                      .filter((c) => c.isMajor)
-                      .map((c) => (
-                        <option key={c.name} value={c.name}>
-                          {c.name}
-                        </option>
-                      ))}
-                  </optgroup>
-                  <optgroup label="Other Cities & Towns">
-                    {cities
-                      .filter((c) => !c.isMajor)
-                      .map((c) => (
-                        <option key={c.name} value={c.name}>
-                          {c.name}
-                        </option>
-                      ))}
-                  </optgroup>
-                  <option value="__OTHER__">📍 Other (Type Custom City)</option>
-                </select>
-                <ChevronDown className="absolute right-2.5 top-3 h-3.5 w-3.5 text-muted-foreground pointer-events-none" />
-              </div>
-
-              {/* If "Other" is chosen, render text input */}
-              {isCustomCity && (
+            <div className="relative">
+              <div className="relative flex items-center">
                 <input
-                  id={`${idPrefix}-city-custom`}
+                  id={`${idPrefix}-city`}
                   type="text"
                   required
                   disabled={disabled}
-                  value={customCityText}
-                  onChange={handleCustomCityTextChange}
-                  placeholder="Enter your town/city name"
-                  className="w-full rounded-lg border border-primary/40 bg-background p-2 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary animate-in fade-in duration-150"
+                  aria-required="true"
+                  autoComplete="off"
+                  value={cityQuery}
+                  onFocus={() => setIsCityDropdownOpen(true)}
+                  onChange={(e) => {
+                    setCityQuery(e.target.value);
+                    setCity(e.target.value);
+                    setIsCityDropdownOpen(true);
+                  }}
+                  placeholder="Search or type city (e.g. Lahore, Karachi)"
+                  className={`w-full rounded-lg border bg-background pl-8 pr-7 py-2.5 text-xs font-medium text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 ${
+                    errors.city ? 'border-destructive' : 'border-input'
+                  }`}
                 />
+                <Search className="absolute left-2.5 h-3.5 w-3.5 text-muted-foreground pointer-events-none" />
+                {cityQuery && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setCityQuery('');
+                      setCity('');
+                      setIsCityDropdownOpen(true);
+                    }}
+                    className="absolute right-2.5 p-0.5 text-muted-foreground hover:text-foreground"
+                  >
+                    <X className="h-3 w-3" />
+                  </button>
+                )}
+              </div>
+
+              {/* Autocomplete Floating Dropdown */}
+              {isCityDropdownOpen && (
+                <div className="absolute z-50 mt-1 max-h-60 w-full overflow-y-auto rounded-xl border border-border bg-card shadow-xl animate-in fade-in duration-100 text-xs">
+                  {filteredCities.length > 0 ? (
+                    <div className="p-1 space-y-0.5">
+                      {filteredCities.slice(0, 40).map((c) => {
+                        const isSelected =
+                          city.toLowerCase() === c.name.toLowerCase();
+                        return (
+                          <button
+                            key={c.name}
+                            type="button"
+                            onClick={() => handleSelectCity(c.name)}
+                            className={`flex w-full items-center justify-between rounded-lg px-3 py-2 text-left transition-colors ${
+                              isSelected
+                                ? 'bg-primary/10 font-bold text-primary'
+                                : 'text-foreground hover:bg-muted'
+                            }`}
+                          >
+                            <div className="flex items-center gap-2">
+                              <MapPin
+                                className={`h-3 w-3 ${
+                                  c.isMajor
+                                    ? 'text-primary'
+                                    : 'text-muted-foreground'
+                                }`}
+                              />
+                              <span>{c.name}</span>
+                              {c.province && (
+                                <span className="text-[10px] text-muted-foreground font-normal">
+                                  ({c.province})
+                                </span>
+                              )}
+                            </div>
+                            {isSelected && (
+                              <Check className="h-3.5 w-3.5 text-primary" />
+                            )}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <div className="p-3 text-center text-muted-foreground space-y-2">
+                      <p className="text-[11px]">
+                        No pre-listed city matching &quot;{cityQuery}&quot;
+                      </p>
+                    </div>
+                  )}
+
+                  {/* Custom City Option Button */}
+                  {cityQuery.trim() && (
+                    <div className="border-t border-border p-1 bg-muted/40">
+                      <button
+                        type="button"
+                        onClick={handleCustomCityConfirm}
+                        className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-primary hover:bg-primary/10 font-semibold transition-colors"
+                      >
+                        <span>📍 Use custom city:</span>
+                        <span className="underline italic truncate max-w-[150px]">
+                          &quot;{cityQuery.trim()}&quot;
+                        </span>
+                      </button>
+                    </div>
+                  )}
+                </div>
               )}
             </div>
           ) : (
@@ -190,19 +266,27 @@ export function AddressFields({
               aria-required="true"
               autoComplete="address-level2"
               value={city}
-              onChange={(e) => setCity(e.target.value)}
+              onChange={(e) => {
+                setCity(e.target.value);
+                setCityQuery(e.target.value);
+              }}
               placeholder="City name"
               className={`w-full rounded-lg border bg-background p-2.5 text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 ${
                 errors.city ? 'border-destructive' : 'border-input'
               }`}
             />
           )}
-          {errors.city && <p className="text-[11px] text-destructive">{errors.city}</p>}
+          {errors.city && (
+            <p className="text-[11px] text-destructive">{errors.city}</p>
+          )}
         </div>
 
-        {/* Province / State (Dropdown for PK, Input for International) */}
+        {/* Province / State Selector */}
         <div className="space-y-1">
-          <label htmlFor={`${idPrefix}-province`} className="block text-[11px] font-semibold text-muted-foreground">
+          <label
+            htmlFor={`${idPrefix}-province`}
+            className="block text-[11px] font-semibold text-muted-foreground"
+          >
             Province / State
           </label>
 
@@ -240,13 +324,18 @@ export function AddressFields({
               }`}
             />
           )}
-          {errors.province && <p className="text-[11px] text-destructive">{errors.province}</p>}
+          {errors.province && (
+            <p className="text-[11px] text-destructive">{errors.province}</p>
+          )}
         </div>
 
-        {/* Postal Code (Optional in PK, standard in others) */}
+        {/* Postal Code */}
         {setPostalCode && (
           <div className="space-y-1">
-            <label htmlFor={`${idPrefix}-postal-code`} className="block text-[11px] font-semibold text-muted-foreground">
+            <label
+              htmlFor={`${idPrefix}-postal-code`}
+              className="block text-[11px] font-semibold text-muted-foreground"
+            >
               Postal Code (Optional)
             </label>
             <input
@@ -263,32 +352,52 @@ export function AddressFields({
         )}
       </div>
 
-      {/* Phone Number Field */}
+      {/* Phone Number Field with country prefix badge & numeric restriction */}
       <div className="space-y-1">
         <div className="flex items-center justify-between">
-          <label htmlFor={`${idPrefix}-phone`} className="block text-[11px] font-semibold text-muted-foreground">
-            Contact Phone Number *
+          <label
+            htmlFor={`${idPrefix}-phone`}
+            className="block text-[11px] font-semibold text-muted-foreground"
+          >
+            Mobile Contact Number *
           </label>
           <span className="text-[10px] text-muted-foreground font-mono">
-            {geo.phoneRule.placeholder}
+            {phone.length}/11 digits
           </span>
         </div>
-        <input
-          id={`${idPrefix}-phone`}
-          type="tel"
-          required
-          disabled={disabled}
-          aria-required="true"
-          autoComplete="tel"
-          value={phone}
-          onChange={(e) => setPhone(e.target.value)}
-          placeholder={geo.phoneRule.placeholder}
-          className={`w-full rounded-lg border bg-background p-2.5 text-xs font-mono text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 ${
-            errors.phone ? 'border-destructive' : 'border-input'
-          }`}
-        />
-        <p className="text-[10px] text-muted-foreground">{geo.phoneRule.formatHelp}</p>
-        {errors.phone && <p className="text-[11px] text-destructive">{errors.phone}</p>}
+
+        <div className="relative flex items-center">
+          {/* Dial code prefix badge */}
+          <div className="flex items-center gap-1.5 px-3 py-2.5 bg-muted border border-r-0 border-input rounded-l-lg text-xs font-bold text-foreground select-none shrink-0">
+            <span>🇵🇰</span>
+            <span>{geo.phoneRule.dialCode || '+92'}</span>
+          </div>
+
+          <input
+            id={`${idPrefix}-phone`}
+            type="tel"
+            inputMode="numeric"
+            pattern="[0-9]*"
+            maxLength={11}
+            required
+            disabled={disabled}
+            aria-required="true"
+            autoComplete="tel"
+            value={phone}
+            onChange={handlePhoneChange}
+            placeholder={geo.phoneRule.placeholder}
+            className={`w-full rounded-r-lg rounded-l-none border bg-background p-2.5 text-xs font-mono text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 ${
+              errors.phone ? 'border-destructive' : 'border-input'
+            }`}
+          />
+        </div>
+
+        <p className="text-[10px] text-muted-foreground">
+          {geo.phoneRule.formatHelp}
+        </p>
+        {errors.phone && (
+          <p className="text-[11px] text-destructive">{errors.phone}</p>
+        )}
       </div>
     </div>
   );
