@@ -119,9 +119,9 @@ export const PK_CITIES: CityDefinition[] = [
 export const PK_PHONE_RULE: PhoneRule = {
   countryCode: 'PK',
   dialCode: '+92',
-  placeholder: '0300 1234567',
-  example: '03001234567',
-  formatHelp: '11-digit mobile number starting with 03 (e.g. 0300 1234567)',
+  placeholder: '300 1234567',
+  example: '3001234567',
+  formatHelp: '10-digit mobile number starting with 3 (e.g. 300 1234567)',
   normalize: (raw: string): string => {
     if (!raw) return '';
     const digits = raw.replace(/\D/g, '');

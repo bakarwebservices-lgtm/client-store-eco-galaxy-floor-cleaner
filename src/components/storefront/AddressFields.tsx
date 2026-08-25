@@ -99,12 +99,19 @@ export function AddressFields({
     }
   };
 
-  // Restrict phone to numeric digits only
+  // Restrict phone to numeric digits only and strip leading zero when dial code (+92) is present
   const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const rawDigits = e.target.value.replace(/\D/g, '');
-    // Allow maximum 11 digits (e.g. 03001234567)
-    const limited = rawDigits.slice(0, 11);
-    setPhone(limited);
+    let rawDigits = e.target.value.replace(/\D/g, '');
+    if (geo.countryCode === 'PK') {
+      // If user types a leading 0 (e.g. 0300...), strip it because +92 is already prepended
+      if (rawDigits.startsWith('0')) {
+        rawDigits = rawDigits.slice(1);
+      }
+      rawDigits = rawDigits.slice(0, 10);
+    } else {
+      rawDigits = rawDigits.slice(0, 15);
+    }
+    setPhone(rawDigits);
   };
 
   return (
@@ -362,7 +369,7 @@ export function AddressFields({
             Mobile Contact Number *
           </label>
           <span className="text-[10px] text-muted-foreground font-mono">
-            {phone.length}/11 digits
+            {phone.length}/{geo.countryCode === 'PK' ? '10' : '15'} digits
           </span>
         </div>
 
@@ -378,7 +385,7 @@ export function AddressFields({
             type="tel"
             inputMode="numeric"
             pattern="[0-9]*"
-            maxLength={11}
+            maxLength={geo.countryCode === 'PK' ? 10 : 15}
             required
             disabled={disabled}
             aria-required="true"
