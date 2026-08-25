@@ -40,7 +40,11 @@ function CustomerLoginForm() {
       }
 
       await refreshCart();
-      router.push(redirect);
+      if (data?.role === 'admin' || data?.redirectUrl === '/admin') {
+        router.push('/admin');
+      } else {
+        router.push(redirect);
+      }
     } catch (err: any) {
       setError(err?.message || 'An unexpected error occurred during login.');
       setLoading(false);

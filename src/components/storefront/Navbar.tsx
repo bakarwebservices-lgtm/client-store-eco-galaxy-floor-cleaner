@@ -47,7 +47,7 @@ export function Navbar() {
           {/* Desktop Navigation */}
           <nav className="hidden md:flex items-center gap-6 text-sm font-medium text-muted-foreground">
             <Link href="/products" className="transition-colors hover:text-foreground">
-              Catalog
+              Shop
             </Link>
 
             <Link href="/collections" className="transition-colors hover:text-foreground">
@@ -155,7 +155,7 @@ export function Navbar() {
             onClick={() => setMobileMenuOpen(false)}
             className="block text-sm font-medium text-foreground py-1.5"
           >
-            All Products
+            Shop
           </Link>
 
           <Link
@@ -192,6 +192,13 @@ export function Navbar() {
             className="block text-sm font-medium text-foreground py-1.5"
           >
             Featured Items
+          </Link>
+          <Link
+            href="/account"
+            onClick={() => setMobileMenuOpen(false)}
+            className="block text-sm font-medium text-foreground py-1.5"
+          >
+            My Account
           </Link>
           <Link
             href="/track"

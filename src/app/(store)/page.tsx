@@ -8,6 +8,7 @@ import { db } from '@/lib/db';
 import { ProductStatus } from '@prisma/client';
 import { ProductCard, ProductCardProps } from '@/components/storefront/ProductCard';
 import { NewsletterSignup } from '@/components/storefront/NewsletterSignup';
+import { formatCurrency } from '@/lib/format';
 import { 
   Sparkles, 
   ArrowRight, 
@@ -17,9 +18,7 @@ import {
   Headphones, 
   Tag, 
   Star, 
-  CheckCircle2, 
-  Layers, 
-  ExternalLink 
+  CheckCircle2 
 } from 'lucide-react';
 
 export const metadata: Metadata = {
@@ -40,8 +39,8 @@ const DEMO_FEATURED_PRODUCTS: ProductCardProps[] = [
     comparePrice: 249.00,
     hasVariants: true,
     images: [
-      { url: 'https://images.unsplash.com/photo-1605100804763-247f67b3557e?w=800&q=80', altText: 'Smart Ring' },
-      { url: 'https://images.unsplash.com/photo-1603561591411-07134e71a2a9?w=800&q=80', altText: 'Smart Ring Detail' },
+      { url: 'https://images.unsplash.com/photo-1605100804763-247f67b3557e?w=800&q=80', altText: 'Aura Minimalist Smart Ring in titanium finish' },
+      { url: 'https://images.unsplash.com/photo-1603561591411-07134e71a2a9?w=800&q=80', altText: 'Smart Ring sensor and interior detail' },
     ],
   },
   {
@@ -52,8 +51,8 @@ const DEMO_FEATURED_PRODUCTS: ProductCardProps[] = [
     comparePrice: 420.00,
     hasVariants: true,
     images: [
-      { url: 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=800&q=80', altText: 'Chronograph Watch' },
-      { url: 'https://images.unsplash.com/photo-1524805444758-089113d48a6d?w=800&q=80', altText: 'Watch Detail' },
+      { url: 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=800&q=80', altText: 'Vortex Carbon Chronograph Watch front view' },
+      { url: 'https://images.unsplash.com/photo-1524805444758-089113d48a6d?w=800&q=80', altText: 'Chronograph strap and dial details' },
     ],
   },
   {
@@ -64,7 +63,7 @@ const DEMO_FEATURED_PRODUCTS: ProductCardProps[] = [
     comparePrice: null,
     hasVariants: true,
     images: [
-      { url: 'https://images.unsplash.com/photo-1603561591411-07134e71a2a9?w=800&q=80', altText: 'Titanium Ring' },
+      { url: 'https://images.unsplash.com/photo-1603561591411-07134e71a2a9?w=800&q=80', altText: 'Titanium Ceramic Band Ring bevelled edge' },
     ],
   },
   {
@@ -75,7 +74,7 @@ const DEMO_FEATURED_PRODUCTS: ProductCardProps[] = [
     comparePrice: 219.00,
     hasVariants: false,
     images: [
-      { url: 'https://images.unsplash.com/photo-1590658268037-6bf12165a8df?w=800&q=80', altText: 'Wireless Pods' },
+      { url: 'https://images.unsplash.com/photo-1590658268037-6bf12165a8df?w=800&q=80', altText: 'Precision Wireless Audio Pods with charging case' },
     ],
   },
 ];
@@ -90,8 +89,14 @@ const DEMO_CATEGORIES = [
 export default async function HomePage() {
   let featuredProducts: ProductCardProps[] = [];
   let dbCategories: Array<{ id: string; name: string; slug: string }> = [];
+  const settingsMap: Record<string, string> = {};
 
   try {
+    const rawSettings = await db.setting.findMany();
+    for (const s of rawSettings) {
+      settingsMap[s.key] = typeof s.value === 'string' ? s.value : (s.value != null ? String(s.value) : '');
+    }
+
     const dbProds = await db.product.findMany({
       where: {
         deletedAt: null,
@@ -131,6 +136,15 @@ export default async function HomePage() {
     // Database is offline/empty; fallback to rich preview data
   }
 
+  const currency = settingsMap['store.currency'] || 'USD';
+  const freeShippingThreshold = Number(settingsMap['shipping.free_threshold']) || 75;
+  const guaranteeStat = settingsMap['store.trust_guarantee_stat'] || '100%';
+  const guaranteeLabel = settingsMap['store.trust_guarantee_label'] || 'Original Guarantee';
+  const deliveryStat = settingsMap['store.trust_delivery_stat'] || '2-Day';
+  const deliveryLabel = settingsMap['store.trust_delivery_label'] || 'Express Delivery';
+  const ratingStat = settingsMap['store.trust_rating_stat'] || '4.9/5';
+  const ratingLabel = settingsMap['store.trust_rating_label'] || 'Customer Rating';
+
   const productsToShow = featuredProducts.length > 0 ? featuredProducts : DEMO_FEATURED_PRODUCTS;
 
   return (
@@ -166,28 +180,21 @@ export default async function HomePage() {
                   Explore Catalog
                   <ArrowRight className="ml-2 h-4 w-4" />
                 </Link>
-                <Link
-                  href="/admin"
-                  className="inline-flex items-center justify-center rounded-xl border border-border bg-card px-6 py-3.5 text-sm font-medium text-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
-                >
-                  Admin Portal
-                  <ExternalLink className="ml-2 h-3.5 w-3.5 text-muted-foreground" />
-                </Link>
               </div>
 
-              {/* Trust Badges */}
+              {/* Trust Badges from Settings */}
               <div className="grid grid-cols-3 gap-4 pt-6 border-t border-border/60 text-left">
                 <div>
-                  <p className="text-xl sm:text-2xl font-bold text-foreground">100%</p>
-                  <p className="text-xs text-muted-foreground">Original Guarantee</p>
+                  <p className="text-xl sm:text-2xl font-bold text-foreground">{guaranteeStat}</p>
+                  <p className="text-xs text-muted-foreground">{guaranteeLabel}</p>
                 </div>
                 <div>
-                  <p className="text-xl sm:text-2xl font-bold text-foreground">2-Day</p>
-                  <p className="text-xs text-muted-foreground">Express Delivery</p>
+                  <p className="text-xl sm:text-2xl font-bold text-foreground">{deliveryStat}</p>
+                  <p className="text-xs text-muted-foreground">{deliveryLabel}</p>
                 </div>
                 <div>
-                  <p className="text-xl sm:text-2xl font-bold text-foreground">4.9/5</p>
-                  <p className="text-xs text-muted-foreground">Customer Rating</p>
+                  <p className="text-xl sm:text-2xl font-bold text-foreground">{ratingStat}</p>
+                  <p className="text-xs text-muted-foreground">{ratingLabel}</p>
                 </div>
               </div>
             </div>
@@ -202,7 +209,7 @@ export default async function HomePage() {
                   <div className="relative aspect-[4/3] w-full overflow-hidden rounded-2xl bg-muted/30">
                     <Image
                       src="https://images.unsplash.com/photo-1605100804763-247f67b3557e?w=800&q=80"
-                      alt="Featured Item"
+                      alt="Aura Smart Ring Pro titanium smart wearable in matte black"
                       fill
                       className="object-cover object-center"
                       priority
@@ -217,7 +224,7 @@ export default async function HomePage() {
                       <h3 className="font-semibold text-foreground text-base">Aura Smart Ring Pro</h3>
                       <p className="text-xs text-muted-foreground">Titanium / Matte Black</p>
                     </div>
-                    <span className="text-lg font-bold text-foreground">$199.00</span>
+                    <span className="text-lg font-bold text-foreground">{formatCurrency(199, currency)}</span>
                   </div>
 
                   <div className="flex items-center gap-1 text-amber-500 text-xs">
@@ -244,7 +251,7 @@ export default async function HomePage() {
             </div>
             <div>
               <h4 className="text-sm font-semibold text-foreground">Worldwide Shipping</h4>
-              <p className="text-xs text-muted-foreground mt-0.5">Free standard shipping on all orders over $75.</p>
+              <p className="text-xs text-muted-foreground mt-0.5">Free standard shipping on all orders over {formatCurrency(freeShippingThreshold, currency)}.</p>
             </div>
           </div>
 
@@ -263,8 +270,8 @@ export default async function HomePage() {
               <RotateCcw className="h-5 w-5" />
             </div>
             <div>
-              <h4 className="text-sm font-semibold text-foreground">30-Day Returns</h4>
-              <p className="text-xs text-muted-foreground mt-0.5">Hassle-free return policy with prepaid labels.</p>
+              <h4 className="text-sm font-semibold text-foreground">Hassle-Free Returns</h4>
+              <p className="text-xs text-muted-foreground mt-0.5">30-day money-back guarantee policy.</p>
             </div>
           </div>
 
@@ -274,28 +281,36 @@ export default async function HomePage() {
             </div>
             <div>
               <h4 className="text-sm font-semibold text-foreground">24/7 Dedicated Support</h4>
-              <p className="text-xs text-muted-foreground mt-0.5">Prompt assistance from our customer care team.</p>
+              <p className="text-xs text-muted-foreground mt-0.5">Instant assistance from our concierge team.</p>
             </div>
           </div>
         </div>
       </section>
 
-      {/* 3. FEATURED CATEGORIES BENTO GRID */}
+      {/* 3. CATEGORY GRID */}
       <section className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="flex items-end justify-between mb-8">
           <div>
-            <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">Browse by Category</h2>
-            <p className="text-sm text-muted-foreground mt-1">Explore our product taxonomy and specialized collections.</p>
+            <div className="inline-flex items-center gap-1.5 text-xs font-semibold text-primary mb-1">
+              <CheckCircle2 className="h-3.5 w-3.5" />
+              <span>Engineered Lineup</span>
+            </div>
+            <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">Shop by Category</h2>
           </div>
-          <Link href="/products" className="hidden sm:inline-flex items-center text-sm font-medium text-primary hover:underline">
-            View all categories <ArrowRight className="ml-1.5 h-4 w-4" />
+          <Link href="/products" className="inline-flex items-center text-sm font-medium text-primary hover:underline">
+            Browse all <ArrowRight className="ml-1.5 h-4 w-4" />
           </Link>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-          {DEMO_CATEGORIES.map((cat, idx) => (
+          {(dbCategories.length > 0 ? dbCategories.map((c, i) => ({
+            name: c.name,
+            slug: c.slug,
+            count: 'Explore Collection',
+            img: DEMO_CATEGORIES[i % DEMO_CATEGORIES.length].img,
+          })) : DEMO_CATEGORIES).map((cat) => (
             <Link
-              key={idx}
+              key={cat.slug}
               href={`/products?category=${cat.slug}`}
               className="group relative overflow-hidden rounded-2xl border border-border bg-card shadow-sm transition-all duration-300 hover:shadow-lg hover:border-primary/50"
             >
@@ -365,50 +380,7 @@ export default async function HomePage() {
         </div>
       </section>
 
-      {/* 6. ADMIN & DEVELOPER QUICK HUB */}
-      <section className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        <div className="rounded-2xl border border-border/80 bg-card/60 p-6 sm:p-8 backdrop-blur">
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-            <div className="space-y-1">
-              <div className="flex items-center gap-2">
-                <Layers className="h-5 w-5 text-primary" />
-                <h3 className="text-lg font-bold text-foreground">Admin & Management Hub</h3>
-              </div>
-              <p className="text-xs sm:text-sm text-muted-foreground">
-                Manage inventory, restock alerts, coupons, blog posts, static pages, and theme branding.
-              </p>
-            </div>
-            <div className="flex flex-wrap gap-2.5">
-              <Link
-                href="/admin/login"
-                className="rounded-lg bg-primary px-4 py-2 text-xs font-semibold text-primary-foreground hover:bg-primary/90 transition-colors"
-              >
-                Admin Login
-              </Link>
-              <Link
-                href="/faq"
-                className="rounded-lg border border-border bg-background px-4 py-2 text-xs font-medium text-foreground hover:bg-accent transition-colors"
-              >
-                FAQ Page
-              </Link>
-              <Link
-                href="/contact"
-                className="rounded-lg border border-border bg-background px-4 py-2 text-xs font-medium text-foreground hover:bg-accent transition-colors"
-              >
-                Contact Page
-              </Link>
-              <Link
-                href="/blog"
-                className="rounded-lg border border-border bg-background px-4 py-2 text-xs font-medium text-foreground hover:bg-accent transition-colors"
-              >
-                Blog
-              </Link>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* 7. NEWSLETTER SECTION */}
+      {/* 6. NEWSLETTER SECTION */}
       <section className="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8 text-center">
         <div className="space-y-4">
           <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">

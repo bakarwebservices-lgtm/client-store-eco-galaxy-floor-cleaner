@@ -42,9 +42,8 @@ export function Footer() {
           </div>
 
           <div className="space-y-2">
-            <h3 className="text-xs font-semibold uppercase tracking-wider text-foreground">Administration</h3>
+            <h3 className="text-xs font-semibold uppercase tracking-wider text-foreground">Legal & Privacy</h3>
             <ul className="space-y-1.5 text-xs text-muted-foreground">
-              <li><Link href="/admin/login" className="hover:text-foreground transition-colors">Staff Login Portal</Link></li>
               <li><Link href="/pages/privacy-policy" className="hover:text-foreground transition-colors">Privacy Policy</Link></li>
               <li><Link href="/pages/terms" className="hover:text-foreground transition-colors">Terms of Service</Link></li>
             </ul>

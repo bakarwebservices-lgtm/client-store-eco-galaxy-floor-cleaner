@@ -140,7 +140,7 @@ export function ProductDetailClient({ product }: { product: ProductWithRelations
               {formatCurrency(currentPrice)}
             </span>
             {hasDiscount && (
-              <span className="text-base text-muted-foreground line-through">
+              <span className="text-base text-muted-foreground/80 line-through decoration-muted-foreground/60 font-medium">
                 {formatCurrency(currentComparePrice)}
               </span>
             )}
