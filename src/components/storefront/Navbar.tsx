@@ -11,25 +11,48 @@ interface CategoryNav {
   slug: string;
 }
 
+interface CollectionNav {
+  id: string;
+  name: string;
+  slug: string;
+}
+
 export function Navbar() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [categories, setCategories] = useState<CategoryNav[]>([]);
+  const [collections, setCollections] = useState<CollectionNav[]>([]);
+  const [trackingUrl, setTrackingUrl] = useState<string>('/track');
   const [categoriesOpen, setCategoriesOpen] = useState(false);
   const { totalItems, toggleCart } = useCart();
 
   useEffect(() => {
-    async function loadCategories() {
+    async function loadNavData() {
       try {
-        const res = await fetch('/api/categories');
-        if (res.ok) {
-          const data = await res.json();
+        const [catsRes, colsRes, settingsRes] = await Promise.all([
+          fetch('/api/categories'),
+          fetch('/api/collections'),
+          fetch('/api/settings'),
+        ]);
+
+        if (catsRes.ok) {
+          const data = await catsRes.json();
           setCategories(data.categories || []);
         }
+        if (colsRes.ok) {
+          const data = await colsRes.json();
+          setCollections(data.collections || []);
+        }
+        if (settingsRes.ok) {
+          const data = await settingsRes.json();
+          if (data.settings?.trackingUrl) {
+            setTrackingUrl(data.settings.trackingUrl);
+          }
+        }
       } catch (err) {
-        console.error('Failed to load categories navigation', err);
+        console.error('Failed to load navigation data', err);
       }
     }
-    loadCategories();
+    loadNavData();
   }, []);
 
   return (
@@ -50,9 +73,12 @@ export function Navbar() {
               Shop
             </Link>
 
-            <Link href="/collections" className="transition-colors hover:text-foreground">
-              Collections
-            </Link>
+            {/* Conditionally render Collections only if active collections exist */}
+            {collections.length > 0 && (
+              <Link href="/collections" className="transition-colors hover:text-foreground">
+                Collections
+              </Link>
+            )}
 
             {/* Categories Dropdown */}
             {categories.length > 0 && (
@@ -90,7 +116,12 @@ export function Navbar() {
             <Link href="/products?featured=true" className="transition-colors hover:text-foreground">
               Featured
             </Link>
-            <Link href="/track" className="transition-colors hover:text-foreground text-primary font-medium">
+            <Link
+              href={trackingUrl}
+              target={trackingUrl.startsWith('http') ? '_blank' : undefined}
+              rel={trackingUrl.startsWith('http') ? 'noopener noreferrer' : undefined}
+              className="transition-colors hover:text-foreground text-primary font-medium"
+            >
               Track
             </Link>
             <Link href="/faq" className="transition-colors hover:text-foreground">
@@ -114,10 +145,11 @@ export function Navbar() {
 
           <Link
             href="/account"
-            className="flex h-9 w-9 items-center justify-center rounded-full text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
-            aria-label="Account"
+            className="flex items-center gap-1.5 rounded-full border border-border/70 bg-card px-3 py-1.5 text-xs font-semibold text-foreground hover:bg-muted transition-colors shadow-sm"
+            aria-label="My Account"
           >
-            <User className="h-4 w-4" />
+            <User className="h-3.5 w-3.5 text-primary" />
+            <span className="hidden sm:inline">Account</span>
           </Link>
 
           {/* Cart Drawer Trigger Button with Live Counter Badge */}
@@ -158,13 +190,16 @@ export function Navbar() {
             Shop
           </Link>
 
-          <Link
-            href="/collections"
-            onClick={() => setMobileMenuOpen(false)}
-            className="block text-sm font-medium text-foreground py-1.5"
-          >
-            Collections
-          </Link>
+          {/* Conditionally render Collections in mobile drawer only if active collections exist */}
+          {collections.length > 0 && (
+            <Link
+              href="/collections"
+              onClick={() => setMobileMenuOpen(false)}
+              className="block text-sm font-medium text-foreground py-1.5"
+            >
+              Collections
+            </Link>
+          )}
 
           {categories.length > 0 && (
             <div className="border-t border-b border-border py-2 space-y-1">
@@ -201,7 +236,9 @@ export function Navbar() {
             My Account
           </Link>
           <Link
-            href="/track"
+            href={trackingUrl}
+            target={trackingUrl.startsWith('http') ? '_blank' : undefined}
+            rel={trackingUrl.startsWith('http') ? 'noopener noreferrer' : undefined}
             onClick={() => setMobileMenuOpen(false)}
             className="block text-sm font-medium text-primary py-1.5"
           >

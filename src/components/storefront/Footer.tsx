@@ -1,8 +1,21 @@
 import React from 'react';
 import Link from 'next/link';
+import { db } from '@/lib/db';
 import { NewsletterSignup } from './NewsletterSignup';
 
-export function Footer() {
+export async function Footer() {
+  let trackingUrl = '/track';
+  try {
+    const row = await db.setting.findFirst({
+      where: { key: { in: ['tracking.custom_url', 'store.tracking_url'] } },
+    });
+    if (row?.value) {
+      trackingUrl = String(row.value);
+    }
+  } catch {
+    // fallback to /track
+  }
+
   return (
     <footer className="border-t border-border bg-card text-card-foreground mt-20">
       <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
@@ -34,7 +47,16 @@ export function Footer() {
           <div className="space-y-2">
             <h3 className="text-xs font-semibold uppercase tracking-wider text-foreground">Customer Support</h3>
             <ul className="space-y-1.5 text-xs text-muted-foreground">
-              <li><Link href="/track" className="hover:text-foreground transition-colors font-medium text-primary">Track Order</Link></li>
+              <li>
+                <Link
+                  href={trackingUrl}
+                  target={trackingUrl.startsWith('http') ? '_blank' : undefined}
+                  rel={trackingUrl.startsWith('http') ? 'noopener noreferrer' : undefined}
+                  className="hover:text-foreground transition-colors font-medium text-primary"
+                >
+                  Track Order
+                </Link>
+              </li>
               <li><Link href="/contact" className="hover:text-foreground transition-colors">Contact Us</Link></li>
               <li><Link href="/pages/shipping-policy" className="hover:text-foreground transition-colors">Shipping Policy</Link></li>
               <li><Link href="/pages/returns" className="hover:text-foreground transition-colors">Returns & Refunds</Link></li>

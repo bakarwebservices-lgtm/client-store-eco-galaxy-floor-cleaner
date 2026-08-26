@@ -67,12 +67,12 @@ export function ProductCard({ product }: { product: ProductCardProps }) {
         </Link>
 
         {/* Price display */}
-        <div className="flex items-baseline gap-2 mt-auto">
+        <div className="flex items-baseline flex-wrap gap-x-2.5 gap-y-0.5 mt-auto pt-1">
           <span className="text-sm sm:text-base font-bold text-foreground">
             {formatCurrency(product.price)}
           </span>
           {hasDiscount && (
-            <span className="text-xs text-muted-foreground/80 line-through decoration-muted-foreground/60 font-medium">
+            <span className="text-xs text-muted-foreground/75 line-through decoration-muted-foreground/60 decoration-1 font-normal inline-block ml-1">
               {formatCurrency(product.comparePrice)}
             </span>
           )}

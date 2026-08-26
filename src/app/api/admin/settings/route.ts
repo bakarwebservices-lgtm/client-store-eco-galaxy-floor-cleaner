@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { revalidatePath } from 'next/cache';
 import { db } from '@/lib/db';
 import { getAdminSession } from '@/lib/auth/admin';
 import { allSettingsSchema, DEFAULT_SETTINGS } from '@/lib/validation/settings';
@@ -68,6 +69,13 @@ export async function PUT(request: NextRequest) {
       if (row.value !== null && row.value !== undefined) {
         updatedSettings[row.key] = row.value;
       }
+    }
+
+    // Revalidate root layout cache so theme tokens and site identity update immediately
+    try {
+      revalidatePath('/', 'layout');
+    } catch {
+      // Non-critical in test environments
     }
 
     return NextResponse.json({

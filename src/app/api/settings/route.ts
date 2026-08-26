@@ -36,6 +36,7 @@ export async function GET() {
       accentColor: settings['theme.accent_color'],
       fontFamily: settings['theme.font_family'],
       borderRadius: settings['theme.border_radius'],
+      trackingUrl: settings['tracking.custom_url'] || settings['store.tracking_url'] || '/track',
       facebookUrl: settings['social.facebook'],
       instagramUrl: settings['social.instagram'],
       twitterUrl: settings['social.twitter'],

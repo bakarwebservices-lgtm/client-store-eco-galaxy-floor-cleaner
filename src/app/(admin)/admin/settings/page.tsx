@@ -798,6 +798,23 @@ export default function AdminSettingsPage() {
                     Measurement ID starting with &apos;G-&apos; from Google Analytics stream details.
                   </p>
                 </div>
+
+                {/* Direct Courier Tracking Portal URL */}
+                <div className="border-t border-border pt-4">
+                  <label className="block text-xs font-semibold text-foreground mb-1">
+                    Direct Courier Tracking Page URL (Optional)
+                  </label>
+                  <input
+                    type="url"
+                    value={settings['tracking.custom_url'] || ''}
+                    onChange={(e) => handleChange('tracking.custom_url', e.target.value)}
+                    placeholder="https://postex.pk/tracking or https://trax.pk/tracking"
+                    className="w-full rounded-lg border border-border bg-background px-3.5 py-2 text-xs font-mono text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                  />
+                  <p className="mt-1 text-[11px] text-muted-foreground">
+                    When set, clicking &quot;Track&quot; in the header or &quot;Track Order&quot; in the footer directs customers straight to this courier tracking portal. Leave empty to use the built-in tracking page.
+                  </p>
+                </div>
               </div>
             </div>
           </div>

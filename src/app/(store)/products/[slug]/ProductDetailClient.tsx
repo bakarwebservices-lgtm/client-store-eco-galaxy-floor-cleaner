@@ -135,12 +135,12 @@ export function ProductDetailClient({ product }: { product: ProductWithRelations
           </h1>
 
           {/* Pricing */}
-          <div className="flex items-baseline gap-3 pt-2">
+          <div className="flex items-baseline flex-wrap gap-x-3 gap-y-1 pt-2">
             <span className="text-2xl sm:text-3xl font-extrabold text-foreground">
               {formatCurrency(currentPrice)}
             </span>
             {hasDiscount && (
-              <span className="text-base text-muted-foreground/80 line-through decoration-muted-foreground/60 font-medium">
+              <span className="text-base sm:text-lg text-muted-foreground/75 line-through decoration-muted-foreground/60 decoration-1 font-normal inline-block ml-2">
                 {formatCurrency(currentComparePrice)}
               </span>
             )}

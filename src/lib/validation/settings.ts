@@ -91,6 +91,11 @@ export const trackingSettingsSchema = z.object({
     .max(100, 'GA4 Measurement ID must be under 100 characters')
     .optional()
     .default(''),
+  'tracking.custom_url': z
+    .string()
+    .max(500, 'Tracking URL must be under 500 characters')
+    .optional()
+    .default(''),
 });
 
 export const socialSettingsSchema = z.object({
@@ -146,6 +151,7 @@ export const DEFAULT_SETTINGS: AllSettingsInput = {
   'tax.rate': 0,
   'tracking.meta_pixel_id': '',
   'tracking.ga4_measurement_id': '',
+  'tracking.custom_url': '',
   'social.instagram': '',
   'social.facebook': '',
   'social.tiktok': '',
