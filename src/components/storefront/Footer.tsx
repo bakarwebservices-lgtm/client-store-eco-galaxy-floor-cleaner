@@ -5,16 +5,41 @@ import { NewsletterSignup } from './NewsletterSignup';
 
 export async function Footer() {
   let trackingUrl = '/track';
+  let storeName = 'Store';
+  let tagline = 'Premium quality products with swift delivery and end-to-end customer support.';
+  let logoUrl: string | null = null;
+
   try {
-    const row = await db.setting.findFirst({
-      where: { key: { in: ['tracking.custom_url', 'store.tracking_url'] } },
+    const settings = await db.setting.findMany({
+      where: {
+        key: {
+          in: [
+            'tracking.custom_url',
+            'store.tracking_url',
+            'store.name',
+            'store.tagline',
+            'store.logo_url',
+          ],
+        },
+      },
     });
-    if (row?.value) {
-      trackingUrl = String(row.value);
+
+    for (const s of settings) {
+      if (s.key === 'tracking.custom_url' || s.key === 'store.tracking_url') {
+        if (s.value) trackingUrl = String(s.value);
+      } else if (s.key === 'store.name' && s.value) {
+        storeName = String(s.value);
+      } else if (s.key === 'store.tagline' && s.value) {
+        tagline = String(s.value);
+      } else if (s.key === 'store.logo_url' && s.value) {
+        logoUrl = String(s.value);
+      }
     }
   } catch {
-    // fallback to /track
+    // fallback to defaults
   }
+
+  const storeInitials = storeName.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase() || 'ST';
 
   return (
     <footer className="border-t border-border bg-card text-card-foreground mt-20">
@@ -22,13 +47,19 @@ export async function Footer() {
         <div className="grid grid-cols-1 gap-8 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-5">
           <div className="space-y-3 lg:col-span-2">
             <div className="flex items-center gap-2 font-heading font-bold text-foreground text-base">
-              <div className="flex h-6 w-6 items-center justify-center rounded bg-primary text-primary-foreground text-xs font-bold">
-                AW
-              </div>
-              STORE
+              {logoUrl ? (
+                <img src={logoUrl} alt={storeName} className="h-7 w-auto object-contain max-w-[140px]" />
+              ) : (
+                <>
+                  <div className="flex h-6 w-6 items-center justify-center rounded bg-primary text-primary-foreground text-xs font-bold">
+                    {storeInitials}
+                  </div>
+                  <span className="uppercase">{storeName}</span>
+                </>
+              )}
             </div>
             <p className="text-xs text-muted-foreground leading-relaxed max-w-sm">
-              Premium quality products with swift delivery and end-to-end customer support.
+              {tagline}
             </p>
             <div className="pt-2 max-w-sm">
               <NewsletterSignup />
@@ -73,8 +104,8 @@ export async function Footer() {
         </div>
 
         <div className="mt-12 border-t border-border pt-6 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-muted-foreground">
-          <p>© {new Date().getFullYear()} AWWeb SaaS Template. All rights reserved.</p>
-          <p>Config-driven e-commerce platform.</p>
+          <p>© {new Date().getFullYear()} {storeName}. All rights reserved.</p>
+          <p>Powered by Next.js E-Commerce Engine</p>
         </div>
       </div>
     </footer>

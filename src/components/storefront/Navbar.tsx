@@ -22,6 +22,8 @@ export function Navbar() {
   const [categories, setCategories] = useState<CategoryNav[]>([]);
   const [collections, setCollections] = useState<CollectionNav[]>([]);
   const [trackingUrl, setTrackingUrl] = useState<string>('/track');
+  const [storeName, setStoreName] = useState<string>('STORE');
+  const [logoUrl, setLogoUrl] = useState<string | null>(null);
   const [categoriesOpen, setCategoriesOpen] = useState(false);
   const { totalItems, toggleCart } = useCart();
 
@@ -47,6 +49,12 @@ export function Navbar() {
           if (data.settings?.trackingUrl) {
             setTrackingUrl(data.settings.trackingUrl);
           }
+          if (data.settings?.storeName) {
+            setStoreName(data.settings.storeName);
+          }
+          if (data.settings?.logoUrl) {
+            setLogoUrl(data.settings.logoUrl);
+          }
         }
       } catch (err) {
         console.error('Failed to load navigation data', err);
@@ -55,16 +63,24 @@ export function Navbar() {
     loadNavData();
   }, []);
 
+  const storeInitials = storeName.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase() || 'ST';
+
   return (
     <header className="sticky top-0 z-40 border-b border-border bg-card/90 backdrop-blur">
       <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
         {/* Brand Logo */}
         <div className="flex items-center gap-6">
           <Link href="/" className="flex items-center gap-2 font-heading text-lg font-bold tracking-tight text-foreground">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-primary-foreground font-extrabold">
-              AW
-            </div>
-            <span>STORE</span>
+            {logoUrl ? (
+              <img src={logoUrl} alt={storeName} className="h-8 w-auto object-contain max-w-[140px]" />
+            ) : (
+              <>
+                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-primary-foreground font-extrabold text-xs">
+                  {storeInitials}
+                </div>
+                <span className="uppercase">{storeName}</span>
+              </>
+            )}
           </Link>
 
           {/* Desktop Navigation */}
@@ -162,7 +178,7 @@ export function Navbar() {
             <ShoppingBag className="h-3.5 w-3.5" />
             <span className="hidden sm:inline">Bag</span>
             {totalItems > 0 && (
-              <span className="flex h-4 min-w-[16px] items-center justify-center rounded-full bg-destructive px-1 text-[10px] font-extrabold text-white">
+              <span className="flex h-4 min-w-[16px] items-center justify-center rounded-full bg-destructive px-1 text-[10px] font-extrabold text-destructive-foreground">
                 {totalItems}
               </span>
             )}

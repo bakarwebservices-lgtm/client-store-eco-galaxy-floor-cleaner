@@ -1,7 +1,4 @@
-/**
- * Dynamic Theme CSS Variables Generator
- * Reads theme tokens saved to the Setting database model and generates standard CSS variables.
- */
+import { THEME_PRESETS, defaultTheme, ThemeTokens } from '@/config/theme.config';
 
 function getContrastForeground(hex: string): string {
   if (!hex || !hex.startsWith('#') || (hex.length !== 7 && hex.length !== 4)) {
@@ -38,25 +35,42 @@ function getAdjustedHover(hex: string, amount = -25): string {
 }
 
 export function generateThemeCss(settings: Record<string, string>): string {
-  const primary = settings['theme.primary_color']?.trim() || '#18181b';
-  const accent = settings['theme.accent_color']?.trim() || '#f4f4f5';
-  const fontFamily = settings['theme.font_family']?.trim() || 'Inter';
+  const presetKey = settings['theme.preset']?.trim() || 'default';
+  const baseTokens: ThemeTokens = THEME_PRESETS[presetKey] || defaultTheme;
+
+  const background = settings['theme.background_color']?.trim() || baseTokens.colors.background;
+  const foreground = settings['theme.foreground_color']?.trim() || baseTokens.colors.foreground;
+  const primary = settings['theme.primary_color']?.trim() || baseTokens.colors.primary;
+  const accent = settings['theme.accent_color']?.trim() || baseTokens.colors.accent;
+  const card = settings['theme.card_color']?.trim() || baseTokens.colors.card;
+  const border = settings['theme.border_color']?.trim() || baseTokens.colors.border;
+  const radius = settings['theme.border_radius']?.trim() || baseTokens.radii.radius;
+  const fontFamily = settings['theme.font_family']?.trim() || baseTokens.typography.fontSans;
+  const fontHeading = settings['theme.font_heading']?.trim() || baseTokens.typography.fontHeading;
 
   const primaryFg = getContrastForeground(primary);
   const primaryHover = getAdjustedHover(primary, -20);
   const accentFg = getContrastForeground(accent);
-  const fontStack = `"${fontFamily}", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`;
+  const fontStack = fontFamily.includes(',') ? fontFamily : `"${fontFamily}", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`;
+  const fontHeadingStack = fontHeading.includes(',') ? fontHeading : `"${fontHeading}", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`;
 
   return `
     :root {
+      --background: ${background};
+      --foreground: ${foreground};
       --primary: ${primary};
       --primary-foreground: ${primaryFg};
       --primary-hover: ${primaryHover};
       --ring: ${primary};
       --accent: ${accent};
       --accent-foreground: ${accentFg};
+      --card: ${card};
+      --card-foreground: ${foreground};
+      --border: ${border};
+      --input: ${border};
+      --radius: ${radius};
       --font-sans: ${fontStack};
-      --font-heading: ${fontStack};
+      --font-heading: ${fontHeadingStack};
     }
   `.trim();
 }

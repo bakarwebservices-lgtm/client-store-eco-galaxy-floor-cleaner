@@ -18,73 +18,33 @@ import {
   Headphones, 
   Tag, 
   Star, 
-  CheckCircle2 
+  CheckCircle2,
+  PackageOpen
 } from 'lucide-react';
 
-export const metadata: Metadata = {
-  title: 'Home — AWStore SaaS eCommerce Platform',
-  description: 'Discover premium products with curated design, high-performance catalog, secure checkout, and instant delivery.',
-  alternates: {
-    canonical: '/',
-  },
-};
+export async function generateMetadata(): Promise<Metadata> {
+  let storeName = 'Official Store';
+  let tagline = 'Discover premium products with curated design, high performance, and swift delivery.';
+  try {
+    const settings = await db.setting.findMany({
+      where: { key: { in: ['store.name', 'store.tagline', 'store.description'] } },
+    });
+    for (const s of settings) {
+      if (s.key === 'store.name' && s.value) storeName = String(s.value);
+      if ((s.key === 'store.tagline' || s.key === 'store.description') && s.value) tagline = String(s.value);
+    }
+  } catch {
+    // fallback
+  }
 
-// Fallback demo products for instant visual preview
-const DEMO_FEATURED_PRODUCTS: ProductCardProps[] = [
-  {
-    id: 'demo-1',
-    name: 'Aura Minimalist Smart Ring',
-    slug: 'aura-smart-ring',
-    price: 199.00,
-    comparePrice: 249.00,
-    hasVariants: true,
-    images: [
-      { url: 'https://images.unsplash.com/photo-1605100804763-247f67b3557e?w=800&q=80', altText: 'Aura Minimalist Smart Ring in titanium finish' },
-      { url: 'https://images.unsplash.com/photo-1603561591411-07134e71a2a9?w=800&q=80', altText: 'Smart Ring sensor and interior detail' },
-    ],
-  },
-  {
-    id: 'demo-2',
-    name: 'Vortex Carbon Chronograph Watch',
-    slug: 'vortex-chronograph',
-    price: 349.00,
-    comparePrice: 420.00,
-    hasVariants: true,
-    images: [
-      { url: 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=800&q=80', altText: 'Vortex Carbon Chronograph Watch front view' },
-      { url: 'https://images.unsplash.com/photo-1524805444758-089113d48a6d?w=800&q=80', altText: 'Chronograph strap and dial details' },
-    ],
-  },
-  {
-    id: 'demo-3',
-    name: 'Titanium Ceramic Band Ring',
-    slug: 'titanium-ceramic-ring',
-    price: 129.00,
-    comparePrice: null,
-    hasVariants: true,
-    images: [
-      { url: 'https://images.unsplash.com/photo-1603561591411-07134e71a2a9?w=800&q=80', altText: 'Titanium Ceramic Band Ring bevelled edge' },
-    ],
-  },
-  {
-    id: 'demo-4',
-    name: 'Precision Wireless Audio Pods',
-    slug: 'precision-wireless-audio',
-    price: 179.00,
-    comparePrice: 219.00,
-    hasVariants: false,
-    images: [
-      { url: 'https://images.unsplash.com/photo-1590658268037-6bf12165a8df?w=800&q=80', altText: 'Precision Wireless Audio Pods with charging case' },
-    ],
-  },
-];
-
-const DEMO_CATEGORIES = [
-  { name: 'Smart Rings & Bands', slug: 'smart-rings', count: '14 items', img: 'https://images.unsplash.com/photo-1605100804763-247f67b3557e?w=600&q=80' },
-  { name: 'Chronographs & Watches', slug: 'watches', count: '22 items', img: 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=600&q=80' },
-  { name: 'Wireless & Audio', slug: 'audio', count: '18 items', img: 'https://images.unsplash.com/photo-1590658268037-6bf12165a8df?w=600&q=80' },
-  { name: 'Accessories & EDC', slug: 'accessories', count: '30 items', img: 'https://images.unsplash.com/photo-1584917865442-de89df76afd3?w=600&q=80' },
-];
+  return {
+    title: `Home — ${storeName}`,
+    description: tagline,
+    alternates: {
+      canonical: '/',
+    },
+  };
+}
 
 export default async function HomePage() {
   let featuredProducts: ProductCardProps[] = [];
@@ -133,19 +93,21 @@ export default async function HomePage() {
     });
     dbCategories = cats.map((c) => ({ id: c.id, name: c.name, slug: c.slug }));
   } catch {
-    // Database is offline/empty; fallback to rich preview data
+    // Database fallback
   }
 
+  const storeName = settingsMap['store.name'] || 'Official Store';
+  const heroBadge = settingsMap['store.hero_badge'] || 'New Season Collection';
+  const heroTitle = settingsMap['store.hero_title'] || 'Curated Design. Engineered Quality.';
+  const heroSubtitle = settingsMap['store.hero_subtitle'] || 'Discover our latest premium releases with swift shipping and dedicated customer service.';
   const currency = settingsMap['store.currency'] || 'USD';
   const freeShippingThreshold = Number(settingsMap['shipping.free_threshold']) || 75;
   const guaranteeStat = settingsMap['store.trust_guarantee_stat'] || '100%';
   const guaranteeLabel = settingsMap['store.trust_guarantee_label'] || 'Original Guarantee';
-  const deliveryStat = settingsMap['store.trust_delivery_stat'] || '2-Day';
-  const deliveryLabel = settingsMap['store.trust_delivery_label'] || 'Express Delivery';
+  const deliveryStat = settingsMap['store.trust_delivery_stat'] || '2-3 Days';
+  const deliveryLabel = settingsMap['store.trust_delivery_label'] || 'Express Shipping';
   const ratingStat = settingsMap['store.trust_rating_stat'] || '4.9/5';
-  const ratingLabel = settingsMap['store.trust_rating_label'] || 'Customer Rating';
-
-  const productsToShow = featuredProducts.length > 0 ? featuredProducts : DEMO_FEATURED_PRODUCTS;
+  const ratingLabel = settingsMap['store.trust_rating_label'] || 'Customer Satisfaction';
 
   return (
     <div className="flex flex-col space-y-16 sm:space-y-24 pb-16">
@@ -157,25 +119,22 @@ export default async function HomePage() {
             <div className="lg:col-span-7 space-y-6 text-center lg:text-left">
               <div className="inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/10 px-3.5 py-1 text-xs font-semibold text-primary">
                 <Sparkles className="h-3.5 w-3.5" />
-                <span>Next-Generation SaaS Storefront</span>
+                <span>{heroBadge}</span>
               </div>
 
               <h1 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold tracking-tight text-foreground leading-[1.1]">
-                Curated Design. <br className="hidden sm:block" />
-                <span className="bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent">
-                  Engineered Performance.
-                </span>
+                {heroTitle}
               </h1>
 
               <p className="text-base sm:text-lg text-muted-foreground max-w-2xl mx-auto lg:mx-0">
-                Explore a modern collection of smart accessories, precision timepieces, and high-end essentials with frictionless checkout and real-time inventory.
+                {heroSubtitle}
               </p>
 
               {/* CTAs */}
               <div className="flex flex-wrap items-center justify-center lg:justify-start gap-4 pt-2">
                 <Link
                   href="/products"
-                  className="inline-flex items-center justify-center rounded-xl bg-primary px-6 py-3.5 text-sm font-semibold text-primary-foreground shadow-lg shadow-primary/25 transition-all hover:bg-primary/90 hover:scale-[1.02] active:scale-[0.98]"
+                  className="inline-flex items-center justify-center rounded-xl bg-primary px-6 py-3.5 text-sm font-semibold text-primary-foreground shadow-lg shadow-primary/25 transition-all hover:bg-primary-hover hover:scale-[1.02] active:scale-[0.98]"
                 >
                   Explore Catalog
                   <ArrowRight className="ml-2 h-4 w-4" />
@@ -205,37 +164,53 @@ export default async function HomePage() {
                 {/* Glow Backdrop */}
                 <div className="absolute -inset-1 rounded-3xl bg-gradient-to-tr from-primary/30 to-primary/10 blur-2xl opacity-60" />
                 
-                <div className="relative overflow-hidden rounded-3xl border border-border bg-card shadow-2xl p-6 space-y-4">
-                  <div className="relative aspect-[4/3] w-full overflow-hidden rounded-2xl bg-muted/30">
-                    <Image
-                      src="https://images.unsplash.com/photo-1605100804763-247f67b3557e?w=800&q=80"
-                      alt="Aura Smart Ring Pro titanium smart wearable in matte black"
-                      fill
-                      className="object-cover object-center"
-                      priority
-                    />
-                    <div className="absolute top-3 left-3 rounded-full bg-primary/90 backdrop-blur px-3 py-1 text-xs font-semibold text-white shadow">
-                      Trending Now
+                {featuredProducts.length > 0 ? (
+                  <div className="relative overflow-hidden rounded-3xl border border-border bg-card shadow-2xl p-6 space-y-4">
+                    <div className="relative aspect-[4/3] w-full overflow-hidden rounded-2xl bg-muted/30">
+                      {featuredProducts[0].images[0]?.url ? (
+                        <Image
+                          src={featuredProducts[0].images[0].url}
+                          alt={featuredProducts[0].name}
+                          fill
+                          className="object-cover object-center"
+                          priority
+                        />
+                      ) : (
+                        <div className="flex h-full w-full items-center justify-center text-muted-foreground">
+                          <PackageOpen className="h-10 w-10 opacity-40" />
+                        </div>
+                      )}
+                      <div className="absolute top-3 left-3 rounded-full bg-primary/90 backdrop-blur px-3 py-1 text-xs font-semibold text-primary-foreground shadow">
+                        Featured Release
+                      </div>
+                    </div>
+
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <h3 className="font-semibold text-foreground text-base">{featuredProducts[0].name}</h3>
+                        <p className="text-xs text-muted-foreground">Premium Selection</p>
+                      </div>
+                      <span className="text-lg font-bold text-foreground">{formatCurrency(featuredProducts[0].price, currency)}</span>
+                    </div>
+
+                    <div className="flex items-center gap-1 text-amber-500 text-xs">
+                      <Star className="h-3.5 w-3.5 fill-current" />
+                      <Star className="h-3.5 w-3.5 fill-current" />
+                      <Star className="h-3.5 w-3.5 fill-current" />
+                      <Star className="h-3.5 w-3.5 fill-current" />
+                      <Star className="h-3.5 w-3.5 fill-current" />
+                      <span className="text-muted-foreground ml-1">(Verified Quality)</span>
                     </div>
                   </div>
-
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <h3 className="font-semibold text-foreground text-base">Aura Smart Ring Pro</h3>
-                      <p className="text-xs text-muted-foreground">Titanium / Matte Black</p>
+                ) : (
+                  <div className="relative overflow-hidden rounded-3xl border border-border bg-card shadow-2xl p-8 space-y-4 text-center">
+                    <div className="flex h-32 w-full items-center justify-center rounded-2xl bg-muted/30">
+                      <PackageOpen className="h-12 w-12 text-muted-foreground/50" />
                     </div>
-                    <span className="text-lg font-bold text-foreground">{formatCurrency(199, currency)}</span>
+                    <h3 className="font-bold text-foreground text-lg">{storeName}</h3>
+                    <p className="text-xs text-muted-foreground">Premium catalog is ready for products.</p>
                   </div>
-
-                  <div className="flex items-center gap-1 text-amber-500 text-xs">
-                    <Star className="h-3.5 w-3.5 fill-current" />
-                    <Star className="h-3.5 w-3.5 fill-current" />
-                    <Star className="h-3.5 w-3.5 fill-current" />
-                    <Star className="h-3.5 w-3.5 fill-current" />
-                    <Star className="h-3.5 w-3.5 fill-current" />
-                    <span className="text-muted-foreground ml-1">(128 reviews)</span>
-                  </div>
-                </div>
+                )}
               </div>
             </div>
           </div>
@@ -261,7 +236,7 @@ export default async function HomePage() {
             </div>
             <div>
               <h4 className="text-sm font-semibold text-foreground">Secure Checkout</h4>
-              <p className="text-xs text-muted-foreground mt-0.5">Encrypted transactions via PayPal & Cards.</p>
+              <p className="text-xs text-muted-foreground mt-0.5">Encrypted transactions via Cards & COD.</p>
             </div>
           </div>
 
@@ -271,7 +246,7 @@ export default async function HomePage() {
             </div>
             <div>
               <h4 className="text-sm font-semibold text-foreground">Hassle-Free Returns</h4>
-              <p className="text-xs text-muted-foreground mt-0.5">30-day money-back guarantee policy.</p>
+              <p className="text-xs text-muted-foreground mt-0.5">Money-back guarantee and simple returns.</p>
             </div>
           </div>
 
@@ -280,99 +255,93 @@ export default async function HomePage() {
               <Headphones className="h-5 w-5" />
             </div>
             <div>
-              <h4 className="text-sm font-semibold text-foreground">24/7 Dedicated Support</h4>
-              <p className="text-xs text-muted-foreground mt-0.5">Instant assistance from our concierge team.</p>
+              <h4 className="text-sm font-semibold text-foreground">Dedicated Support</h4>
+              <p className="text-xs text-muted-foreground mt-0.5">Fast assistance from our support team.</p>
             </div>
           </div>
         </div>
       </section>
 
       {/* 3. CATEGORY GRID */}
-      <section className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        <div className="flex items-end justify-between mb-8">
-          <div>
-            <div className="inline-flex items-center gap-1.5 text-xs font-semibold text-primary mb-1">
-              <CheckCircle2 className="h-3.5 w-3.5" />
-              <span>Engineered Lineup</span>
+      {dbCategories.length > 0 && (
+        <section className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+          <div className="flex items-end justify-between mb-8">
+            <div>
+              <div className="inline-flex items-center gap-1.5 text-xs font-semibold text-primary mb-1">
+                <CheckCircle2 className="h-3.5 w-3.5" />
+                <span>Featured Collections</span>
+              </div>
+              <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">Shop by Category</h2>
             </div>
-            <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">Shop by Category</h2>
-          </div>
-          <Link href="/products" className="inline-flex items-center text-sm font-medium text-primary hover:underline">
-            Browse all <ArrowRight className="ml-1.5 h-4 w-4" />
-          </Link>
-        </div>
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-          {(dbCategories.length > 0 ? dbCategories.map((c, i) => ({
-            name: c.name,
-            slug: c.slug,
-            count: 'Explore Collection',
-            img: DEMO_CATEGORIES[i % DEMO_CATEGORIES.length].img,
-          })) : DEMO_CATEGORIES).map((cat) => (
-            <Link
-              key={cat.slug}
-              href={`/products?category=${cat.slug}`}
-              className="group relative overflow-hidden rounded-2xl border border-border bg-card shadow-sm transition-all duration-300 hover:shadow-lg hover:border-primary/50"
-            >
-              <div className="relative aspect-[4/3] w-full overflow-hidden bg-muted/40">
-                <Image
-                  src={cat.img}
-                  alt={cat.name}
-                  fill
-                  className="object-cover object-center transition-transform duration-500 group-hover:scale-105"
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent" />
-              </div>
-              <div className="absolute inset-x-0 bottom-0 p-4 text-white">
-                <p className="text-[11px] font-semibold uppercase tracking-wider text-primary-foreground/80">{cat.count}</p>
-                <h3 className="text-base font-bold group-hover:text-primary transition-colors">{cat.name}</h3>
-              </div>
+            <Link href="/products" className="inline-flex items-center text-sm font-medium text-primary hover:underline">
+              Browse all <ArrowRight className="ml-1.5 h-4 w-4" />
             </Link>
-          ))}
-        </div>
-      </section>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+            {dbCategories.map((cat) => (
+              <Link
+                key={cat.slug}
+                href={`/categories/${cat.slug}`}
+                className="group relative overflow-hidden rounded-2xl border border-border bg-card shadow-sm transition-all duration-300 hover:shadow-lg hover:border-primary/50 p-6 flex flex-col justify-between min-h-[140px]"
+              >
+                <div>
+                  <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Category</p>
+                  <h3 className="text-lg font-bold text-foreground group-hover:text-primary transition-colors mt-1">{cat.name}</h3>
+                </div>
+                <div className="flex items-center text-xs font-medium text-primary mt-4">
+                  <span>Explore items</span>
+                  <ArrowRight className="ml-1 h-3.5 w-3.5 transition-transform group-hover:translate-x-1" />
+                </div>
+              </Link>
+            ))}
+          </div>
+        </section>
+      )}
 
       {/* 4. FEATURED PRODUCTS SHOWCASE */}
-      <section className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        <div className="flex items-end justify-between mb-8">
-          <div>
-            <div className="inline-flex items-center gap-1.5 text-xs font-semibold text-primary mb-1">
-              <Tag className="h-3.5 w-3.5" />
-              <span>Trending Releases</span>
+      {featuredProducts.length > 0 && (
+        <section className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+          <div className="flex items-end justify-between mb-8">
+            <div>
+              <div className="inline-flex items-center gap-1.5 text-xs font-semibold text-primary mb-1">
+                <Tag className="h-3.5 w-3.5" />
+                <span>Trending Releases</span>
+              </div>
+              <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">Featured Products</h2>
             </div>
-            <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">Featured Products</h2>
+            <Link href="/products" className="inline-flex items-center text-sm font-medium text-primary hover:underline">
+              See all products <ArrowRight className="ml-1.5 h-4 w-4" />
+            </Link>
           </div>
-          <Link href="/products" className="inline-flex items-center text-sm font-medium text-primary hover:underline">
-            See all products <ArrowRight className="ml-1.5 h-4 w-4" />
-          </Link>
-        </div>
 
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-6">
-          {productsToShow.map((product) => (
-            <ProductCard key={product.id} product={product} />
-          ))}
-        </div>
-      </section>
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-6">
+            {featuredProducts.map((product) => (
+              <ProductCard key={product.id} product={product} />
+            ))}
+          </div>
+        </section>
+      )}
 
       {/* 5. PROMOTIONAL BANNER */}
       <section className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-primary via-primary/90 to-primary/80 p-8 sm:p-12 text-primary-foreground shadow-xl">
           <div className="relative z-10 max-w-2xl space-y-4">
-            <span className="inline-block rounded-full bg-white/20 px-3 py-1 text-xs font-semibold uppercase tracking-wider text-white">
-              Limited Time Welcome Offer
+            <span className="inline-block rounded-full bg-primary-foreground/20 px-3 py-1 text-xs font-semibold uppercase tracking-wider text-primary-foreground">
+              Special Welcome Offer
             </span>
             <h2 className="text-3xl sm:text-4xl font-extrabold tracking-tight leading-tight">
-              Get 10% Off Your First Order
+              Quality Guaranteed On Every Order
             </h2>
             <p className="text-sm sm:text-base text-primary-foreground/90">
-              Apply coupon code <span className="font-mono font-bold bg-white/20 px-2 py-0.5 rounded">WELCOME10</span> at checkout for instant savings.
+              Discover curated products backed by comprehensive warranties, swift delivery, and responsive support.
             </p>
             <div className="pt-2">
               <Link
                 href="/products"
                 className="inline-flex items-center justify-center rounded-xl bg-background px-6 py-3 text-sm font-semibold text-foreground shadow transition-transform hover:scale-105"
               >
-                Shop the Collection
+                Shop the Catalog
                 <ArrowRight className="ml-2 h-4 w-4" />
               </Link>
             </div>
@@ -387,7 +356,7 @@ export default async function HomePage() {
             Stay in the Loop
           </h2>
           <p className="text-sm text-muted-foreground max-w-md mx-auto">
-            Subscribe for exclusive product drops, early access sales, and seasonal discounts.
+            Subscribe for exclusive product drops, updates, and special promotions.
           </p>
           <div className="max-w-md mx-auto pt-2">
             <NewsletterSignup />

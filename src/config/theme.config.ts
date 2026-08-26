@@ -10,6 +10,8 @@
  * never hardcoded hex colors or arbitrary font values.
  */
 
+export type AspectRatioOption = 'square' | 'portrait' | 'wide';
+
 export interface ThemeTokens {
   name: string;
   colors: {
@@ -44,6 +46,9 @@ export interface ThemeTokens {
   };
   radii: {
     radius: string; // e.g. "0.5rem"
+  };
+  layout: {
+    productCardAspectRatio: AspectRatioOption;
   };
 }
 
@@ -82,6 +87,136 @@ export const defaultTheme: ThemeTokens = {
   radii: {
     radius: '0.5rem',
   },
+  layout: {
+    productCardAspectRatio: 'square',
+  },
+};
+
+export const luxuryDarkTheme: ThemeTokens = {
+  name: 'Luxury Obsidian & Gold',
+  colors: {
+    background: '#09090b',
+    foreground: '#f4f4f5',
+    primary: '#d97706', // Warm Amber Gold
+    primaryForeground: '#09090b',
+    primaryHover: '#b45309',
+    secondary: '#18181b',
+    secondaryForeground: '#f4f4f5',
+    accent: '#27272a',
+    accentForeground: '#f4f4f5',
+    muted: '#18181b',
+    mutedForeground: '#a1a1aa',
+    card: '#121215',
+    cardForeground: '#f4f4f5',
+    border: '#27272a',
+    input: '#27272a',
+    ring: '#d97706',
+    success: '#10b981',
+    warning: '#f59e0b',
+    destructive: '#ef4444',
+  },
+  typography: {
+    fontSans: 'Plus Jakarta Sans, system-ui, sans-serif',
+    fontHeading: 'Cinzel, Playfair Display, serif',
+    baseFontSize: '16px',
+  },
+  spacing: {
+    containerMaxWidth: '1360px',
+    sectionPaddingY: '5rem',
+  },
+  radii: {
+    radius: '0.25rem',
+  },
+  layout: {
+    productCardAspectRatio: 'portrait',
+  },
+};
+
+export const streetwearTheme: ThemeTokens = {
+  name: 'Streetwear Mono & High-Contrast',
+  colors: {
+    background: '#000000',
+    foreground: '#ffffff',
+    primary: '#ffffff',
+    primaryForeground: '#000000',
+    primaryHover: '#e4e4e7',
+    secondary: '#18181b',
+    secondaryForeground: '#ffffff',
+    accent: '#27272a',
+    accentForeground: '#ffffff',
+    muted: '#18181b',
+    mutedForeground: '#71717a',
+    card: '#09090b',
+    cardForeground: '#ffffff',
+    border: '#27272a',
+    input: '#27272a',
+    ring: '#ffffff',
+    success: '#22c55e',
+    warning: '#eab308',
+    destructive: '#f43f5e',
+  },
+  typography: {
+    fontSans: 'Space Grotesk, Inter, sans-serif',
+    fontHeading: 'Space Grotesk, sans-serif',
+    baseFontSize: '16px',
+  },
+  spacing: {
+    containerMaxWidth: '1440px',
+    sectionPaddingY: '4rem',
+  },
+  radii: {
+    radius: '0px',
+  },
+  layout: {
+    productCardAspectRatio: 'portrait',
+  },
+};
+
+export const warmEditorialTheme: ThemeTokens = {
+  name: 'Warm Editorial & Cream',
+  colors: {
+    background: '#faf8f5',
+    foreground: '#292524',
+    primary: '#78350f',
+    primaryForeground: '#ffffff',
+    primaryHover: '#92400e',
+    secondary: '#f5f0e8',
+    secondaryForeground: '#292524',
+    accent: '#ede4d8',
+    accentForeground: '#292524',
+    muted: '#f5f0e8',
+    mutedForeground: '#78716c',
+    card: '#ffffff',
+    cardForeground: '#292524',
+    border: '#e7ded4',
+    input: '#e7ded4',
+    ring: '#78350f',
+    success: '#059669',
+    warning: '#d97706',
+    destructive: '#dc2626',
+  },
+  typography: {
+    fontSans: 'Plus Jakarta Sans, sans-serif',
+    fontHeading: 'Playfair Display, serif',
+    baseFontSize: '16px',
+  },
+  spacing: {
+    containerMaxWidth: '1280px',
+    sectionPaddingY: '4.5rem',
+  },
+  radii: {
+    radius: '0.375rem',
+  },
+  layout: {
+    productCardAspectRatio: 'square',
+  },
+};
+
+export const THEME_PRESETS: Record<string, ThemeTokens> = {
+  default: defaultTheme,
+  luxury: luxuryDarkTheme,
+  streetwear: streetwearTheme,
+  editorial: warmEditorialTheme,
 };
 
 /**

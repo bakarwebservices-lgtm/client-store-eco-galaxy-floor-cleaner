@@ -99,10 +99,10 @@ export function ProductGallery({
                 aria-label={`View media ${idx + 1}`}
               >
                 {isThumbVideo ? (
-                  <div className="flex h-full w-full items-center justify-center bg-slate-950 text-white">
-                    <Film className="h-5 w-5 text-primary" />
+                  <div className="flex h-full w-full items-center justify-center bg-primary text-primary-foreground">
+                    <Film className="h-5 w-5 text-primary-foreground/70" />
                     <div className="absolute inset-0 flex items-center justify-center">
-                      <Play className="h-4 w-4 text-white drop-shadow fill-white/80" />
+                      <Play className="h-4 w-4 text-primary-foreground drop-shadow fill-primary-foreground/80" />
                     </div>
                   </div>
                 ) : (

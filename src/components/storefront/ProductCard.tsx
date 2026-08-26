@@ -10,6 +10,7 @@ export interface ProductCardProps {
   price: number;
   comparePrice?: number | null;
   hasVariants?: boolean;
+  aspectRatio?: 'square' | 'portrait' | 'wide';
   images: Array<{
     url: string;
     altText?: string | null;
@@ -21,10 +22,15 @@ export function ProductCard({ product }: { product: ProductCardProps }) {
   const secondaryImage = product.images[1];
   const hasDiscount = product.comparePrice && product.comparePrice > product.price;
 
+  const aspectRatioClass = 
+    product.aspectRatio === 'portrait' ? 'aspect-[3/4]' :
+    product.aspectRatio === 'wide' ? 'aspect-[4/3]' :
+    'aspect-square';
+
   return (
     <div className="group relative flex flex-col overflow-hidden rounded-xl border border-border bg-card transition-all duration-300 hover:shadow-md">
       {/* Image Container */}
-      <Link href={`/products/${product.slug}`} className="relative aspect-square w-full overflow-hidden bg-muted/20">
+      <Link href={`/products/${product.slug}`} className={`relative ${aspectRatioClass} w-full overflow-hidden bg-muted/20`}>
         {primaryImage ? (
           <>
             <Image
@@ -52,7 +58,7 @@ export function ProductCard({ product }: { product: ProductCardProps }) {
 
         {/* Discount Badge */}
         {hasDiscount && (
-          <div className="absolute left-2.5 top-2.5 rounded-full bg-destructive px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-white shadow">
+          <div className="absolute left-2.5 top-2.5 rounded-full bg-destructive px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-destructive-foreground shadow">
             Sale
           </div>
         )}
