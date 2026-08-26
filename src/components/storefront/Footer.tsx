@@ -3,6 +3,16 @@ import Link from 'next/link';
 import { db } from '@/lib/db';
 import { NewsletterSignup } from './NewsletterSignup';
 
+function getSafeStoreInitials(name?: string | null): string {
+  if (!name || typeof name !== 'string') return 'ST';
+  const clean = name.trim();
+  if (!clean) return 'ST';
+  const words = clean.split(/\s+/).filter(Boolean);
+  if (words.length === 0) return 'ST';
+  if (words.length === 1) return words[0].slice(0, 2).toUpperCase();
+  return (words[0][0] + (words[1]?.[0] || '')).toUpperCase();
+}
+
 export async function Footer() {
   let trackingUrl = '/track';
   let storeName = 'Store';
@@ -39,24 +49,20 @@ export async function Footer() {
     // fallback to defaults
   }
 
-  const storeInitials = storeName.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase() || 'ST';
-
   return (
     <footer className="border-t border-border bg-card text-card-foreground mt-20">
       <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
         <div className="grid grid-cols-1 gap-8 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-5">
           <div className="space-y-3 lg:col-span-2">
-            <div className="flex items-center gap-2 font-heading font-bold text-foreground text-base">
+            <div className="flex items-center gap-2.5 font-heading font-bold text-foreground text-base">
               {logoUrl ? (
                 <img src={logoUrl} alt={storeName} className="h-7 w-auto object-contain max-w-[140px]" />
               ) : (
-                <>
-                  <div className="flex h-6 w-6 items-center justify-center rounded bg-primary text-primary-foreground text-xs font-bold">
-                    {storeInitials}
-                  </div>
-                  <span className="uppercase">{storeName}</span>
-                </>
+                <div className="flex h-6 w-6 items-center justify-center rounded bg-primary text-primary-foreground text-xs font-bold shrink-0">
+                  {getSafeStoreInitials(storeName)}
+                </div>
               )}
+              <span className="uppercase">{storeName}</span>
             </div>
             <p className="text-xs text-muted-foreground leading-relaxed max-w-sm">
               {tagline}

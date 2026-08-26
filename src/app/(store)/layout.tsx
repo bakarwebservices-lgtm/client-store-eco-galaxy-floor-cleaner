@@ -4,17 +4,41 @@ import { Footer } from '@/components/storefront/Footer';
 import { CartDrawer } from '@/components/storefront/CartDrawer';
 import { CartProvider } from '@/context/CartContext';
 import { WishlistProvider } from '@/context/WishlistContext';
+import { db } from '@/lib/db';
 
-export default function StoreLayout({
+export default async function StoreLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  let storeName = 'Store';
+  let logoUrl: string | null = null;
+
+  try {
+    const settings = await db.setting.findMany({
+      where: {
+        key: {
+          in: ['store.name', 'store.logo_url'],
+        },
+      },
+    });
+
+    for (const s of settings) {
+      if (s.key === 'store.name' && s.value) {
+        storeName = String(s.value);
+      } else if (s.key === 'store.logo_url' && s.value) {
+        logoUrl = String(s.value);
+      }
+    }
+  } catch {
+    // fallback defaults
+  }
+
   return (
     <CartProvider>
       <WishlistProvider>
         <div className="flex min-h-screen flex-col bg-background text-foreground">
-          <Navbar />
+          <Navbar initialStoreName={storeName} initialLogoUrl={logoUrl} />
           <div className="flex-1">{children}</div>
           <Footer />
           <CartDrawer />

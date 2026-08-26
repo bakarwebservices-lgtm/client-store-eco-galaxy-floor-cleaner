@@ -17,13 +17,29 @@ interface CollectionNav {
   slug: string;
 }
 
-export function Navbar() {
+function getSafeStoreInitials(name?: string | null): string {
+  if (!name || typeof name !== 'string') return 'ST';
+  const clean = name.trim();
+  if (!clean) return 'ST';
+  const words = clean.split(/\s+/).filter(Boolean);
+  if (words.length === 0) return 'ST';
+  if (words.length === 1) return words[0].slice(0, 2).toUpperCase();
+  return (words[0][0] + (words[1]?.[0] || '')).toUpperCase();
+}
+
+export interface NavbarProps {
+  initialStoreName?: string;
+  initialLogoUrl?: string | null;
+}
+
+export function Navbar({ initialStoreName = 'STORE', initialLogoUrl = null }: NavbarProps) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [categories, setCategories] = useState<CategoryNav[]>([]);
   const [collections, setCollections] = useState<CollectionNav[]>([]);
   const [trackingUrl, setTrackingUrl] = useState<string>('/track');
-  const [storeName, setStoreName] = useState<string>('STORE');
-  const [logoUrl, setLogoUrl] = useState<string | null>(null);
+  const [storeName, setStoreName] = useState<string>(initialStoreName || 'STORE');
+  const [logoUrl, setLogoUrl] = useState<string | null>(initialLogoUrl || null);
+  const [logoError, setLogoError] = useState(false);
   const [categoriesOpen, setCategoriesOpen] = useState(false);
   const { totalItems, toggleCart } = useCart();
 
@@ -54,6 +70,7 @@ export function Navbar() {
           }
           if (data.settings?.logoUrl) {
             setLogoUrl(data.settings.logoUrl);
+            setLogoError(false);
           }
         }
       } catch (err) {
@@ -63,24 +80,25 @@ export function Navbar() {
     loadNavData();
   }, []);
 
-  const storeInitials = storeName.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase() || 'ST';
-
   return (
     <header className="sticky top-0 z-40 border-b border-border bg-card/90 backdrop-blur">
       <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
         {/* Brand Logo */}
         <div className="flex items-center gap-6">
-          <Link href="/" className="flex items-center gap-2 font-heading text-lg font-bold tracking-tight text-foreground">
-            {logoUrl ? (
-              <img src={logoUrl} alt={storeName} className="h-8 w-auto object-contain max-w-[140px]" />
+          <Link href="/" className="flex items-center gap-2.5 font-heading text-lg font-bold tracking-tight text-foreground">
+            {logoUrl && !logoError ? (
+              <img
+                src={logoUrl}
+                alt={storeName}
+                onError={() => setLogoError(true)}
+                className="h-8 w-auto object-contain max-w-[140px]"
+              />
             ) : (
-              <>
-                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-primary-foreground font-extrabold text-xs">
-                  {storeInitials}
-                </div>
-                <span className="uppercase">{storeName}</span>
-              </>
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-primary-foreground font-extrabold text-xs shrink-0">
+                {getSafeStoreInitials(storeName)}
+              </div>
             )}
+            <span className="uppercase">{storeName}</span>
           </Link>
 
           {/* Desktop Navigation */}
