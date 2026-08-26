@@ -42,7 +42,7 @@ const TABS: { id: SettingsTab; label: string; icon: React.ComponentType<{ classN
   { id: 'theme', label: 'Theme & Styling', icon: Palette },
   { id: 'shipping', label: 'Shipping & Taxes', icon: DollarSign },
   { id: 'couriers', label: 'Couriers & Logistics', icon: Truck },
-  { id: 'tracking', label: 'Analytics & Pixels', icon: BarChart3 },
+  { id: 'tracking', label: 'Analytics & Tracking', icon: BarChart3 },
   { id: 'social', label: 'Social Channels', icon: Share2 },
 ];
 

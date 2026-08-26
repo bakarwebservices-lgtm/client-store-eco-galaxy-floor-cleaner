@@ -14,6 +14,7 @@ import {
   EyeOff,
   Globe,
   Radio,
+  Save,
 } from 'lucide-react';
 import { safeFetch } from '@/lib/apiClient';
 
@@ -44,6 +45,10 @@ export function CourierSettingsTab() {
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
+  // Customer Tracking URL State
+  const [customTrackingUrl, setCustomTrackingUrl] = useState('');
+  const [savingTrackingUrl, setSavingTrackingUrl] = useState(false);
+
   // Form state
   const [selectedCourier, setSelectedCourier] = useState('POSTEX');
   const [accountTitle, setAccountTitle] = useState('');
@@ -58,17 +63,47 @@ export function CourierSettingsTab() {
     setLoading(true);
     setMsg(null);
     try {
-      const { ok, data, error } = await safeFetch<any>('/api/admin/couriers');
-      if (ok && data) {
-        setAccounts(data.accounts || []);
-        setAvailableCouriers(data.availableCouriers || []);
+      const [couriersRes, settingsRes] = await Promise.all([
+        safeFetch<any>('/api/admin/couriers'),
+        safeFetch<any>('/api/admin/settings'),
+      ]);
+
+      if (couriersRes.ok && couriersRes.data) {
+        setAccounts(couriersRes.data.accounts || []);
+        setAvailableCouriers(couriersRes.data.availableCouriers || []);
       } else {
-        setMsg({ type: 'error', text: error || 'Failed to load courier configurations.' });
+        setMsg({ type: 'error', text: couriersRes.error || 'Failed to load courier configurations.' });
+      }
+
+      if (settingsRes.ok && settingsRes.data?.settings) {
+        setCustomTrackingUrl(settingsRes.data.settings['tracking.custom_url'] || '');
       }
     } catch (err: any) {
       setMsg({ type: 'error', text: err?.message || 'Network error fetching couriers.' });
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleSaveTrackingUrl = async () => {
+    setSavingTrackingUrl(true);
+    setMsg(null);
+    try {
+      const res = await fetch('/api/admin/settings', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 'tracking.custom_url': customTrackingUrl.trim() }),
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setMsg({ type: 'success', text: 'Customer tracking link updated successfully.' });
+      } else {
+        setMsg({ type: 'error', text: data.error || 'Failed to update tracking URL.' });
+      }
+    } catch (err: any) {
+      setMsg({ type: 'error', text: err?.message || 'Failed to save tracking URL.' });
+    } finally {
+      setSavingTrackingUrl(false);
     }
   };
 
@@ -160,6 +195,37 @@ export function CourierSettingsTab() {
           <span>{msg.text}</span>
         </div>
       )}
+
+      {/* Customer Tracking Portal Link */}
+      <div className="rounded-xl border border-border bg-card p-5 shadow-sm space-y-3">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+          <div className="flex items-center gap-2">
+            <Globe className="h-4 w-4 text-primary" />
+            <h3 className="text-xs font-semibold text-foreground">Customer Storefront Tracking URL</h3>
+          </div>
+          <button
+            type="button"
+            onClick={handleSaveTrackingUrl}
+            disabled={savingTrackingUrl}
+            className="flex items-center gap-1.5 self-start sm:self-auto rounded-lg bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground shadow-sm hover:bg-primary-hover disabled:opacity-50 transition-colors"
+          >
+            {savingTrackingUrl ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
+            <span>Save Tracking Link</span>
+          </button>
+        </div>
+        <p className="text-xs text-muted-foreground">
+          Enter your courier&apos;s public tracking page URL (e.g. <code className="font-mono text-primary">https://postex.pk/tracking</code>, <code className="font-mono text-primary">https://trax.pk/tracking</code>, or <code className="font-mono text-primary">https://www.tcsexpress.com/track</code>). When customers click <strong>&quot;Track&quot;</strong> in the header or <strong>&quot;Track Order&quot;</strong> in the footer, they will be redirected straight to this link.
+        </p>
+        <div className="relative">
+          <input
+            type="url"
+            value={customTrackingUrl}
+            onChange={(e) => setCustomTrackingUrl(e.target.value)}
+            placeholder="https://postex.pk/tracking"
+            className="w-full rounded-lg border border-border bg-background px-3.5 py-2 text-xs font-mono text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+          />
+        </div>
+      </div>
 
       {/* Main Courier Manager Card */}
       <div className="rounded-xl border border-border bg-card p-6 shadow-sm space-y-5">
