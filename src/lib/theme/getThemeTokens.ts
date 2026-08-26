@@ -74,3 +74,35 @@ export function generateThemeCss(settings: Record<string, string>): string {
     }
   `.trim();
 }
+
+/**
+ * Builds a Google Fonts CDN stylesheet link for any chosen font families
+ */
+export function getGoogleFontUrl(settings: Record<string, string>): string | null {
+  const presetKey = settings['theme.preset']?.trim() || 'default';
+  const baseTokens: ThemeTokens = THEME_PRESETS[presetKey] || defaultTheme;
+
+  const fontFamily = settings['theme.font_family']?.trim() || baseTokens.typography.fontSans;
+  const fontHeading = settings['theme.font_heading']?.trim() || baseTokens.typography.fontHeading;
+
+  const fonts = new Set<string>();
+  const skipList = ['system-ui', '-apple-system', 'sans-serif', 'serif', 'monospace', 'inherit', 'blinkmacsystemfont', 'segoe ui'];
+
+  const cleanFamily = fontFamily.split(',')[0].replace(/["']/g, '').trim();
+  const cleanHeading = fontHeading.split(',')[0].replace(/["']/g, '').trim();
+
+  if (cleanFamily && !skipList.includes(cleanFamily.toLowerCase())) {
+    fonts.add(cleanFamily);
+  }
+  if (cleanHeading && !skipList.includes(cleanHeading.toLowerCase())) {
+    fonts.add(cleanHeading);
+  }
+
+  if (fonts.size === 0) return null;
+
+  const queryParts = Array.from(fonts).map(
+    (name) => `family=${encodeURIComponent(name).replace(/%20/g, '+')}:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400;1,600`
+  );
+
+  return `https://fonts.googleapis.com/css2?${queryParts.join('&')}&display=swap`;
+}

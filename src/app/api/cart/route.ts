@@ -13,6 +13,7 @@ export async function GET() {
 
     // Read dynamic settings from Setting model (BUILD_STANDARDS 2.7)
     const freeShippingThreshold = await getSetting<number>('shipping.free_threshold', 5000);
+    const standardShippingCost = await getSetting<number>('shipping.standard_cost', 250);
     const currency = await getSetting<string>('store.currency', 'PKR');
 
     const formattedItems = cart.items.map((item) => {
@@ -47,6 +48,7 @@ export async function GET() {
       totalItems,
       subtotal,
       freeShippingThreshold,
+      standardShippingCost,
       currency,
     });
   } catch (error) {

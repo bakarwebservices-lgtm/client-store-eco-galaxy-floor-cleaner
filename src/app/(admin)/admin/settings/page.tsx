@@ -616,7 +616,10 @@ export default function AdminSettingsPage() {
 
                 <div className="space-y-4 rounded-xl border border-border bg-muted/20 p-4">
                   {/* Sample Card */}
-                  <div className="space-y-3 rounded-lg border border-border bg-card p-4 shadow-sm">
+                  <div
+                    className="space-y-3 rounded-lg border border-border bg-card p-4 shadow-sm"
+                    style={{ fontFamily: settings['theme.font_family'] ? `"${settings['theme.font_family']}", sans-serif` : undefined }}
+                  >
                     <div className="flex items-center justify-between">
                       <span
                         className="px-2 py-0.5 rounded text-[10px] font-bold text-white uppercase tracking-wider"

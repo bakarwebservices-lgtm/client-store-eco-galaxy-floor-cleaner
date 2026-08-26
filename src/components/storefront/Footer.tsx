@@ -18,6 +18,9 @@ export async function Footer() {
   let storeName = 'Store';
   let tagline = 'Premium quality products with swift delivery and end-to-end customer support.';
   let logoUrl: string | null = null;
+  let instagramUrl = '';
+  let facebookUrl = '';
+  let tiktokUrl = '';
 
   try {
     const settings = await db.setting.findMany({
@@ -29,6 +32,9 @@ export async function Footer() {
             'store.name',
             'store.tagline',
             'store.logo_url',
+            'social.instagram',
+            'social.facebook',
+            'social.tiktok',
           ],
         },
       },
@@ -43,11 +49,19 @@ export async function Footer() {
         tagline = String(s.value);
       } else if (s.key === 'store.logo_url' && s.value) {
         logoUrl = String(s.value);
+      } else if (s.key === 'social.instagram' && s.value) {
+        instagramUrl = String(s.value);
+      } else if (s.key === 'social.facebook' && s.value) {
+        facebookUrl = String(s.value);
+      } else if (s.key === 'social.tiktok' && s.value) {
+        tiktokUrl = String(s.value);
       }
     }
   } catch {
     // fallback to defaults
   }
+
+  const hasSocials = Boolean(instagramUrl || facebookUrl || tiktokUrl);
 
   return (
     <footer className="border-t border-border bg-card text-card-foreground mt-20">
@@ -67,6 +81,42 @@ export async function Footer() {
             <p className="text-xs text-muted-foreground leading-relaxed max-w-sm">
               {tagline}
             </p>
+
+            {hasSocials && (
+              <div className="flex items-center gap-3 pt-1 text-xs text-muted-foreground">
+                {instagramUrl && (
+                  <a
+                    href={instagramUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="hover:text-primary transition-colors font-medium"
+                  >
+                    Instagram
+                  </a>
+                )}
+                {facebookUrl && (
+                  <a
+                    href={facebookUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="hover:text-primary transition-colors font-medium"
+                  >
+                    Facebook
+                  </a>
+                )}
+                {tiktokUrl && (
+                  <a
+                    href={tiktokUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="hover:text-primary transition-colors font-medium"
+                  >
+                    TikTok
+                  </a>
+                )}
+              </div>
+            )}
+
             <div className="pt-2 max-w-sm">
               <NewsletterSignup />
             </div>

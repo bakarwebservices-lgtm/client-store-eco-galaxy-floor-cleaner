@@ -17,7 +17,7 @@ export const dynamic = 'force-dynamic';
 
 export default function CheckoutPage() {
   const router = useRouter();
-  const { items, totalItems, subtotal, freeShippingThreshold, currency, refreshCart } = useCart();
+  const { items, totalItems, subtotal, freeShippingThreshold, standardShippingCost, currency, refreshCart } = useCart();
 
   // Address form fields
   const [firstName, setFirstName] = useState('');
@@ -60,7 +60,7 @@ export default function CheckoutPage() {
     }
   }, []);
 
-  const shippingCost = subtotal >= freeShippingThreshold ? 0 : 250;
+  const shippingCost = subtotal >= freeShippingThreshold ? 0 : (standardShippingCost || 250);
   const discountAmount = appliedCoupon?.discountAmount || 0;
   const grandTotal = Math.max(0, subtotal - discountAmount + shippingCost);
 

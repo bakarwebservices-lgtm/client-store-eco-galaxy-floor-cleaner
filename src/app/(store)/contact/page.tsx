@@ -19,7 +19,7 @@ export default async function ContactPage() {
     getSetting<string>('store.phone', '+92 300 0000000'),
     getSetting<string>('store.address', 'Lahore, Punjab, Pakistan'),
     getSetting<string>('store.hours', 'Mon – Sat: 10:00 AM – 8:00 PM PKT'),
-    getSetting<string>('store.name', 'AWWeb SaaS Template Store'),
+    getSetting<string>('store.name', 'Official Store'),
   ]);
 
   const info: ContactInfo = {
