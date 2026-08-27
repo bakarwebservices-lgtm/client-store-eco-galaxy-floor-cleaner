@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import { useCart } from '@/context/CartContext';
 import { useWishlist } from '@/context/WishlistContext';
+import { SafeHtml } from '@/components/storefront/SafeHtml';
 import { ProductWithRelations } from '@/types';
 
 export function ProductDetailClient({ product }: { product: ProductWithRelations }) {
@@ -317,9 +318,7 @@ export function ProductDetailClient({ product }: { product: ProductWithRelations
         {product.description && (
           <div className="border-t border-border pt-4 space-y-2">
             <h2 className="text-sm font-bold text-foreground">Product Description</h2>
-            <div className="prose prose-sm text-xs leading-relaxed text-muted-foreground whitespace-pre-line">
-              {product.description}
-            </div>
+            <SafeHtml content={product.description} className="text-xs" />
           </div>
         )}
       </div>

@@ -15,3 +15,21 @@ export function formatCurrency(amount: number | null | undefined, currency: stri
     return currency.toUpperCase() + ' ' + val.toLocaleString('en-US');
   }
 }
+
+/**
+ * Strips HTML tags and decodes entities for raw text contexts (SEO metadata, WhatsApp messages, SMS, logs)
+ */
+export function stripHtml(input?: string | null): string {
+  if (!input || typeof input !== 'string') return '';
+  return input
+    .replace(/<br\s*\/?>/gi, '\n')
+    .replace(/<\/p>/gi, '\n')
+    .replace(/<[^>]*>/g, '')
+    .replace(/&nbsp;/g, ' ')
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .trim();
+}

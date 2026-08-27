@@ -10,6 +10,8 @@ import { ProductStatus, Prisma } from '@prisma/client';
 import { ProductCard } from '@/components/storefront/ProductCard';
 import { Breadcrumbs } from '@/components/storefront/Breadcrumbs';
 import { resolveSmartCollectionWhere } from '@/lib/taxonomy/smartCollection';
+import { SafeHtml } from '@/components/storefront/SafeHtml';
+import { stripHtml } from '@/lib/format';
 
 export async function generateMetadata({
   params,
@@ -24,7 +26,7 @@ export async function generateMetadata({
   if (!collection) return { title: 'Collection Not Found' };
 
   const title = collection.seoTitle || `${collection.name} | Collection`;
-  const description = collection.seoDescription || collection.description || `Explore our ${collection.name} collection`;
+  const description = collection.seoDescription || stripHtml(collection.description) || `Explore our ${collection.name} collection`;
 
   return {
     title,
@@ -175,9 +177,7 @@ export default async function CollectionDetailPage({
             )}
           </div>
           {collection.description && (
-            <p className="text-sm text-muted-foreground leading-relaxed">
-              {collection.description}
-            </p>
+            <SafeHtml content={collection.description} className="text-sm" />
           )}
           <p className="text-xs font-semibold text-primary pt-1">
             {total} {total === 1 ? 'Curated Item' : 'Curated Items'}

@@ -7,6 +7,7 @@ import Link from 'next/link';
 import { db } from '@/lib/db';
 import { ProductStatus } from '@prisma/client';
 import { Breadcrumbs } from '@/components/storefront/Breadcrumbs';
+import { stripHtml } from '@/lib/format';
 import { resolveSmartCollectionWhere } from '@/lib/taxonomy/smartCollection';
 import { ArrowRight, Layers, Sparkles } from 'lucide-react';
 
@@ -178,7 +179,7 @@ export default async function CollectionsIndexPage() {
                   </h2>
                   {col.description && (
                     <p className="line-clamp-2 text-xs leading-relaxed text-muted-foreground">
-                      {col.description}
+                      {stripHtml(col.description)}
                     </p>
                   )}
                 </div>

@@ -30,9 +30,14 @@ function getSafeStoreInitials(name?: string | null): string {
 export interface NavbarProps {
   initialStoreName?: string;
   initialLogoUrl?: string | null;
+  initialCustomerAccountsEnabled?: boolean;
 }
 
-export function Navbar({ initialStoreName = 'STORE', initialLogoUrl = null }: NavbarProps) {
+export function Navbar({
+  initialStoreName = 'STORE',
+  initialLogoUrl = null,
+  initialCustomerAccountsEnabled = false,
+}: NavbarProps) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [categories, setCategories] = useState<CategoryNav[]>([]);
   const [collections, setCollections] = useState<CollectionNav[]>([]);
@@ -40,6 +45,7 @@ export function Navbar({ initialStoreName = 'STORE', initialLogoUrl = null }: Na
   const [storeName, setStoreName] = useState<string>(initialStoreName || 'STORE');
   const [logoUrl, setLogoUrl] = useState<string | null>(initialLogoUrl || null);
   const [logoError, setLogoError] = useState(false);
+  const [customerAccountsEnabled, setCustomerAccountsEnabled] = useState<boolean>(initialCustomerAccountsEnabled);
   const [categoriesOpen, setCategoriesOpen] = useState(false);
   const { totalItems, toggleCart } = useCart();
 
@@ -71,6 +77,9 @@ export function Navbar({ initialStoreName = 'STORE', initialLogoUrl = null }: Na
           if (data.settings?.logoUrl) {
             setLogoUrl(data.settings.logoUrl);
             setLogoError(false);
+          }
+          if (typeof data.settings?.customerAccountsEnabled === 'boolean') {
+            setCustomerAccountsEnabled(data.settings.customerAccountsEnabled);
           }
         }
       } catch (err) {
@@ -107,36 +116,34 @@ export function Navbar({ initialStoreName = 'STORE', initialLogoUrl = null }: Na
               Shop
             </Link>
 
-            {/* Conditionally render Collections only if active collections exist */}
+            {/* Conditionally render Collections in desktop navbar only if active collections exist */}
             {collections.length > 0 && (
               <Link href="/collections" className="transition-colors hover:text-foreground">
                 Collections
               </Link>
             )}
 
-            {/* Categories Dropdown */}
+            {/* Dynamic Categories Dropdown */}
             {categories.length > 0 && (
               <div
-                className="relative group py-2"
+                className="relative"
                 onMouseEnter={() => setCategoriesOpen(true)}
                 onMouseLeave={() => setCategoriesOpen(false)}
               >
                 <button
                   type="button"
-                  onClick={() => setCategoriesOpen(!categoriesOpen)}
-                  className="flex items-center gap-1 transition-colors hover:text-foreground focus:outline-none"
+                  className="flex items-center gap-1 transition-colors hover:text-foreground py-2"
                 >
                   <span>Categories</span>
                   <ChevronDown className="h-3.5 w-3.5" />
                 </button>
 
                 {categoriesOpen && (
-                  <div className="absolute left-0 top-full w-48 rounded-xl border border-border bg-card p-2 shadow-xl animate-in fade-in zoom-in-95 duration-150 z-50">
+                  <div className="absolute left-0 top-full w-48 rounded-xl border border-border bg-card p-2 shadow-lg backdrop-blur space-y-0.5 z-50">
                     {categories.map((cat) => (
                       <Link
                         key={cat.id}
                         href={`/categories/${cat.slug}`}
-                        onClick={() => setCategoriesOpen(false)}
                         className="block rounded-lg px-3 py-1.5 text-xs font-medium text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
                       >
                         {cat.name}
@@ -177,14 +184,17 @@ export function Navbar({ initialStoreName = 'STORE', initialLogoUrl = null }: Na
             <Search className="h-4 w-4" />
           </Link>
 
-          <Link
-            href="/account"
-            className="flex items-center gap-1.5 rounded-full border border-border/70 bg-card px-3 py-1.5 text-xs font-semibold text-foreground hover:bg-muted transition-colors shadow-sm"
-            aria-label="My Account"
-          >
-            <User className="h-3.5 w-3.5 text-primary" />
-            <span className="hidden sm:inline">Account</span>
-          </Link>
+          {/* Conditionally rendered Customer Account Button */}
+          {customerAccountsEnabled && (
+            <Link
+              href="/account"
+              className="flex items-center gap-1.5 rounded-full border border-border/70 bg-card px-3 py-1.5 text-xs font-semibold text-foreground hover:bg-muted transition-colors shadow-sm"
+              aria-label="My Account"
+            >
+              <User className="h-3.5 w-3.5 text-primary" />
+              <span className="hidden sm:inline">Account</span>
+            </Link>
+          )}
 
           {/* Cart Drawer Trigger Button with Live Counter Badge */}
           <button
@@ -262,13 +272,15 @@ export function Navbar({ initialStoreName = 'STORE', initialLogoUrl = null }: Na
           >
             Featured Items
           </Link>
-          <Link
-            href="/account"
-            onClick={() => setMobileMenuOpen(false)}
-            className="block text-sm font-medium text-foreground py-1.5"
-          >
-            My Account
-          </Link>
+          {customerAccountsEnabled && (
+            <Link
+              href="/account"
+              onClick={() => setMobileMenuOpen(false)}
+              className="block text-sm font-medium text-foreground py-1.5"
+            >
+              My Account
+            </Link>
+          )}
           <Link
             href={trackingUrl}
             target={trackingUrl.startsWith('http') ? '_blank' : undefined}

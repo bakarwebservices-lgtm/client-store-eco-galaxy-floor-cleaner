@@ -9,6 +9,8 @@ import { db } from '@/lib/db';
 import { ProductStatus } from '@prisma/client';
 import { ProductCard } from '@/components/storefront/ProductCard';
 import { Breadcrumbs } from '@/components/storefront/Breadcrumbs';
+import { SafeHtml } from '@/components/storefront/SafeHtml';
+import { stripHtml } from '@/lib/format';
 
 export async function generateMetadata({
   params,
@@ -23,7 +25,7 @@ export async function generateMetadata({
   if (!category) return { title: 'Category Not Found' };
 
   const title = category.seoTitle || `${category.name} | Store`;
-  const description = category.seoDescription || category.description || `Browse all products in ${category.name}`;
+  const description = category.seoDescription || stripHtml(category.description) || `Browse all products in ${category.name}`;
 
   return {
     title,
@@ -134,9 +136,7 @@ export default async function CategoryDetailPage({
             {category.name}
           </h1>
           {category.description && (
-            <p className="text-sm text-muted-foreground leading-relaxed">
-              {category.description}
-            </p>
+            <SafeHtml content={category.description} className="text-sm" />
           )}
           <p className="text-xs font-semibold text-primary pt-1">
             {total} {total === 1 ? 'Product Available' : 'Products Available'}

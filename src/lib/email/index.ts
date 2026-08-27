@@ -15,14 +15,30 @@ export interface SendEmailOptions {
 
 export async function sendEmail(options: SendEmailOptions): Promise<{ success: boolean; messageId?: string; error?: string }> {
   try {
-    const smtpHost = process.env.SMTP_HOST;
-    const smtpUser = process.env.SMTP_USER;
-    const smtpPass = process.env.SMTP_PASSWORD;
-    const smtpFrom = process.env.SMTP_FROM || 'no-reply@store.com';
+    const smtpEnabled = await getSetting<boolean>('email.smtp_enabled', false);
+    const dbHost = await getSetting<string>('email.smtp_host', '');
+    const dbUser = await getSetting<string>('email.smtp_user', '');
+    const dbPass = await getSetting<string>('email.smtp_password', '');
+    const dbPort = await getSetting<number>('email.smtp_port', 587);
+    const dbFrom = await getSetting<string>('email.smtp_from', '');
+    const dbFromName = await getSetting<string>('email.smtp_from_name', '');
 
-    // If SMTP credentials exist, send via SMTP transport
+    const smtpHost = dbHost || process.env.SMTP_HOST;
+    const smtpUser = dbUser || process.env.SMTP_USER;
+    const smtpPass = dbPass || process.env.SMTP_PASSWORD;
+    const smtpFrom = dbFrom || process.env.SMTP_FROM || 'no-reply@store.com';
+
+    // If SMTP is explicitly disabled and no env fallback, skip sending gracefully
+    if (!smtpEnabled && !process.env.SMTP_HOST) {
+      if (process.env.NODE_ENV !== 'production') {
+        console.log(`[Email Skipped - SMTP Disabled] To: ${options.to} | Subject: ${options.subject}`);
+      }
+      return { success: true, messageId: `skipped_${Date.now()}` };
+    }
+
+    // If SMTP credentials exist, simulate/send via configured transport
     if (smtpHost && smtpUser && smtpPass) {
-      console.log(`[Email Service SMTP] Sending email to ${options.to} (${options.subject}) via ${smtpHost}`);
+      console.log(`[Email Service SMTP] Sending email to ${options.to} (${options.subject}) via ${smtpHost}:${dbPort} from ${smtpFrom}`);
       return { success: true, messageId: `msg_${Date.now()}` };
     }
 
