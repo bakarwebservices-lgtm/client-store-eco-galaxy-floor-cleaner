@@ -41,6 +41,10 @@ export async function GET() {
       instagramUrl: settings['social.instagram'],
       twitterUrl: settings['social.twitter'],
       tiktokUrl: settings['social.tiktok'],
+      customerAccountsEnabled: Boolean(settings['auth.customer_accounts_enabled']),
+      whatsappOrderConfirmationEnabled: settings['whatsapp.order_confirmation_enabled'] !== false,
+      whatsappNumber: settings['whatsapp.phone_number'] || settings['store.phone'] || '',
+      whatsappCustomMessage: settings['whatsapp.custom_message'] || '',
     };
 
     return NextResponse.json({ settings: publicSettings });

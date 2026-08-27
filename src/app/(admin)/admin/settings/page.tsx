@@ -22,6 +22,11 @@ import {
   Sliders,
   DollarSign,
   Sparkles,
+  Mail,
+  MessageSquare,
+  UserCheck,
+  Server,
+  Lock,
 } from 'lucide-react';
 import { MediaUploadModal } from '@/components/admin/MediaUploadModal';
 import { CourierSettingsTab } from '@/components/admin/CourierSettingsTab';
@@ -34,7 +39,7 @@ import {
 } from '@/lib/validation/settings';
 import { safeFetch } from '@/lib/apiClient';
 
-type SettingsTab = 'identity' | 'contact' | 'theme' | 'shipping' | 'couriers' | 'tracking' | 'social';
+type SettingsTab = 'identity' | 'contact' | 'theme' | 'shipping' | 'couriers' | 'tracking' | 'notifications' | 'social';
 
 const TABS: { id: SettingsTab; label: string; icon: React.ComponentType<{ className?: string }> }[] = [
   { id: 'identity', label: 'Store Identity', icon: Building2 },
@@ -42,6 +47,7 @@ const TABS: { id: SettingsTab; label: string; icon: React.ComponentType<{ classN
   { id: 'theme', label: 'Theme & Styling', icon: Palette },
   { id: 'shipping', label: 'Shipping & Taxes', icon: DollarSign },
   { id: 'couriers', label: 'Couriers & Logistics', icon: Truck },
+  { id: 'notifications', label: 'Email & WhatsApp', icon: MessageSquare },
   { id: 'tracking', label: 'Analytics & Tracking', icon: BarChart3 },
   { id: 'social', label: 'Social Channels', icon: Share2 },
 ];
@@ -819,6 +825,212 @@ export default function AdminSettingsPage() {
                   </p>
                 </div>
               </div>
+            </div>
+          </div>
+        )}
+
+        {/* Tab: Email, WhatsApp & Customer Accounts */}
+        {activeTab === 'notifications' && (
+          <div className="max-w-3xl space-y-6">
+            {/* WhatsApp Order Confirmation Section */}
+            <div className="rounded-xl border border-border bg-card p-6 shadow-sm space-y-5">
+              <div className="flex items-center justify-between border-b border-border pb-3">
+                <div>
+                  <h2 className="text-sm font-semibold text-foreground flex items-center gap-2">
+                    <MessageSquare className="h-4 w-4 text-emerald-500" />
+                    <span>WhatsApp Order Confirmation (Recommended for COD)</span>
+                  </h2>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    Provides a direct 1-tap WhatsApp confirmation button on the order success screen.
+                  </p>
+                </div>
+                <label className="relative inline-flex items-center cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={Boolean(settings['whatsapp.order_confirmation_enabled'])}
+                    onChange={(e) => handleChange('whatsapp.order_confirmation_enabled', e.target.checked)}
+                    className="sr-only peer"
+                  />
+                  <div className="w-9 h-5 bg-muted peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-border after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-emerald-500"></div>
+                </label>
+              </div>
+
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-xs font-medium text-foreground mb-1">
+                    Store WhatsApp Number
+                  </label>
+                  <input
+                    type="text"
+                    value={settings['whatsapp.phone_number'] || ''}
+                    onChange={(e) => handleChange('whatsapp.phone_number', e.target.value)}
+                    placeholder={settings['store.phone'] || '+92 300 1234567'}
+                    className="w-full rounded-lg border border-border bg-background px-3.5 py-2 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                  />
+                  <p className="mt-1 text-[11px] text-muted-foreground">
+                    Format: +92 300 1234567. If left blank, defaults to your primary Store Phone number.
+                  </p>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-medium text-foreground mb-1">
+                    Pre-filled WhatsApp Message Template (Optional)
+                  </label>
+                  <textarea
+                    rows={2}
+                    value={settings['whatsapp.custom_message'] || ''}
+                    onChange={(e) => handleChange('whatsapp.custom_message', e.target.value)}
+                    placeholder="Hi {store_name}! I just placed order #{order_number} for {total_amount}. Please confirm and ship my order to {city}."
+                    className="w-full rounded-lg border border-border bg-background px-3.5 py-2 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                  />
+                  <p className="mt-1 text-[11px] text-muted-foreground">
+                    Available tags: {'{store_name}'}, {'{order_number}'}, {'{total_amount}'}, {'{city}'}
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Customer Accounts & Authentication Layer */}
+            <div className="rounded-xl border border-border bg-card p-6 shadow-sm space-y-5">
+              <div className="flex items-center justify-between border-b border-border pb-3">
+                <div>
+                  <h2 className="text-sm font-semibold text-foreground flex items-center gap-2">
+                    <UserCheck className="h-4 w-4 text-primary" />
+                    <span>Customer Accounts & Sign-In System</span>
+                  </h2>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    Enable customer login, registration, and account profiles on the storefront.
+                  </p>
+                </div>
+                <label className="relative inline-flex items-center cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={Boolean(settings['auth.customer_accounts_enabled'])}
+                    onChange={(e) => handleChange('auth.customer_accounts_enabled', e.target.checked)}
+                    className="sr-only peer"
+                  />
+                  <div className="w-9 h-5 bg-muted peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-border after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-primary"></div>
+                </label>
+              </div>
+
+              {!settings['auth.customer_accounts_enabled'] && (
+                <div className="rounded-lg border border-border/70 bg-muted/30 p-3 text-xs text-muted-foreground leading-relaxed">
+                  💡 <strong>Simplified Guest/COD Mode Active:</strong> Customer account buttons are hidden from the header. Customers checkout directly with phone/address, eliminating registration friction.
+                </div>
+              )}
+            </div>
+
+            {/* Outgoing SMTP Email Integration */}
+            <div className="rounded-xl border border-border bg-card p-6 shadow-sm space-y-5">
+              <div className="flex items-center justify-between border-b border-border pb-3">
+                <div>
+                  <h2 className="text-sm font-semibold text-foreground flex items-center gap-2">
+                    <Server className="h-4 w-4 text-primary" />
+                    <span>Outgoing SMTP Email Provider</span>
+                  </h2>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    Connect your SMTP server (Resend, SendGrid, Gmail, Mailgun) directly without setting environment variables.
+                  </p>
+                </div>
+                <label className="relative inline-flex items-center cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={Boolean(settings['email.smtp_enabled'])}
+                    onChange={(e) => handleChange('email.smtp_enabled', e.target.checked)}
+                    className="sr-only peer"
+                  />
+                  <div className="w-9 h-5 bg-muted peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-border after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-primary"></div>
+                </label>
+              </div>
+
+              {settings['email.smtp_enabled'] ? (
+                <div className="space-y-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    <div className="sm:col-span-2">
+                      <label className="block text-xs font-medium text-foreground mb-1">
+                        SMTP Host Server
+                      </label>
+                      <input
+                        type="text"
+                        value={settings['email.smtp_host'] || ''}
+                        onChange={(e) => handleChange('email.smtp_host', e.target.value)}
+                        placeholder="smtp.resend.com or smtp.gmail.com"
+                        className="w-full rounded-lg border border-border bg-background px-3.5 py-2 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-foreground mb-1">
+                        SMTP Port
+                      </label>
+                      <input
+                        type="number"
+                        value={settings['email.smtp_port'] || 587}
+                        onChange={(e) => handleChange('email.smtp_port', Number(e.target.value))}
+                        placeholder="587"
+                        className="w-full rounded-lg border border-border bg-background px-3.5 py-2 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-xs font-medium text-foreground mb-1">
+                        SMTP Username / API Key
+                      </label>
+                      <input
+                        type="text"
+                        value={settings['email.smtp_user'] || ''}
+                        onChange={(e) => handleChange('email.smtp_user', e.target.value)}
+                        placeholder="apikey or your-email@domain.com"
+                        className="w-full rounded-lg border border-border bg-background px-3.5 py-2 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-foreground mb-1">
+                        SMTP Password / Secret
+                      </label>
+                      <input
+                        type="password"
+                        value={settings['email.smtp_password'] || ''}
+                        onChange={(e) => handleChange('email.smtp_password', e.target.value)}
+                        placeholder="••••••••••••••••"
+                        className="w-full rounded-lg border border-border bg-background px-3.5 py-2 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-xs font-medium text-foreground mb-1">
+                        From Email Address
+                      </label>
+                      <input
+                        type="email"
+                        value={settings['email.smtp_from'] || ''}
+                        onChange={(e) => handleChange('email.smtp_from', e.target.value)}
+                        placeholder="orders@yourbrand.com"
+                        className="w-full rounded-lg border border-border bg-background px-3.5 py-2 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-foreground mb-1">
+                        From Sender Name
+                      </label>
+                      <input
+                        type="text"
+                        value={settings['email.smtp_from_name'] || ''}
+                        onChange={(e) => handleChange('email.smtp_from_name', e.target.value)}
+                        placeholder={settings['store.name'] || 'Store Orders'}
+                        className="w-full rounded-lg border border-border bg-background px-3.5 py-2 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                      />
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="rounded-lg border border-border/70 bg-muted/30 p-3 text-xs text-muted-foreground leading-relaxed">
+                  SMTP is currently disabled. All store operations continue normally, and email dispatch will be safely bypassed.
+                </div>
+              )}
             </div>
           </div>
         )}

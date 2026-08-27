@@ -116,6 +116,20 @@ export const socialSettingsSchema = z.object({
     .default(''),
 });
 
+export const notificationAndAuthSchema = z.object({
+  'email.smtp_enabled': z.boolean().default(false),
+  'email.smtp_host': z.string().max(255).optional().default(''),
+  'email.smtp_port': z.coerce.number().int().min(1).max(65535).optional().default(587),
+  'email.smtp_user': z.string().max(255).optional().default(''),
+  'email.smtp_password': z.string().max(255).optional().default(''),
+  'email.smtp_from': z.string().max(255).optional().default(''),
+  'email.smtp_from_name': z.string().max(255).optional().default(''),
+  'auth.customer_accounts_enabled': z.boolean().default(false),
+  'whatsapp.order_confirmation_enabled': z.boolean().default(true),
+  'whatsapp.phone_number': z.string().max(50).optional().default(''),
+  'whatsapp.custom_message': z.string().max(500).optional().default(''),
+});
+
 /**
  * Unified all-settings schema for batch update
  */
@@ -126,6 +140,7 @@ export const allSettingsSchema = z.object({
   ...shippingTaxSettingsSchema.shape,
   ...trackingSettingsSchema.shape,
   ...socialSettingsSchema.shape,
+  ...notificationAndAuthSchema.shape,
 });
 
 export type AllSettingsInput = z.infer<typeof allSettingsSchema>;
@@ -134,7 +149,7 @@ export type AllSettingsInput = z.infer<typeof allSettingsSchema>;
  * Default fallback values for all reserved settings keys
  */
 export const DEFAULT_SETTINGS: AllSettingsInput = {
-  'store.name': 'AWWeb SaaS Template Store',
+  'store.name': 'Store',
   'store.tagline': 'Premium E-Commerce Platform',
   'store.logo_url': '',
   'store.currency': 'PKR',
@@ -155,4 +170,15 @@ export const DEFAULT_SETTINGS: AllSettingsInput = {
   'social.instagram': '',
   'social.facebook': '',
   'social.tiktok': '',
+  'email.smtp_enabled': false,
+  'email.smtp_host': '',
+  'email.smtp_port': 587,
+  'email.smtp_user': '',
+  'email.smtp_password': '',
+  'email.smtp_from': '',
+  'email.smtp_from_name': '',
+  'auth.customer_accounts_enabled': false,
+  'whatsapp.order_confirmation_enabled': true,
+  'whatsapp.phone_number': '',
+  'whatsapp.custom_message': '',
 };

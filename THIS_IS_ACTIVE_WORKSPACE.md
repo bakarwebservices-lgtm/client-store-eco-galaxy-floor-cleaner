@@ -1,8 +1,4 @@
-# Active Workspace Identifier
+# Active Workspace & Master Blueprint Index
 
-This file confirms that **this repository** is the active workspace currently open in your IDE:
-
-- **Local Path**: `C:\Users\Umar\Documents\GitHub-Projects\merge saas product`
-- **Purpose**: Master Template Repository (with all latest white-label enhancements, presets, and dynamic live-sync fixes).
-
-You can see this change in GitHub Desktop under **Changes** tab for the active repository.
+- **Active Workspace**: `C:\Users\Umar\Documents\GitHub-Projects\merge saas product`
+- **Master Multi-Agent Blueprint**: See [`AUTONOMOUS_AGENCY_ARCHITECTURE.md`](file:///c:/Users/Umar/Documents/GitHub-Projects/merge%20saas%20product/AUTONOMOUS_AGENCY_ARCHITECTURE.md) for the complete multi-agent consensus workflow, agent roles (Intent Distiller, Design Director, QA Sentinel, Adversarial Critic, Generative Media MCP), and human-in-the-loop approval protocol.

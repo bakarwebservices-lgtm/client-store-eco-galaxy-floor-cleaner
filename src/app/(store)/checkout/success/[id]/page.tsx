@@ -7,7 +7,7 @@ import { notFound, redirect } from 'next/navigation';
 import { cookies } from 'next/headers';
 import { db } from '@/lib/db';
 import { verifyOrderAccessToken } from '@/lib/auth/token';
-import { CheckCircle2, ShoppingBag, Truck, Package, Phone, Mail, MapPin, ShieldAlert } from 'lucide-react';
+import { CheckCircle2, ShoppingBag, Truck, Package, Phone, Mail, MapPin, ShieldAlert, MessageSquare } from 'lucide-react';
 import { OrderSuccessTracker } from './OrderSuccessTracker';
 
 export const dynamic = 'force-dynamic';
@@ -89,6 +89,54 @@ export default async function OrderSuccessPage({
 
   const shippingAddr: any = order.shippingAddress;
 
+  // Query WhatsApp and Brand settings for 1-tap confirmation
+  let storeName = 'Store';
+  let storePhone = '';
+  let whatsappEnabled = true;
+  let whatsappNumber = '';
+  let whatsappTemplate = '';
+
+  try {
+    const settings = await db.setting.findMany({
+      where: {
+        key: {
+          in: [
+            'store.name',
+            'store.phone',
+            'whatsapp.order_confirmation_enabled',
+            'whatsapp.phone_number',
+            'whatsapp.custom_message',
+          ],
+        },
+      },
+    });
+
+    for (const s of settings) {
+      if (s.key === 'store.name' && s.value) storeName = String(s.value);
+      if (s.key === 'store.phone' && s.value) storePhone = String(s.value);
+      if (s.key === 'whatsapp.order_confirmation_enabled') whatsappEnabled = s.value === true || s.value === 'true';
+      if (s.key === 'whatsapp.phone_number' && s.value) whatsappNumber = String(s.value);
+      if (s.key === 'whatsapp.custom_message' && s.value) whatsappTemplate = String(s.value);
+    }
+  } catch {
+    // fallback
+  }
+
+  const targetWhatsApp = (whatsappNumber || storePhone).replace(/[^0-9]/g, '');
+
+  let rawMsg =
+    whatsappTemplate ||
+    'Hi {store_name}! I just placed order #{order_number} for {total_amount}. Please confirm and ship my order to {city}.';
+  rawMsg = rawMsg
+    .replace(/{store_name}/g, storeName)
+    .replace(/{order_number}/g, order.orderNumber)
+    .replace(/{total_amount}/g, formatCurrency(order.totalPrice, order.currency))
+    .replace(/{city}/g, shippingAddr?.city || '');
+
+  const whatsappUrl = targetWhatsApp
+    ? `https://wa.me/${targetWhatsApp}?text=${encodeURIComponent(rawMsg)}`
+    : null;
+
   return (
     <main className="mx-auto max-w-4xl px-4 py-12 sm:px-6 lg:px-8 space-y-8">
       {/* Client tracker component with sessionStorage deduplication */}
@@ -109,6 +157,36 @@ export default async function OrderSuccessPage({
           </span>
         </div>
       </div>
+
+      {/* 1-Tap WhatsApp Order Confirmation Card */}
+      {whatsappEnabled && whatsappUrl && (
+        <div className="rounded-2xl border border-emerald-500/30 bg-emerald-500/10 p-5 sm:p-6 space-y-3 shadow-sm">
+          <div className="flex items-center gap-2.5">
+            <div className="flex h-9 w-9 items-center justify-center rounded-full bg-emerald-500 text-white shadow-sm shrink-0">
+              <MessageSquare className="h-5 w-5" />
+            </div>
+            <div>
+              <h2 className="text-sm sm:text-base font-bold text-emerald-950 dark:text-emerald-200">
+                Confirm Your Order via WhatsApp (Instant Dispatch)
+              </h2>
+              <p className="text-xs text-emerald-900/80 dark:text-emerald-300">
+                Click below to send a pre-filled WhatsApp confirmation to our team for faster priority processing.
+              </p>
+            </div>
+          </div>
+          <div className="pt-1">
+            <a
+              href={whatsappUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex w-full items-center justify-center gap-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 py-3 text-xs sm:text-sm font-bold text-white shadow-md transition-all active:scale-[0.99]"
+            >
+              <MessageSquare className="h-4 w-4" />
+              <span>Confirm Order #{order.orderNumber} on WhatsApp</span>
+            </a>
+          </div>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
         {/* Order Details & Items */}
