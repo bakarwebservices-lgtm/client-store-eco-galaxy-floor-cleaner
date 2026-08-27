@@ -2,6 +2,7 @@ import React from 'react';
 import Link from 'next/link';
 import { db } from '@/lib/db';
 import { NewsletterSignup } from './NewsletterSignup';
+import { stripHtml } from '@/lib/format';
 
 function getSafeStoreInitials(name?: string | null): string {
   if (!name || typeof name !== 'string') return 'ST';
@@ -79,7 +80,7 @@ export async function Footer() {
               <span className="uppercase">{storeName}</span>
             </div>
             <p className="text-xs text-muted-foreground leading-relaxed max-w-sm">
-              {tagline}
+              {stripHtml(tagline)}
             </p>
 
             {hasSocials && (

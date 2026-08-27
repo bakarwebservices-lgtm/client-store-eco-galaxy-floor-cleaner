@@ -8,7 +8,7 @@ import { db } from '@/lib/db';
 import { ProductStatus } from '@prisma/client';
 import { ProductCard, ProductCardProps } from '@/components/storefront/ProductCard';
 import { NewsletterSignup } from '@/components/storefront/NewsletterSignup';
-import { formatCurrency } from '@/lib/format';
+import { formatCurrency, stripHtml } from '@/lib/format';
 import { 
   Sparkles, 
   ArrowRight, 
@@ -39,7 +39,7 @@ export async function generateMetadata(): Promise<Metadata> {
 
   return {
     title: `Home — ${storeName}`,
-    description: tagline,
+    description: stripHtml(tagline),
     alternates: {
       canonical: '/',
     },

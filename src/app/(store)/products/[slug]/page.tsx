@@ -6,6 +6,7 @@ import { notFound } from 'next/navigation';
 import { db } from '@/lib/db';
 import { ProductStatus } from '@prisma/client';
 import { getSetting } from '@/lib/settings';
+import { stripHtml } from '@/lib/format';
 import { Breadcrumbs } from '@/components/storefront/Breadcrumbs';
 import { ProductDetailClient } from './ProductDetailClient';
 import { ProductReviews } from '@/components/storefront/ProductReviews';
@@ -24,7 +25,7 @@ export async function generateMetadata({
   if (!product) return { title: 'Product Not Found' };
 
   const title = product.seoTitle || `${product.name} | Store`;
-  const description = product.seoDescription || product.description.slice(0, 160);
+  const description = product.seoDescription || stripHtml(product.description).slice(0, 160);
   const imageUrl = product.images[0]?.url;
 
   return {
@@ -97,7 +98,7 @@ export default async function ProductDetailPage({
             '@type': 'Product',
             name: product.name,
             image: product.images.map((i) => i.url),
-            description: product.seoDescription || product.description,
+            description: product.seoDescription || stripHtml(product.description),
             sku: product.variants[0]?.sku || product.slug,
             offers: {
               '@type': 'Offer',

@@ -1,5 +1,5 @@
 import React from 'react';
-import { formatCurrency } from '@/lib/format';
+import { formatCurrency, stripHtml } from '@/lib/format';
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import Image from 'next/image';
@@ -127,7 +127,7 @@ export default async function OrderSuccessPage({
   let rawMsg =
     whatsappTemplate ||
     'Hi {store_name}! I just placed order #{order_number} for {total_amount}. Please confirm and ship my order to {city}.';
-  rawMsg = rawMsg
+  rawMsg = stripHtml(rawMsg)
     .replace(/{store_name}/g, storeName)
     .replace(/{order_number}/g, order.orderNumber)
     .replace(/{total_amount}/g, formatCurrency(order.totalPrice, order.currency))
