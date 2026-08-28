@@ -64,14 +64,27 @@ export function HeroPackSelector({
   const handleAddToCart = async () => {
     setLoadingAction('cart');
     try {
-      if (matchedDbProduct) {
-        await addItem(matchedDbProduct.id, undefined, 1);
+      const prodId = matchedDbProduct?.id;
+      if (prodId) {
+        await addItem({
+          productId: prodId,
+          quantity: 1,
+          productName: selectedPack.name,
+          price: currentPrice,
+          openDrawer: true,
+        });
       } else {
         const fallbackRes = await fetch(`/api/products?slug=${selectedPack.slug}`);
         if (fallbackRes.ok) {
           const data = await fallbackRes.json();
           if (data.products?.[0]?.id) {
-            await addItem(data.products[0].id, undefined, 1);
+            await addItem({
+              productId: data.products[0].id,
+              quantity: 1,
+              productName: selectedPack.name,
+              price: currentPrice,
+              openDrawer: true,
+            });
           }
         }
       }
@@ -86,14 +99,27 @@ export function HeroPackSelector({
   const handleBuyNow = async () => {
     setLoadingAction('buy');
     try {
-      if (matchedDbProduct) {
-        await addItem(matchedDbProduct.id, undefined, 1);
+      const prodId = matchedDbProduct?.id;
+      if (prodId) {
+        await addItem({
+          productId: prodId,
+          quantity: 1,
+          productName: selectedPack.name,
+          price: currentPrice,
+          openDrawer: false,
+        });
       } else {
         const fallbackRes = await fetch(`/api/products?slug=${selectedPack.slug}`);
         if (fallbackRes.ok) {
           const data = await fallbackRes.json();
           if (data.products?.[0]?.id) {
-            await addItem(data.products[0].id, undefined, 1);
+            await addItem({
+              productId: data.products[0].id,
+              quantity: 1,
+              productName: selectedPack.name,
+              price: currentPrice,
+              openDrawer: false,
+            });
           }
         }
       }

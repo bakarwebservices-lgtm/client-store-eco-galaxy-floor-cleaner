@@ -34,7 +34,13 @@ export function ProductCard({ product }: { product: ProductCardProps }) {
     e.preventDefault();
     e.stopPropagation();
     try {
-      await addItem(product.id, undefined, 1);
+      await addItem({
+        productId: product.id,
+        quantity: 1,
+        productName: product.name,
+        price: product.price,
+        openDrawer: true,
+      });
       openCart();
     } catch (err) {
       console.error('Failed to add product to cart:', err);
