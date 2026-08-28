@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { BlogStatus, PageStatus } from '@prisma/client';
+import { optionalImageUrlSchema } from './url';
 
 // =============================================================================
 // BLOG ARTICLE SCHEMA
@@ -16,7 +17,7 @@ export const BlogArticleSchema = z.object({
   bodyHtml: z.string().min(1, 'Article body cannot be empty'),
   excerpt: z.string().trim().max(500, 'Excerpt cannot exceed 500 characters').optional().nullable(),
   author: z.string().trim().max(100, 'Author name cannot exceed 100 characters').optional().nullable(),
-  featuredImageUrl: z.string().url('Invalid featured image URL').optional().nullable().or(z.literal('')),
+  featuredImageUrl: optionalImageUrlSchema,
   featuredImageAlt: z.string().trim().max(200, 'Image alt text cannot exceed 200 characters').optional().nullable(),
   status: z.nativeEnum(BlogStatus).default(BlogStatus.DRAFT),
   publishedAt: z.coerce.date().optional().nullable(),

@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { imageUrlSchema } from './url';
 
 export const CreateReviewSchema = z.object({
   reviewerName: z
@@ -27,7 +28,7 @@ export const CreateReviewSchema = z.object({
   images: z
     .array(
       z.object({
-        url: z.string().url('Invalid image URL'),
+        url: imageUrlSchema,
         altText: z.string().trim().min(2, 'Image alt text is required for accessibility').max(200),
       })
     )

@@ -1,9 +1,10 @@
 import { z } from 'zod';
 import { ProductStatus } from '@prisma/client';
+import { imageUrlSchema } from './url';
 
 export const productImageSchema = z.object({
   id: z.string().optional(),
-  url: z.string().url('Image URL must be a valid URL'),
+  url: imageUrlSchema,
   altText: z.string().max(255, 'Alt text must be less than 255 characters').optional().nullable(),
   position: z.coerce.number().int().default(0),
   isPrimary: z.boolean().default(false),

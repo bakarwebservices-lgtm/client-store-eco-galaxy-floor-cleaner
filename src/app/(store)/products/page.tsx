@@ -9,8 +9,8 @@ import { ProductCard } from '@/components/storefront/ProductCard';
 import { Breadcrumbs } from '@/components/storefront/Breadcrumbs';
 
 export const metadata: Metadata = {
-  title: 'Catalog | All Products',
-  description: 'Explore our complete collection of products with premium quality and reliable delivery.',
+  title: 'All Products | Eco Galaxy Floor Cleaner',
+  description: 'Explore our complete collection of Eco Galaxy Floor Cleaner packs with Free Delivery across Pakistan.',
   alternates: {
     canonical: '/products',
   },
@@ -27,7 +27,6 @@ export default async function ProductsCatalogPage({
   const skip = (page - 1) * limit;
 
   const categorySlug = (resolvedParams.category as string) || undefined;
-  const sort = (resolvedParams.sort as string) || 'newest';
   const featured = resolvedParams.featured === 'true';
 
   const where = {
@@ -48,12 +47,6 @@ export default async function ProductsCatalogPage({
       : {}),
   };
 
-  let orderBy: any = { createdAt: 'desc' };
-  if (sort === 'price-asc') orderBy = { price: 'asc' };
-  else if (sort === 'price-desc') orderBy = { price: 'desc' };
-  else if (sort === 'name-asc') orderBy = { name: 'asc' };
-  else if (sort === 'name-desc') orderBy = { name: 'desc' };
-
   let products: any[] = [];
   let total = 0;
   let categories: any[] = [];
@@ -65,10 +58,13 @@ export default async function ProductsCatalogPage({
         where,
         skip,
         take: limit,
-        orderBy,
+        orderBy: { price: 'asc' },
         include: {
           images: {
             orderBy: [{ isPrimary: 'desc' }, { position: 'asc' }],
+          },
+          variants: {
+            take: 2,
           },
         },
       }),
@@ -91,55 +87,22 @@ export default async function ProductsCatalogPage({
   const totalPages = Math.ceil(total / limit);
 
   return (
-    <main className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8 space-y-6">
-      <Breadcrumbs items={[{ label: 'Catalog', href: '/products' }]} />
+    <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8 space-y-6">
+      <Breadcrumbs items={[{ label: 'All Products', href: '/products' }]} />
 
-      {/* Header & Title Hierarchy (Single H1) */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-border pb-6">
-        <div>
-          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">
-            {categorySlug ? `${categorySlug.replace('-', ' ').toUpperCase()} Products` : 'All Products'}
-          </h1>
-          <p className="text-xs sm:text-sm text-muted-foreground mt-1">
-            Showing {products.length} of {total} items
-          </p>
-        </div>
-
-        {/* Sorting Dropdown */}
-        <div className="flex items-center gap-2">
-          <span className="text-xs font-medium text-muted-foreground">Sort by:</span>
-          <div className="flex gap-1 bg-muted/40 p-1 rounded-lg border border-border text-xs">
-            <Link
-              href={`/products?${new URLSearchParams({ ...(categorySlug ? { category: categorySlug } : {}), sort: 'newest' }).toString()}`}
-              className={`px-2.5 py-1 rounded-md font-medium transition-colors ${
-                sort === 'newest' ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'
-              }`}
-            >
-              Newest
-            </Link>
-            <Link
-              href={`/products?${new URLSearchParams({ ...(categorySlug ? { category: categorySlug } : {}), sort: 'price-asc' }).toString()}`}
-              className={`px-2.5 py-1 rounded-md font-medium transition-colors ${
-                sort === 'price-asc' ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'
-              }`}
-            >
-              Price: Low
-            </Link>
-            <Link
-              href={`/products?${new URLSearchParams({ ...(categorySlug ? { category: categorySlug } : {}), sort: 'price-desc' }).toString()}`}
-              className={`px-2.5 py-1 rounded-md font-medium transition-colors ${
-                sort === 'price-desc' ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'
-              }`}
-            >
-              Price: High
-            </Link>
-          </div>
-        </div>
+      {/* Header & Title Hierarchy */}
+      <div className="border-b border-border pb-6">
+        <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-foreground">
+          {categorySlug ? `${categorySlug.replace('-', ' ').toUpperCase()} Products` : 'All Eco Galaxy Packs'}
+        </h1>
+        <p className="text-xs sm:text-sm text-muted-foreground mt-1">
+          Showing {products.length} of {total} available packs with Free Delivery &amp; Cash on Delivery across Pakistan.
+        </p>
       </div>
 
       {/* Category Pills Filter */}
       {categories.length > 0 && (
-        <div className="flex gap-2 overflow-x-auto pb-2 text-xs">
+        <div className="flex gap-2 overflow-x-auto pb-2 text-xs no-scrollbar">
           <Link
             href="/products"
             className={`rounded-full px-4 py-1.5 font-medium transition-all ${
@@ -148,7 +111,7 @@ export default async function ProductsCatalogPage({
                 : 'bg-muted text-muted-foreground hover:bg-muted/80 hover:text-foreground'
             }`}
           >
-            All Categories
+            All Products
           </Link>
           {categories.map((c) => {
             const isSelected = categorySlug === c.slug;
@@ -169,11 +132,22 @@ export default async function ProductsCatalogPage({
         </div>
       )}
 
-      {/* Product Grid: 2-column on mobile, 3-column on tablet, 4-column on desktop */}
+      {/* Product Grid: 2-column on mobile, 3-column on tablet, 3-column on desktop */}
       {products.length > 0 ? (
-        <div className="grid grid-cols-2 gap-3 sm:gap-6 md:grid-cols-3 lg:grid-cols-4">
+        <div className="grid grid-cols-2 gap-3 sm:gap-6 md:grid-cols-3 lg:grid-cols-3">
           {products.map((product) => (
-            <ProductCard key={product.id} product={product} />
+            <ProductCard
+              key={product.id}
+              product={{
+                id: product.id,
+                name: product.name,
+                slug: product.slug,
+                price: Number(product.price),
+                comparePrice: product.comparePrice ? Number(product.comparePrice) : null,
+                hasVariants: product.variants?.length > 1,
+                images: product.images.map((img: any) => ({ url: img.url, altText: img.altText })),
+              }}
+            />
           ))}
         </div>
       ) : dbError ? (
@@ -204,7 +178,7 @@ export default async function ProductsCatalogPage({
         <div className="flex items-center justify-center gap-2 pt-8">
           {page > 1 && (
             <Link
-              href={`/products?page=${page - 1}${categorySlug ? `&category=${categorySlug}` : ''}${sort ? `&sort=${sort}` : ''}`}
+              href={`/products?page=${page - 1}${categorySlug ? `&category=${categorySlug}` : ''}`}
               className="rounded-lg border border-border px-3.5 py-1.5 text-xs font-medium hover:bg-muted transition-colors"
             >
               Previous
@@ -215,7 +189,7 @@ export default async function ProductsCatalogPage({
           </span>
           {page < totalPages && (
             <Link
-              href={`/products?page=${page + 1}${categorySlug ? `&category=${categorySlug}` : ''}${sort ? `&sort=${sort}` : ''}`}
+              href={`/products?page=${page + 1}${categorySlug ? `&category=${categorySlug}` : ''}`}
               className="rounded-lg border border-border px-3.5 py-1.5 text-xs font-medium hover:bg-muted transition-colors"
             >
               Next

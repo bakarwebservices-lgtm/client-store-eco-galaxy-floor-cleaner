@@ -114,7 +114,7 @@ export default function AdminSettingsPage() {
     setErrors({});
 
     // Validate settings with Zod
-    const validation = allSettingsSchema.safeParse(settings);
+    const validation = allSettingsSchema.partial().safeParse(settings);
     if (!validation.success) {
       const fieldErrors: Record<string, string> = {};
       for (const issue of validation.error.issues) {
@@ -130,21 +130,23 @@ export default function AdminSettingsPage() {
     try {
       // If saving specific section or all
       const payload = sectionKeys
-        ? sectionKeys.reduce((acc, k) => ({ ...acc, [k]: settings[k] }), {})
-        : settings;
+        ? sectionKeys.reduce((acc, k) => ({ ...acc, [k]: (validation.data as any)[k] ?? settings[k] }), {})
+        : (validation.data ?? settings);
 
-      const { ok, data, error } = await safeFetch<any>('/api/admin/settings', {
+      const res = await fetch('/api/admin/settings', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
       });
 
-      if (ok && data) {
-        setSettings({ ...DEFAULT_SETTINGS, ...data.settings });
+      const data = await res.json().catch(() => ({}));
+
+      if (res.ok && data.settings) {
+        setSettings((prev) => ({ ...DEFAULT_SETTINGS, ...prev, ...data.settings }));
         setSaveSuccess(true);
         setTimeout(() => setSaveSuccess(false), 4000);
       } else {
-        setErrorMessage(error || 'Failed to save store settings.');
+        setErrorMessage(data?.error || `Failed to save store settings (${res.status}).`);
       }
     } catch (err: any) {
       console.error('Error saving settings:', err);
@@ -410,6 +412,136 @@ export default function AdminSettingsPage() {
                   )}
                 </div>
               </div>
+
+              {/* Announcement Bar Settings Card */}
+              <div className="rounded-xl border border-border bg-card p-6 shadow-sm space-y-4">
+                <div className="flex items-center justify-between border-b border-border pb-3">
+                  <div>
+                    <h2 className="text-sm font-semibold text-foreground">Top Announcement Bar</h2>
+                    <p className="text-xs text-muted-foreground">Header banner text and custom background/text colors.</p>
+                  </div>
+                  <label className="relative inline-flex cursor-pointer items-center">
+                    <input
+                      type="checkbox"
+                      checked={settings['announcement.enabled'] !== false}
+                      onChange={(e) => handleChange('announcement.enabled', e.target.checked)}
+                      className="peer sr-only"
+                    />
+                    <div className="peer h-5 w-9 rounded-full bg-muted after:absolute after:left-[2px] after:top-[2px] after:h-4 after:w-4 after:rounded-full after:bg-white after:transition-all after:content-[''] peer-checked:bg-primary peer-checked:after:translate-x-full" />
+                  </label>
+                </div>
+
+                <div className="space-y-4">
+                  {/* Announcement Text */}
+                  <div>
+                    <label className="block text-xs font-medium text-foreground mb-1">
+                      Banner Content / Message
+                    </label>
+                    <input
+                      type="text"
+                      value={settings['announcement.text'] ?? 'FREE DELIVERY ACROSS PAKISTAN • CASH ON DELIVERY AVAILABLE • 100% ORIGINAL FORMULA'}
+                      onChange={(e) => handleChange('announcement.text', e.target.value)}
+                      placeholder="e.g. FREE DELIVERY ACROSS PAKISTAN • CASH ON DELIVERY AVAILABLE"
+                      className="w-full rounded-lg border border-border bg-background px-3.5 py-2 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                    />
+                  </div>
+
+                  {/* Colors Grid */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    {/* Background Color */}
+                    <div>
+                      <label className="block text-xs font-medium text-foreground mb-1">
+                        Banner Background
+                      </label>
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="color"
+                          value={HEX_COLOR_REGEX.test(settings['announcement.bg_color']) ? (settings['announcement.bg_color'].startsWith('#') ? settings['announcement.bg_color'] : '#' + settings['announcement.bg_color']) : '#032017'}
+                          onChange={(e) => handleChange('announcement.bg_color', e.target.value.toUpperCase())}
+                          className="h-8 w-8 cursor-pointer rounded border border-border p-0.5 bg-transparent"
+                        />
+                        <input
+                          type="text"
+                          value={settings['announcement.bg_color'] ?? '#032017'}
+                          onChange={(e) => handleChange('announcement.bg_color', e.target.value.toUpperCase())}
+                          placeholder="#032017"
+                          className="w-28 rounded-lg border border-border bg-background px-2.5 py-1.5 text-xs font-mono uppercase text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Text Color */}
+                    <div>
+                      <label className="block text-xs font-medium text-foreground mb-1">
+                        Banner Text Color
+                      </label>
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="color"
+                          value={HEX_COLOR_REGEX.test(settings['announcement.text_color']) ? (settings['announcement.text_color'].startsWith('#') ? settings['announcement.text_color'] : '#' + settings['announcement.text_color']) : '#A7F3D0'}
+                          onChange={(e) => handleChange('announcement.text_color', e.target.value.toUpperCase())}
+                          className="h-8 w-8 cursor-pointer rounded border border-border p-0.5 bg-transparent"
+                        />
+                        <input
+                          type="text"
+                          value={settings['announcement.text_color'] ?? '#A7F3D0'}
+                          onChange={(e) => handleChange('announcement.text_color', e.target.value.toUpperCase())}
+                          placeholder="#A7F3D0"
+                          className="w-28 rounded-lg border border-border bg-background px-2.5 py-1.5 text-xs font-mono uppercase text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Live Mini Preview */}
+                  <div>
+                    <span className="block text-[11px] font-medium text-muted-foreground mb-1.5">Live Banner Preview:</span>
+                    <div
+                      className="rounded-lg px-3 py-2 text-center text-xs font-semibold tracking-wide overflow-hidden truncate shadow-sm"
+                      style={{
+                        backgroundColor: settings['announcement.bg_color'] || '#032017',
+                        color: settings['announcement.text_color'] || '#A7F3D0',
+                      }}
+                    >
+                      {settings['announcement.text'] || 'FREE DELIVERY ACROSS PAKISTAN • CASH ON DELIVERY AVAILABLE'}
+                    </div>
+                  </div>
+
+                  {/* Tab 1 Save Button */}
+                  <div className="pt-3 border-t border-border flex justify-end">
+                    <button
+                      type="button"
+                      onClick={() =>
+                        handleSave([
+                          'store.name',
+                          'store.tagline',
+                          'store.currency',
+                          'store.country',
+                          'store.logo_url',
+                          'announcement.enabled',
+                          'announcement.text',
+                          'announcement.bg_color',
+                          'announcement.text_color',
+                        ])
+                      }
+                      disabled={saving}
+                      className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-xs font-semibold text-primary-foreground shadow-sm transition-all hover:bg-primary/90 disabled:opacity-50"
+                    >
+                      {saving ? (
+                        <>
+                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                          <span>Saving...</span>
+                        </>
+                      ) : (
+                        <>
+                          <Save className="h-3.5 w-3.5" />
+                          <span>Save Identity &amp; Announcement</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         )}
@@ -607,6 +739,30 @@ export default function AdminSettingsPage() {
                         </option>
                       ))}
                     </select>
+                  </div>
+
+                  {/* Tab 3 Save Button */}
+                  <div className="pt-3 border-t border-border flex justify-end">
+                    <button
+                      type="button"
+                      onClick={() =>
+                        handleSave(['theme.primary_color', 'theme.accent_color', 'theme.font_family'])
+                      }
+                      disabled={saving}
+                      className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-xs font-semibold text-primary-foreground shadow-sm transition-all hover:bg-primary/90 disabled:opacity-50"
+                    >
+                      {saving ? (
+                        <>
+                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                          <span>Saving...</span>
+                        </>
+                      ) : (
+                        <>
+                          <Save className="h-3.5 w-3.5" />
+                          <span>Save Theme Colors</span>
+                        </>
+                      )}
+                    </button>
                   </div>
                 </div>
               </div>

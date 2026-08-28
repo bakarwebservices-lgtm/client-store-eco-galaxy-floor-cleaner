@@ -5,6 +5,7 @@ const emptyToUndefined = (val: unknown) => (typeof val === 'string' && val.trim(
 const envSchema = z.object({
   // Database
   DATABASE_URL: z.preprocess(emptyToUndefined, z.string().min(1, 'DATABASE_URL is required').default('postgresql://user:password@localhost:5432/ecommerce_db?schema=public')),
+  DIRECT_URL: z.preprocess(emptyToUndefined, z.string().optional()),
 
   // Node Environment
   NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
@@ -24,6 +25,27 @@ const envSchema = z.object({
     (val) => (typeof val === 'string' && val.trim() !== '' ? val : 'http://localhost:3000'),
     z.string().url()
   ),
+
+  // Initial Admin User (for seeding)
+  INITIAL_ADMIN_NAME: z.preprocess(emptyToUndefined, z.string().optional()),
+  INITIAL_ADMIN_EMAIL: z.preprocess(emptyToUndefined, z.string().optional()),
+  INITIAL_ADMIN_PASSWORD: z.preprocess(emptyToUndefined, z.string().optional()),
+
+  // Pluggable Storage
+  STORAGE_DRIVER: z.preprocess(emptyToUndefined, z.string().optional()),
+  CLOUDINARY_CLOUD_NAME: z.preprocess(emptyToUndefined, z.string().optional()),
+  CLOUDINARY_API_KEY: z.preprocess(emptyToUndefined, z.string().optional()),
+  CLOUDINARY_API_SECRET: z.preprocess(emptyToUndefined, z.string().optional()),
+  CLOUDINARY_URL: z.preprocess(emptyToUndefined, z.string().optional()),
+  SUPABASE_URL: z.preprocess(emptyToUndefined, z.string().optional()),
+  NEXT_PUBLIC_SUPABASE_URL: z.preprocess(emptyToUndefined, z.string().optional()),
+  SUPABASE_SERVICE_ROLE_KEY: z.preprocess(emptyToUndefined, z.string().optional()),
+  SUPABASE_ANON_KEY: z.preprocess(emptyToUndefined, z.string().optional()),
+  NEXT_PUBLIC_SUPABASE_ANON_KEY: z.preprocess(emptyToUndefined, z.string().optional()),
+  SUPABASE_STORAGE_BUCKET: z.preprocess(emptyToUndefined, z.string().optional().default('Media-Bucket')),
+
+  // Couriers
+  POSTEX_API_TOKEN: z.preprocess(emptyToUndefined, z.string().optional()),
 
   // Optional Payment Gateway Keys (populated per client deployment)
   PAYPAL_CLIENT_ID: z.preprocess(emptyToUndefined, z.string().optional()),

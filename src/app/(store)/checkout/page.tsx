@@ -281,7 +281,6 @@ export default function CheckoutPage() {
                 placeholder="name@example.com"
                 className="w-full rounded-lg border border-input bg-background p-2.5 text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20"
               />
-              <p className="text-[10px] text-muted-foreground">Order receipts and dispatch updates will be sent to this email.</p>
             </div>
           </div>
 
@@ -359,7 +358,7 @@ export default function CheckoutPage() {
             </h2>
 
             <div className="space-y-2">
-              {/* Cash On Delivery (Active) */}
+              {/* Cash On Delivery (Active & Only Option) */}
               <label className="flex items-center justify-between p-3.5 rounded-xl border-2 border-primary bg-primary/5 cursor-pointer">
                 <div className="flex items-center gap-3">
                   <input
@@ -376,31 +375,14 @@ export default function CheckoutPage() {
                       <span className="text-xs font-bold text-foreground">Cash On Delivery (COD)</span>
                     </div>
                     <p className="text-[11px] text-muted-foreground mt-0.5">
-                      Pay in cash when your order arrives at your address.
+                      Pay in cash when your order arrives at your address. Free delivery across Pakistan.
                     </p>
                   </div>
                 </div>
                 <span className="rounded-full bg-primary/10 px-2.5 py-0.5 text-[10px] font-bold text-primary">
-                  Recommended
+                  Selected
                 </span>
               </label>
-
-              {/* Online Gateway Option (Disabled / Future Gateway Slot) */}
-              <div className="flex items-center justify-between p-3.5 rounded-xl border border-border bg-muted/20 opacity-60 cursor-not-allowed">
-                <div className="flex items-center gap-3">
-                  <input type="radio" disabled name="paymentMethod" />
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <CreditCard className="h-4 w-4 text-muted-foreground" />
-                      <span className="text-xs font-medium text-foreground">Debit / Credit Card & Mobile Wallets</span>
-                    </div>
-                    <p className="text-[11px] text-muted-foreground mt-0.5">
-                      JazzCash, Easypaisa & Online Cards (Coming Soon)
-                    </p>
-                  </div>
-                </div>
-                <span className="text-[10px] font-semibold text-muted-foreground">Gateway Slot</span>
-              </div>
             </div>
           </div>
         </div>

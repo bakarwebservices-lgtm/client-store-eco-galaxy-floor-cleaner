@@ -1,7 +1,11 @@
+'use client';
+
 import React from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { formatCurrency } from '@/lib/format';
+import { useCart } from '@/context/CartContext';
+import { ShoppingBag, ArrowRight, Sparkles } from 'lucide-react';
 
 export interface ProductCardProps {
   id: string;
@@ -10,43 +14,55 @@ export interface ProductCardProps {
   price: number;
   comparePrice?: number | null;
   hasVariants?: boolean;
-  aspectRatio?: 'square' | 'portrait' | 'wide';
-  images: Array<{
+  images: {
     url: string;
     altText?: string | null;
-  }>;
+  }[];
 }
 
 export function ProductCard({ product }: { product: ProductCardProps }) {
-  const primaryImage = product.images[0];
-  const secondaryImage = product.images[1];
-  const hasDiscount = product.comparePrice && product.comparePrice > product.price;
+  const { addItem, openCart } = useCart();
+  const primaryImage = product.images[0]?.url;
+  const secondaryImage = product.images[1]?.url;
 
-  const aspectRatioClass = 
-    product.aspectRatio === 'portrait' ? 'aspect-[3/4]' :
-    product.aspectRatio === 'wide' ? 'aspect-[4/3]' :
-    'aspect-square';
+  const hasDiscount = product.comparePrice && product.comparePrice > product.price;
+  const discountPercent = hasDiscount
+    ? Math.round(((product.comparePrice! - product.price) / product.comparePrice!) * 100)
+    : 0;
+
+  const handleQuickAdd = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    try {
+      await addItem(product.id, undefined, 1);
+      openCart();
+    } catch (err) {
+      console.error('Failed to add product to cart:', err);
+    }
+  };
 
   return (
-    <div className="group relative flex flex-col overflow-hidden rounded-xl border border-border bg-card transition-all duration-300 hover:shadow-md">
-      {/* Image Container */}
-      <Link href={`/products/${product.slug}`} className={`relative ${aspectRatioClass} w-full overflow-hidden bg-muted/20`}>
+    <div className="group relative flex flex-col h-full overflow-hidden rounded-2xl border border-border/80 bg-card transition-all duration-300 hover:border-primary/40 hover:shadow-xl shadow-sm">
+      {/* Image container */}
+      <Link href={`/products/${product.slug}`} className="relative aspect-[4/5] w-full overflow-hidden bg-muted/20 block">
         {primaryImage ? (
           <>
             <Image
-              src={primaryImage.url}
-              alt={primaryImage.altText || product.name}
+              src={primaryImage}
+              alt={product.images[0]?.altText || product.name}
               fill
-              sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
-              className="object-cover object-center transition-transform duration-500 group-hover:scale-105"
+              sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 300px"
+              className={`object-cover object-center transition-transform duration-500 group-hover:scale-105 ${
+                secondaryImage ? 'group-hover:opacity-0' : ''
+              }`}
             />
             {secondaryImage && (
               <Image
-                src={secondaryImage.url}
-                alt={secondaryImage.altText || product.name}
+                src={secondaryImage}
+                alt={product.images[1]?.altText || product.name}
                 fill
-                sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
-                className="absolute inset-0 object-cover object-center opacity-0 transition-opacity duration-500 group-hover:opacity-100"
+                sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 300px"
+                className="absolute inset-0 object-cover object-center opacity-0 transition-opacity duration-700 group-hover:opacity-100"
               />
             )}
           </>
@@ -57,36 +73,75 @@ export function ProductCard({ product }: { product: ProductCardProps }) {
         )}
 
         {/* Discount Badge */}
-        {hasDiscount && (
-          <div className="absolute left-2.5 top-2.5 rounded-full bg-destructive px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-destructive-foreground shadow">
-            Sale
-          </div>
-        )}
-      </Link>
-
-      {/* Info Section */}
-      <div className="flex flex-1 flex-col p-3 sm:p-4 space-y-1.5">
-        <Link href={`/products/${product.slug}`} className="group-hover:text-primary transition-colors">
-          <h3 className="text-xs sm:text-sm font-semibold line-clamp-1 text-foreground">
-            {product.name}
-          </h3>
-        </Link>
-
-        {/* Price display */}
-        <div className="flex items-baseline flex-wrap gap-x-2.5 gap-y-0.5 mt-auto pt-1">
-          <span className="text-sm sm:text-base font-bold text-foreground">
-            {formatCurrency(product.price)}
-          </span>
+        <div className="absolute left-2 top-2 sm:left-3 sm:top-3 flex flex-col gap-1 z-10">
           {hasDiscount && (
-            <span className="text-xs text-muted-foreground/75 line-through decoration-muted-foreground/60 decoration-1 font-normal inline-block ml-1">
-              {formatCurrency(product.comparePrice)}
+            <span
+              style={{ backgroundColor: 'var(--accent, #10ACB7)' }}
+              className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 sm:px-2.5 sm:py-1 text-[9px] sm:text-[11px] font-extrabold uppercase tracking-wider text-white shadow"
+            >
+              <Sparkles className="h-2.5 w-2.5 sm:h-3 sm:w-3" />
+              Save {discountPercent}%
             </span>
           )}
         </div>
 
-        {product.hasVariants && (
-          <p className="text-[11px] text-muted-foreground">Multiple options available</p>
-        )}
+        {/* COD Badge */}
+        <div className="absolute right-2 top-2 sm:right-3 sm:top-3 z-10">
+          <span className="inline-flex items-center rounded-full bg-white/90 backdrop-blur px-2 py-0.5 sm:px-2.5 sm:py-1 text-[9px] sm:text-[10px] font-bold uppercase tracking-wider text-foreground shadow-sm border border-border/60">
+            COD
+          </span>
+        </div>
+      </Link>
+
+      {/* Info Section */}
+      <div className="flex flex-1 flex-col p-3 sm:p-5 space-y-2 sm:space-y-3">
+        <div className="space-y-1">
+          <div className="flex items-center gap-1 text-[9px] sm:text-[11px] font-bold uppercase tracking-wider text-primary">
+            <span>Eco Galaxy</span>
+            <span>•</span>
+            <span>Lavender</span>
+          </div>
+          <Link href={`/products/${product.slug}`} className="block">
+            <h3 className="text-xs sm:text-base font-bold text-foreground transition-colors group-hover:text-primary line-clamp-2 leading-snug">
+              {product.name}
+            </h3>
+          </Link>
+        </div>
+
+        {/* Price display */}
+        <div className="flex items-baseline flex-wrap gap-x-2 gap-y-1 pt-0.5">
+          <span className="text-sm sm:text-lg font-extrabold text-foreground">
+            {formatCurrency(product.price)}
+          </span>
+          {hasDiscount && (
+            <span className="text-[11px] sm:text-xs text-muted-foreground line-through font-medium">
+              {formatCurrency(product.comparePrice)}
+            </span>
+          )}
+          <span className="ml-auto text-[9px] sm:text-[11px] font-semibold text-primary bg-primary/10 px-1.5 py-0.5 rounded-full border border-primary/20">
+            Free Delivery
+          </span>
+        </div>
+
+        {/* CTAs: 1 column on mobile 2-col cards, 2 columns on tablet/desktop */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 sm:gap-2 pt-1 mt-auto">
+          <button
+            type="button"
+            onClick={handleQuickAdd}
+            className="w-full flex items-center justify-center gap-1.5 rounded-xl border border-primary/30 bg-primary/5 py-2 sm:py-2.5 text-[11px] sm:text-xs font-bold text-primary transition-colors hover:bg-primary/15 active:scale-[0.98]"
+            aria-label={`Add ${product.name} to cart`}
+          >
+            <ShoppingBag className="h-3.5 w-3.5" />
+            <span>Add to Cart</span>
+          </button>
+          <Link
+            href={`/products/${product.slug}`}
+            className="w-full flex items-center justify-center gap-1 rounded-xl bg-primary py-2 sm:py-2.5 text-[11px] sm:text-xs font-bold text-primary-foreground shadow-sm transition-all hover:bg-primary-hover active:scale-[0.98]"
+          >
+            <span>View Pack</span>
+            <ArrowRight className="h-3.5 w-3.5" />
+          </Link>
+        </div>
       </div>
     </div>
   );

@@ -10,7 +10,7 @@ export async function GET() {
   try {
     const admin = await getAdminSession();
     if (!admin) {
-      return NextResponse.json({ error: 'Unauthorized: Admin session required' }, { status: 401 });
+      return NextResponse.json({ error: 'Unauthorized: Admin session required. Please log in.' }, { status: 401 });
     }
 
     const rows = await db.setting.findMany();
@@ -26,7 +26,7 @@ export async function GET() {
     return NextResponse.json({ settings });
   } catch (error: any) {
     console.error('Failed to load admin settings:', error);
-    return NextResponse.json({ error: 'Failed to load settings' }, { status: 500 });
+    return NextResponse.json({ error: 'Failed to load settings from database.' }, { status: 500 });
   }
 }
 
@@ -34,33 +34,35 @@ export async function PUT(request: NextRequest) {
   try {
     const admin = await getAdminSession();
     if (!admin) {
-      return NextResponse.json({ error: 'Unauthorized: Admin session required' }, { status: 401 });
+      return NextResponse.json({ error: 'Unauthorized: Admin session required. Please log in.' }, { status: 401 });
     }
 
     const body = await request.json();
     const parsed = allSettingsSchema.partial().safeParse(body);
 
     if (!parsed.success) {
+      const issueMessages = parsed.error.issues.map((i) => `${i.path.join('.')}: ${i.message}`).join(', ');
       return NextResponse.json(
-        { error: 'Invalid settings configuration', details: parsed.error.format() },
+        {
+          error: `Validation error: ${issueMessages}`,
+          details: parsed.error.format(),
+        },
         { status: 400 }
       );
     }
 
     const updates = parsed.data;
 
-    // Persist each setting key via atomic transaction
-    await db.$transaction(async (tx) => {
-      for (const [key, value] of Object.entries(updates)) {
-        if (value !== undefined) {
-          await tx.setting.upsert({
-            where: { key },
-            create: { key, value: value as any },
-            update: { value: value as any },
-          });
-        }
+    // Persist each setting key via direct upserts (compatible with PgBouncer connection pooling)
+    for (const [key, value] of Object.entries(updates)) {
+      if (value !== undefined) {
+        await db.setting.upsert({
+          where: { key },
+          create: { key, value: value as any },
+          update: { value: value as any },
+        });
       }
-    });
+    }
 
     // Read full updated settings dictionary
     const allRows = await db.setting.findMany();
@@ -85,6 +87,6 @@ export async function PUT(request: NextRequest) {
     });
   } catch (error: any) {
     console.error('Failed to save store settings:', error);
-    return NextResponse.json({ error: 'Failed to save settings' }, { status: 500 });
+    return NextResponse.json({ error: `Database error: ${error?.message || 'Failed to save settings'}` }, { status: 500 });
   }
 }

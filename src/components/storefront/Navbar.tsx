@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { ShoppingBag, Menu, X, Search, User, ChevronDown } from 'lucide-react';
+import { ShoppingBag, Menu, X, Search, User, ChevronDown, Truck, ShieldCheck, MessageCircle } from 'lucide-react';
 import { useCart } from '@/context/CartContext';
 
 interface CategoryNav {
@@ -17,35 +17,40 @@ interface CollectionNav {
   slug: string;
 }
 
-function getSafeStoreInitials(name?: string | null): string {
-  if (!name || typeof name !== 'string') return 'ST';
-  const clean = name.trim();
-  if (!clean) return 'ST';
-  const words = clean.split(/\s+/).filter(Boolean);
-  if (words.length === 0) return 'ST';
-  if (words.length === 1) return words[0].slice(0, 2).toUpperCase();
-  return (words[0][0] + (words[1]?.[0] || '')).toUpperCase();
-}
-
 export interface NavbarProps {
   initialStoreName?: string;
   initialLogoUrl?: string | null;
   initialCustomerAccountsEnabled?: boolean;
+  initialAnnouncementEnabled?: boolean;
+  initialAnnouncementText?: string;
+  initialAnnouncementBgColor?: string;
+  initialAnnouncementTextColor?: string;
+  initialPrimaryColor?: string;
 }
 
 export function Navbar({
-  initialStoreName = 'STORE',
-  initialLogoUrl = null,
+  initialStoreName = 'Eco Galaxy',
+  initialLogoUrl = '/images/eco-galaxy-logo-bg-removed.png',
   initialCustomerAccountsEnabled = false,
+  initialAnnouncementEnabled = true,
+  initialAnnouncementText = 'FREE DELIVERY ACROSS PAKISTAN • CASH ON DELIVERY AVAILABLE • 100% ORIGINAL FORMULA',
+  initialAnnouncementBgColor = '#032017',
+  initialAnnouncementTextColor = '#A7F3D0',
+  initialPrimaryColor = '#042A1E',
 }: NavbarProps) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [categories, setCategories] = useState<CategoryNav[]>([]);
   const [collections, setCollections] = useState<CollectionNav[]>([]);
   const [trackingUrl, setTrackingUrl] = useState<string>('/track');
-  const [storeName, setStoreName] = useState<string>(initialStoreName || 'STORE');
-  const [logoUrl, setLogoUrl] = useState<string | null>(initialLogoUrl || null);
+  const [storeName, setStoreName] = useState<string>(initialStoreName || 'Eco Galaxy');
+  const [logoUrl, setLogoUrl] = useState<string | null>(initialLogoUrl || '/images/eco-galaxy-logo-bg-removed.png');
   const [logoError, setLogoError] = useState(false);
   const [customerAccountsEnabled, setCustomerAccountsEnabled] = useState<boolean>(initialCustomerAccountsEnabled);
+  const [announcementEnabled, setAnnouncementEnabled] = useState<boolean>(initialAnnouncementEnabled);
+  const [announcementText, setAnnouncementText] = useState<string>(initialAnnouncementText);
+  const [announcementBgColor, setAnnouncementBgColor] = useState<string>(initialAnnouncementBgColor);
+  const [announcementTextColor, setAnnouncementTextColor] = useState<string>(initialAnnouncementTextColor);
+  const [primaryColor, setPrimaryColor] = useState<string>(initialPrimaryColor);
   const [categoriesOpen, setCategoriesOpen] = useState(false);
   const { totalItems, toggleCart } = useCart();
 
@@ -81,6 +86,21 @@ export function Navbar({
           if (typeof data.settings?.customerAccountsEnabled === 'boolean') {
             setCustomerAccountsEnabled(data.settings.customerAccountsEnabled);
           }
+          if (typeof data.settings?.announcementEnabled === 'boolean') {
+            setAnnouncementEnabled(data.settings.announcementEnabled);
+          }
+          if (data.settings?.announcementText) {
+            setAnnouncementText(data.settings.announcementText);
+          }
+          if (data.settings?.announcementBgColor) {
+            setAnnouncementBgColor(data.settings.announcementBgColor);
+          }
+          if (data.settings?.announcementTextColor) {
+            setAnnouncementTextColor(data.settings.announcementTextColor);
+          }
+          if (data.settings?.primaryColor) {
+            setPrimaryColor(data.settings.primaryColor);
+          }
         }
       } catch (err) {
         console.error('Failed to load navigation data', err);
@@ -90,220 +110,232 @@ export function Navbar({
   }, []);
 
   return (
-    <header className="sticky top-0 z-40 border-b border-border bg-card/90 backdrop-blur">
+    <header
+      className="sticky top-0 z-40 w-full border-b border-border/40 text-white shadow-md transition-colors duration-300"
+      style={{ backgroundColor: primaryColor || 'var(--primary, #042A1E)' }}
+    >
+      {/* Top Announcement Bar — Fully Dynamic from Admin Settings */}
+      {announcementEnabled && (
+        <div
+          className="px-4 py-2 text-center text-xs font-semibold tracking-wide transition-colors duration-300 border-b border-black/10"
+          style={{
+            backgroundColor: announcementBgColor || '#032017',
+            color: announcementTextColor || '#A7F3D0',
+          }}
+        >
+          <div className="mx-auto flex max-w-7xl items-center justify-center gap-2 sm:gap-4 flex-wrap">
+            <span className="flex items-center gap-1.5 font-bold uppercase tracking-wider">
+              <Truck className="h-3.5 w-3.5 shrink-0" />
+              <span>{announcementText}</span>
+            </span>
+          </div>
+        </div>
+      )}
+
       <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
-        {/* Brand Logo */}
-        <div className="flex items-center gap-6">
-          <Link href="/" className="flex items-center gap-2.5 font-heading text-lg font-bold tracking-tight text-foreground">
+        {/* Brand Logo - Clear contrast on dark primary background */}
+        <div className="flex items-center gap-8">
+          <Link href="/" className="flex items-center gap-2.5 font-heading text-lg font-bold tracking-tight text-white transition-opacity hover:opacity-90">
             {logoUrl && !logoError ? (
               <img
                 src={logoUrl}
                 alt={storeName}
                 onError={() => setLogoError(true)}
-                className="h-8 w-auto object-contain max-w-[140px]"
+                className="h-10 w-auto object-contain max-w-[170px]"
               />
             ) : (
-              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-primary-foreground font-extrabold text-xs shrink-0">
-                {getSafeStoreInitials(storeName)}
+              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-500 text-white font-extrabold text-sm shrink-0 shadow-sm">
+                EG
               </div>
             )}
-            <span className="uppercase">{storeName}</span>
+            <span className="sr-only">{storeName}</span>
           </Link>
 
-          {/* Desktop Navigation */}
-          <nav className="hidden md:flex items-center gap-6 text-sm font-medium text-muted-foreground">
-            <Link href="/products" className="transition-colors hover:text-foreground">
-              Shop
+          {/* Desktop Multi-Page Navigation */}
+          <nav className="hidden md:flex items-center gap-6 text-sm font-semibold text-white/90">
+            <Link href="/" className="transition-colors hover:text-white">
+              Home
             </Link>
 
-            {/* Conditionally render Collections in desktop navbar only if active collections exist */}
-            {collections.length > 0 && (
-              <Link href="/collections" className="transition-colors hover:text-foreground">
-                Collections
-              </Link>
-            )}
+            <Link href="/products" className="transition-colors hover:text-white">
+              All Products
+            </Link>
 
             {/* Dynamic Categories Dropdown */}
             {categories.length > 0 && (
-              <div
-                className="relative"
-                onMouseEnter={() => setCategoriesOpen(true)}
-                onMouseLeave={() => setCategoriesOpen(false)}
-              >
+              <div className="relative group">
                 <button
                   type="button"
-                  className="flex items-center gap-1 transition-colors hover:text-foreground py-2"
+                  onClick={() => setCategoriesOpen(!categoriesOpen)}
+                  className="flex items-center gap-1 transition-colors hover:text-white focus:outline-none"
                 >
                   <span>Categories</span>
-                  <ChevronDown className="h-3.5 w-3.5" />
+                  <ChevronDown className="h-3.5 w-3.5 transition-transform duration-200 group-hover:rotate-180" />
                 </button>
-
-                {categoriesOpen && (
-                  <div className="absolute left-0 top-full w-48 rounded-xl border border-border bg-card p-2 shadow-lg backdrop-blur space-y-0.5 z-50">
-                    {categories.map((cat) => (
+                <div className="absolute left-0 top-full pt-2 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50">
+                  <div
+                    className="w-52 rounded-xl border border-white/10 p-2 shadow-xl backdrop-blur-md"
+                    style={{ backgroundColor: primaryColor || '#042A1E' }}
+                  >
+                    {categories.map((c) => (
                       <Link
-                        key={cat.id}
-                        href={`/categories/${cat.slug}`}
-                        className="block rounded-lg px-3 py-1.5 text-xs font-medium text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+                        key={c.id}
+                        href={`/categories/${c.slug}`}
+                        className="block rounded-lg px-3 py-2 text-xs font-semibold text-white/90 hover:bg-white/10 hover:text-white transition-colors"
                       >
-                        {cat.name}
+                        {c.name}
                       </Link>
                     ))}
                   </div>
-                )}
+                </div>
               </div>
             )}
 
-            <Link href="/products?featured=true" className="transition-colors hover:text-foreground">
-              Featured
+            <Link href="/pages/about-us" className="transition-colors hover:text-white">
+              About Us
             </Link>
-            <Link
-              href={trackingUrl}
-              target={trackingUrl.startsWith('http') ? '_blank' : undefined}
-              rel={trackingUrl.startsWith('http') ? 'noopener noreferrer' : undefined}
-              className="transition-colors hover:text-foreground text-primary font-medium"
-            >
-              Track
-            </Link>
-            <Link href="/faq" className="transition-colors hover:text-foreground">
+
+            <Link href="/faq" className="transition-colors hover:text-white">
               FAQ
             </Link>
-            <Link href="/contact" className="transition-colors hover:text-foreground">
+
+            <Link href="/contact" className="transition-colors hover:text-white">
               Contact
+            </Link>
+
+            <Link
+              href={trackingUrl}
+              className="inline-flex items-center gap-1 text-xs font-bold uppercase tracking-wider bg-white/10 px-2.5 py-1 rounded-full border border-white/10 hover:bg-white/20 transition-all text-white"
+            >
+              <Truck className="h-3 w-3" style={{ color: 'var(--accent, #10ACB7)' }} />
+              <span>Track Order</span>
             </Link>
           </nav>
         </div>
 
-        {/* Right Actions */}
-        <div className="flex items-center gap-3">
+        {/* Right Actions: WhatsApp Help, Cart, Account, Mobile Toggle */}
+        <div className="flex items-center gap-3 sm:gap-4">
           <Link
             href="/products"
-            className="flex h-9 w-9 items-center justify-center rounded-full text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
-            aria-label="Search catalog"
+            className="hidden sm:inline-flex items-center justify-center rounded-xl bg-white/15 px-3.5 py-2 text-xs font-bold text-white shadow-sm transition-all hover:bg-white/25 active:scale-95"
           >
-            <Search className="h-4 w-4" />
+            Shop Now
           </Link>
 
-          {/* Conditionally rendered Customer Account Button */}
-          {customerAccountsEnabled && (
-            <Link
-              href="/account"
-              className="flex items-center gap-1.5 rounded-full border border-border/70 bg-card px-3 py-1.5 text-xs font-semibold text-foreground hover:bg-muted transition-colors shadow-sm"
-              aria-label="My Account"
-            >
-              <User className="h-3.5 w-3.5 text-primary" />
-              <span className="hidden sm:inline">Account</span>
-            </Link>
-          )}
-
-          {/* Cart Drawer Trigger Button with Live Counter Badge */}
+          {/* Cart Bag Icon with dynamic items count */}
           <button
             type="button"
             onClick={toggleCart}
-            className="relative flex items-center gap-2 rounded-full bg-primary px-3.5 py-1.5 text-xs font-semibold text-primary-foreground transition-transform active:scale-95 shadow-sm hover:bg-primary-hover"
-            aria-label="Open shopping cart"
+            className="relative flex h-10 w-10 items-center justify-center rounded-full bg-white/10 text-white transition-all hover:bg-white/20 active:scale-95"
+            aria-label={`Shopping Bag with ${totalItems} items`}
           >
-            <ShoppingBag className="h-3.5 w-3.5" />
-            <span className="hidden sm:inline">Bag</span>
+            <ShoppingBag className="h-5 w-5" />
             {totalItems > 0 && (
-              <span className="flex h-4 min-w-[16px] items-center justify-center rounded-full bg-destructive px-1 text-[10px] font-extrabold text-destructive-foreground">
+              <span
+                style={{ backgroundColor: 'var(--accent, #10ACB7)' }}
+                className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full text-xs font-black text-white shadow-md animate-in zoom-in"
+              >
                 {totalItems}
               </span>
             )}
           </button>
 
-          {/* Mobile Menu Toggle */}
+          {/* Customer Account Icon */}
+          {customerAccountsEnabled && (
+            <Link
+              href="/account"
+              className="flex h-10 w-10 items-center justify-center rounded-full bg-white/10 text-white transition-all hover:bg-white/20 active:scale-95"
+              aria-label="Customer Account"
+            >
+              <User className="h-5 w-5" />
+            </Link>
+          )}
+
+          {/* Mobile Hamburger Menu Toggle */}
           <button
+            type="button"
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            className="flex h-9 w-9 items-center justify-center rounded-md md:hidden text-muted-foreground hover:text-foreground"
-            aria-label="Toggle menu"
+            className="flex h-10 w-10 items-center justify-center rounded-full bg-white/10 text-white transition-all hover:bg-white/20 md:hidden"
+            aria-label="Toggle navigation menu"
+            aria-expanded={mobileMenuOpen}
           >
             {mobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
           </button>
         </div>
       </div>
 
-      {/* Mobile Drawer */}
+      {/* Mobile Dropdown Menu */}
       {mobileMenuOpen && (
-        <div className="border-b border-border bg-card px-4 py-4 md:hidden space-y-3">
-          <Link
-            href="/products"
-            onClick={() => setMobileMenuOpen(false)}
-            className="block text-sm font-medium text-foreground py-1.5"
-          >
-            Shop
-          </Link>
-
-          {/* Conditionally render Collections in mobile drawer only if active collections exist */}
-          {collections.length > 0 && (
+        <div
+          className="border-t border-white/10 px-4 py-6 md:hidden space-y-4 shadow-xl"
+          style={{ backgroundColor: primaryColor || '#042A1E' }}
+        >
+          <div className="flex flex-col space-y-3 font-semibold text-white/90">
             <Link
-              href="/collections"
+              href="/"
               onClick={() => setMobileMenuOpen(false)}
-              className="block text-sm font-medium text-foreground py-1.5"
+              className="rounded-lg px-3 py-2 text-sm hover:bg-white/10 hover:text-white transition-colors"
             >
-              Collections
+              Home
             </Link>
-          )}
 
-          {categories.length > 0 && (
-            <div className="border-t border-b border-border py-2 space-y-1">
-              <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground block px-1">
-                Categories
-              </span>
-              <div className="grid grid-cols-2 gap-1 pt-1">
-                {categories.map((cat) => (
+            <Link
+              href="/products"
+              onClick={() => setMobileMenuOpen(false)}
+              className="rounded-lg px-3 py-2 text-sm hover:bg-white/10 hover:text-white transition-colors"
+            >
+              All Products
+            </Link>
+
+            {categories.length > 0 && (
+              <div className="space-y-1 pl-3 border-l-2 border-white/20">
+                <span className="text-xs uppercase tracking-wider text-white/60 font-bold px-3">Categories</span>
+                {categories.map((c) => (
                   <Link
-                    key={cat.id}
-                    href={`/categories/${cat.slug}`}
+                    key={c.id}
+                    href={`/categories/${c.slug}`}
                     onClick={() => setMobileMenuOpen(false)}
-                    className="block rounded-lg px-2 py-1 text-xs font-medium text-muted-foreground hover:bg-muted hover:text-foreground"
+                    className="block rounded-lg px-3 py-1.5 text-xs text-white/90 hover:bg-white/10 hover:text-white"
                   >
-                    {cat.name}
+                    {c.name}
                   </Link>
                 ))}
               </div>
-            </div>
-          )}
+            )}
 
-          <Link
-            href="/products?featured=true"
-            onClick={() => setMobileMenuOpen(false)}
-            className="block text-sm font-medium text-foreground py-1.5"
-          >
-            Featured Items
-          </Link>
-          {customerAccountsEnabled && (
             <Link
-              href="/account"
+              href="/pages/about-us"
               onClick={() => setMobileMenuOpen(false)}
-              className="block text-sm font-medium text-foreground py-1.5"
+              className="rounded-lg px-3 py-2 text-sm hover:bg-white/10 hover:text-white transition-colors"
             >
-              My Account
+              About Us
             </Link>
-          )}
-          <Link
-            href={trackingUrl}
-            target={trackingUrl.startsWith('http') ? '_blank' : undefined}
-            rel={trackingUrl.startsWith('http') ? 'noopener noreferrer' : undefined}
-            onClick={() => setMobileMenuOpen(false)}
-            className="block text-sm font-medium text-primary py-1.5"
-          >
-            Track Shipment
-          </Link>
-          <Link
-            href="/faq"
-            onClick={() => setMobileMenuOpen(false)}
-            className="block text-sm font-medium text-foreground py-1.5"
-          >
-            Customer FAQ
-          </Link>
-          <Link
-            href="/contact"
-            onClick={() => setMobileMenuOpen(false)}
-            className="block text-sm font-medium text-foreground py-1.5"
-          >
-            Contact Store
-          </Link>
+
+            <Link
+              href="/faq"
+              onClick={() => setMobileMenuOpen(false)}
+              className="rounded-lg px-3 py-2 text-sm hover:bg-white/10 hover:text-white transition-colors"
+            >
+              FAQ
+            </Link>
+
+            <Link
+              href="/contact"
+              onClick={() => setMobileMenuOpen(false)}
+              className="rounded-lg px-3 py-2 text-sm hover:bg-white/10 hover:text-white transition-colors"
+            >
+              Contact
+            </Link>
+
+            <Link
+              href={trackingUrl}
+              onClick={() => setMobileMenuOpen(false)}
+              className="flex items-center gap-2 rounded-lg bg-white/10 px-3 py-2 text-sm font-bold text-white border border-white/10"
+            >
+              <Truck className="h-4 w-4" style={{ color: 'var(--accent, #10ACB7)' }} />
+              <span>Track Order</span>
+            </Link>
+          </div>
         </div>
       )}
     </header>

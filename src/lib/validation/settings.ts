@@ -1,7 +1,20 @@
 import { z } from 'zod';
+import { optionalImageUrlSchema } from './url';
 
-export const HEX_COLOR_REGEX = /^#([0-9A-Fa-f]{3}|[0-9A-Fa-f]{6})$/;
-export const CURRENCY_CODE_REGEX = /^[A-Z]{3}$/;
+export const HEX_COLOR_REGEX = /^#?([0-9A-Fa-f]{3}|[0-9A-Fa-f]{6})$/;
+export const CURRENCY_CODE_REGEX = /^[A-Za-z]{3}$/;
+
+export const hexColorSchema = z.preprocess((val) => {
+  if (typeof val !== 'string' || !val.trim()) return '#042A1E';
+  const trimmed = val.trim();
+  return trimmed.startsWith('#') ? trimmed.toUpperCase() : `#${trimmed.toUpperCase()}`;
+}, z.string().regex(HEX_COLOR_REGEX, 'Must be a valid hex color (e.g. #042A1E or #10B981)'));
+
+export const preprocessNumber = (defaultVal = 0, min = 0, max = Infinity) =>
+  z.preprocess(
+    (val) => (val === '' || val === null || val === undefined || isNaN(Number(val)) ? defaultVal : Number(val)),
+    z.number().min(min).max(max).default(defaultVal)
+  );
 
 export const FONT_FAMILIES = [
   'Inter',
@@ -23,23 +36,33 @@ export const storeIdentitySchema = z.object({
     .max(255, 'Tagline must be under 255 characters')
     .optional()
     .default(''),
-  'store.logo_url': z
-    .string()
-    .optional()
-    .default(''),
+  'store.logo_url': optionalImageUrlSchema,
   'store.currency': z
     .string({ required_error: 'Currency code is required' })
-    .regex(CURRENCY_CODE_REGEX, 'Currency must be a 3-letter ISO code (e.g. PKR, USD, EUR, GBP)'),
+    .regex(CURRENCY_CODE_REGEX, 'Currency must be a 3-letter code (e.g. PKR, USD, EUR, GBP)')
+    .transform((v) => v.toUpperCase()),
   'store.country': z
     .string({ required_error: 'Store country is required' })
     .min(1, 'Country name cannot be empty')
     .max(100, 'Country name must be under 100 characters'),
+  // Announcement Bar
+  'announcement.enabled': z.preprocess(
+    (val) => val === true || val === 'true' || val === 1 || val === '1',
+    z.boolean().default(true)
+  ),
+  'announcement.text': z
+    .string()
+    .max(500, 'Announcement text must be under 500 characters')
+    .default('FREE DELIVERY ACROSS PAKISTAN • CASH ON DELIVERY AVAILABLE • 100% ORIGINAL FORMULA'),
+  'announcement.bg_color': hexColorSchema.default('#032017'),
+  'announcement.text_color': hexColorSchema.default('#A7F3D0'),
 });
 
 export const contactSettingsSchema = z.object({
   'store.email': z
     .string({ required_error: 'Contact email is required' })
-    .email('Please enter a valid email address'),
+    .min(1, 'Contact email cannot be empty')
+    .refine((val) => !val || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(val), 'Please enter a valid email address'),
   'store.phone': z
     .string({ required_error: 'Contact phone is required' })
     .min(3, 'Phone number must be at least 3 characters')
@@ -55,12 +78,8 @@ export const contactSettingsSchema = z.object({
 });
 
 export const themeSettingsSchema = z.object({
-  'theme.primary_color': z
-    .string({ required_error: 'Primary theme color is required' })
-    .regex(HEX_COLOR_REGEX, 'Primary color must be a valid hex code (e.g. #0F172A or #2563EB)'),
-  'theme.accent_color': z
-    .string({ required_error: 'Accent theme color is required' })
-    .regex(HEX_COLOR_REGEX, 'Accent color must be a valid hex code (e.g. #D4AF37 or #F59E0B)'),
+  'theme.primary_color': hexColorSchema.default('#042A1E'),
+  'theme.accent_color': hexColorSchema.default('#10B981'),
   'theme.font_family': z
     .string()
     .min(1, 'Font family cannot be empty')
@@ -68,16 +87,9 @@ export const themeSettingsSchema = z.object({
 });
 
 export const shippingTaxSettingsSchema = z.object({
-  'shipping.free_threshold': z.coerce
-    .number({ required_error: 'Free shipping threshold is required' })
-    .gte(0, 'Free shipping threshold must be greater than or equal to 0'),
-  'shipping.standard_cost': z.coerce
-    .number({ required_error: 'Standard shipping cost is required' })
-    .gte(0, 'Standard shipping cost must be greater than or equal to 0'),
-  'tax.rate': z.coerce
-    .number({ required_error: 'Tax rate percentage is required' })
-    .gte(0, 'Tax rate must be at least 0%')
-    .lte(100, 'Tax rate cannot exceed 100%'),
+  'shipping.free_threshold': preprocessNumber(5000, 0),
+  'shipping.standard_cost': preprocessNumber(250, 0),
+  'tax.rate': preprocessNumber(0, 0, 100),
 });
 
 export const trackingSettingsSchema = z.object({
@@ -117,15 +129,24 @@ export const socialSettingsSchema = z.object({
 });
 
 export const notificationAndAuthSchema = z.object({
-  'email.smtp_enabled': z.boolean().default(false),
+  'email.smtp_enabled': z.preprocess(
+    (val) => val === true || val === 'true' || val === 1 || val === '1',
+    z.boolean().default(false)
+  ),
   'email.smtp_host': z.string().max(255).optional().default(''),
-  'email.smtp_port': z.coerce.number().int().min(1).max(65535).optional().default(587),
+  'email.smtp_port': preprocessNumber(587, 1, 65535),
   'email.smtp_user': z.string().max(255).optional().default(''),
   'email.smtp_password': z.string().max(255).optional().default(''),
   'email.smtp_from': z.string().max(255).optional().default(''),
   'email.smtp_from_name': z.string().max(255).optional().default(''),
-  'auth.customer_accounts_enabled': z.boolean().default(false),
-  'whatsapp.order_confirmation_enabled': z.boolean().default(true),
+  'auth.customer_accounts_enabled': z.preprocess(
+    (val) => val === true || val === 'true' || val === 1 || val === '1',
+    z.boolean().default(false)
+  ),
+  'whatsapp.order_confirmation_enabled': z.preprocess(
+    (val) => val !== false && val !== 'false' && val !== 0 && val !== '0',
+    z.boolean().default(true)
+  ),
   'whatsapp.phone_number': z.string().max(50).optional().default(''),
   'whatsapp.custom_message': z.string().max(500).optional().default(''),
 });
@@ -149,17 +170,21 @@ export type AllSettingsInput = z.infer<typeof allSettingsSchema>;
  * Default fallback values for all reserved settings keys
  */
 export const DEFAULT_SETTINGS: AllSettingsInput = {
-  'store.name': 'Store',
-  'store.tagline': 'Premium E-Commerce Platform',
-  'store.logo_url': '',
+  'store.name': 'Eco Galaxy',
+  'store.tagline': 'Make Every Floor Feel Brand New. | صاف فرش، خوشبودار گھر',
+  'store.logo_url': '/images/eco-galaxy-logo-bg-removed.png',
   'store.currency': 'PKR',
   'store.country': 'Pakistan',
-  'store.email': 'support@store.com',
-  'store.phone': '+92 300 0000000',
+  'announcement.enabled': true,
+  'announcement.text': 'FREE DELIVERY ACROSS PAKISTAN • CASH ON DELIVERY AVAILABLE • 100% ORIGINAL FORMULA',
+  'announcement.bg_color': '#032017',
+  'announcement.text_color': '#A7F3D0',
+  'store.email': 'support@ecogalaxy.store',
+  'store.phone': '0346 4815775',
   'store.address': 'Lahore, Punjab, Pakistan',
-  'store.hours': 'Mon – Sat: 10:00 AM – 8:00 PM PKT',
-  'theme.primary_color': '#0F172A',
-  'theme.accent_color': '#D4AF37',
+  'store.hours': 'Mon – Sat: 9:00 AM – 9:00 PM PKT',
+  'theme.primary_color': '#042A1E',
+  'theme.accent_color': '#10B981',
   'theme.font_family': 'Inter',
   'shipping.free_threshold': 5000,
   'shipping.standard_cost': 250,

@@ -11,8 +11,12 @@ import {
   Heart,
   ShieldCheck,
   Truck,
-  RotateCcw,
+  Banknote,
+  MessageCircle,
+  Sparkles,
+  CheckCircle2,
   Loader2,
+  Droplets,
 } from 'lucide-react';
 import { useCart } from '@/context/CartContext';
 import { useWishlist } from '@/context/WishlistContext';
@@ -35,6 +39,9 @@ export function ProductDetailClient({ product }: { product: ProductWithRelations
   const currentPrice = selectedVariant?.price ?? product.price;
   const currentComparePrice = selectedVariant?.comparePrice ?? product.comparePrice;
   const hasDiscount = currentComparePrice && currentComparePrice > currentPrice;
+  const discountPercent = hasDiscount
+    ? Math.round(((currentComparePrice - currentPrice) / currentComparePrice) * 100)
+    : 0;
   const isOutOfStock = selectedVariant ? selectedVariant.inventoryQty <= 0 : false;
 
   const handleAddToCart = async () => {
@@ -115,41 +122,60 @@ export function ProductDetailClient({ product }: { product: ProductWithRelations
   };
 
   return (
-    <div className="grid grid-cols-1 gap-8 lg:grid-cols-2 lg:gap-12">
+    <div className="grid grid-cols-1 gap-8 lg:grid-cols-12 lg:gap-12 py-6">
       {/* Left: Product Image Gallery */}
-      <ProductGallery
-        images={product.images}
-        productName={product.name}
-        activeVariantId={selectedVariant?.id}
-      />
+      <div className="lg:col-span-7">
+        <ProductGallery
+          images={product.images}
+          productName={product.name}
+          activeVariantId={selectedVariant?.id}
+        />
+      </div>
 
       {/* Right: Product Purchase Details */}
-      <div className="flex flex-col space-y-6">
-        <div className="space-y-2">
-          {product.vendor && (
-            <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
-              {product.vendor}
-            </p>
-          )}
-          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">
+      <div className="flex flex-col space-y-6 lg:col-span-5">
+        <div className="space-y-3">
+          <div className="flex items-center gap-2">
+            <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-3 py-1 text-[11px] font-extrabold uppercase tracking-wider text-primary border border-primary/20">
+              <Sparkles className="h-3 w-3" style={{ color: 'var(--accent, #10ACB7)' }} />
+              Eco Galaxy Official
+            </span>
+            <span className="text-[11px] font-bold text-primary bg-primary/10 px-2.5 py-1 rounded-full border border-primary/20">
+              Free Delivery
+            </span>
+          </div>
+
+          <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-foreground leading-snug">
             {product.name}
           </h1>
 
           {/* Pricing */}
-          <div className="flex items-baseline flex-wrap gap-x-3 gap-y-1 pt-2">
-            <span className="text-2xl sm:text-3xl font-extrabold text-foreground">
+          <div className="flex items-baseline flex-wrap gap-3 pt-1">
+            <span className="text-3xl font-extrabold text-foreground">
               {formatCurrency(currentPrice)}
             </span>
             {hasDiscount && (
-              <span className="text-base sm:text-lg text-muted-foreground/75 line-through decoration-muted-foreground/60 decoration-1 font-normal inline-block ml-2">
+              <span className="text-lg text-muted-foreground line-through font-medium">
                 {formatCurrency(currentComparePrice)}
               </span>
             )}
+            {hasDiscount && (
+              <span
+                style={{ backgroundColor: 'var(--accent, #10ACB7)' }}
+                className="rounded-full px-2.5 py-0.5 text-xs font-bold text-white shadow-sm"
+              >
+                Save {discountPercent}%
+              </span>
+            )}
           </div>
+
+          <p className="text-xs text-muted-foreground">
+            Price includes all taxes &amp; Free Delivery nationwide across Pakistan. Cash on Delivery available.
+          </p>
         </div>
 
         {/* Variant Selector */}
-        {variants.length > 0 && (
+        {variants.length > 1 && (
           <div className="border-t border-border pt-4">
             <VariantSelector
               variants={variants}
@@ -163,7 +189,7 @@ export function ProductDetailClient({ product }: { product: ProductWithRelations
         )}
 
         {errorMsg && (
-          <div className="rounded-lg border border-destructive/30 bg-destructive/10 p-3 text-xs text-destructive">
+          <div className="rounded-xl border border-destructive/30 bg-destructive/10 p-3 text-xs text-destructive">
             {errorMsg}
           </div>
         )}
@@ -174,23 +200,24 @@ export function ProductDetailClient({ product }: { product: ProductWithRelations
             <div className="rounded-2xl border border-amber-500/30 bg-amber-500/10 p-5 space-y-3">
               <div className="flex items-center gap-2">
                 <span className="flex h-2 w-2 rounded-full bg-amber-500 animate-pulse" />
-                <span className="text-xs font-bold text-amber-700 dark:text-amber-400">
+                <span className="text-xs font-bold text-amber-700">
                   Currently Out of Stock
                 </span>
               </div>
               <p className="text-xs text-muted-foreground leading-relaxed">
-                Enter your email address to receive an immediate notification as soon as this item is restocked.
+                Enter your email to receive an alert as soon as this pack is restocked.
               </p>
 
               {waitlistSuccess ? (
                 <div className="flex items-center gap-2 rounded-xl bg-emerald-500/10 border border-emerald-500/20 p-3 text-xs font-semibold text-emerald-700">
-                  <span>✓ You're on the restock waitlist! We'll email you when it arrives.</span>
+                  <CheckCircle2 className="h-4 w-4" />
+                  <span>You are on the restock waitlist! We will notify you when available.</span>
                 </div>
               ) : (
                 <form onSubmit={handleWaitlistSubmit} className="space-y-2">
                   <div className="flex gap-2">
                     <label htmlFor="waitlist-email" className="sr-only">
-                      Email Address for Restock Alert
+                      Email Address
                     </label>
                     <input
                       id="waitlist-email"
@@ -198,7 +225,7 @@ export function ProductDetailClient({ product }: { product: ProductWithRelations
                       required
                       value={waitlistEmail}
                       onChange={(e) => setWaitlistEmail(e.target.value)}
-                      placeholder="Enter your email for restock alert..."
+                      placeholder="Enter your email address..."
                       className="flex-1 rounded-xl border border-input bg-background px-3 py-2.5 text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20"
                     />
                     <button
@@ -219,7 +246,7 @@ export function ProductDetailClient({ product }: { product: ProductWithRelations
             <div className="space-y-3">
               <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
                 {/* Quantity Stepper */}
-                <div className="flex items-center justify-between sm:justify-start rounded-xl border border-border bg-card">
+                <div className="flex items-center justify-between sm:justify-start rounded-xl border border-border bg-card shadow-sm">
                   <button
                     type="button"
                     onClick={() => setQuantity((q) => Math.max(1, q - 1))}
@@ -228,7 +255,7 @@ export function ProductDetailClient({ product }: { product: ProductWithRelations
                   >
                     -
                   </button>
-                  <span className="px-2 text-sm font-semibold text-foreground min-w-[28px] text-center">
+                  <span className="px-2 text-sm font-semibold text-foreground min-w-[32px] text-center">
                     {quantity}
                   </span>
                   <button
@@ -253,22 +280,22 @@ export function ProductDetailClient({ product }: { product: ProductWithRelations
                   ) : (
                     <ShoppingBag className="h-4 w-4" />
                   )}
-                  <span>Add to Bag</span>
+                  <span>Add to Cart</span>
                 </button>
 
-                {/* Buy Now Button (Direct to Checkout) */}
+                {/* Buy Now Button */}
                 <button
                   type="button"
                   disabled={isLoading || isBuyNowLoading}
                   onClick={handleBuyNow}
-                  className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-primary py-3 px-4 text-xs sm:text-sm font-bold text-primary-foreground shadow-md transition-all hover:bg-primary-hover active:scale-[0.98] disabled:pointer-events-none disabled:opacity-50"
+                  className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-primary py-3 px-4 text-xs sm:text-sm font-extrabold text-primary-foreground shadow-md transition-all hover:bg-primary-hover active:scale-[0.98] disabled:pointer-events-none disabled:opacity-50"
                 >
                   {isBuyNowLoading ? (
                     <Loader2 className="h-4 w-4 animate-spin" />
                   ) : (
                     <Zap className="h-4 w-4 fill-primary-foreground" />
                   )}
-                  <span>Buy Now</span>
+                  <span>Buy Now (COD)</span>
                 </button>
 
                 {/* Wishlist Button */}
@@ -285,40 +312,56 @@ export function ProductDetailClient({ product }: { product: ProductWithRelations
                   }
                   className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border transition-all ${
                     isWishlisted
-                      ? 'border-red-200 bg-red-50 text-red-600 dark:border-red-900/40 dark:bg-red-950/30 dark:text-red-400'
+                      ? 'border-red-200 bg-red-50 text-red-600'
                       : 'border-border bg-card text-muted-foreground hover:text-destructive hover:border-destructive/30'
                   }`}
                   aria-label={isWishlisted ? 'Remove from wishlist' : 'Add to wishlist'}
-                  title={isWishlisted ? 'Saved in your wishlist' : 'Add to wishlist'}
+                  title={isWishlisted ? 'Saved in wishlist' : 'Add to wishlist'}
                 >
                   <Heart className={`h-5 w-5 ${isWishlisted ? 'fill-current' : ''}`} />
                 </button>
               </div>
+
+              {/* Direct WhatsApp Order CTA */}
+              <a
+                href={`https://wa.me/923464815775?text=${encodeURIComponent(
+                  `Hi Eco Galaxy, I want to order ${quantity}x ${product.name} (Rs. ${currentPrice * quantity}) via Cash on Delivery.`
+                )}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#25D366] px-4 py-3 text-xs font-extrabold text-white shadow-sm hover:bg-[#20bd5a] transition-colors"
+              >
+                <MessageCircle className="h-4 w-4 fill-current" />
+                <span>Quick Order via WhatsApp (0346 4815775)</span>
+              </a>
             </div>
           )}
         </div>
 
-        {/* Value Propositions / Badges */}
+        {/* Value Propositions / Badges - Zero Emojis */}
         <div className="grid grid-cols-3 gap-2 border-t border-border pt-4">
-          <div className="flex flex-col items-center justify-center rounded-xl bg-muted/30 p-3 text-center">
-            <Truck className="mb-1 h-4 w-4 text-muted-foreground" />
-            <span className="text-[10px] font-semibold text-foreground">Express Delivery</span>
+          <div className="flex flex-col items-center justify-center rounded-xl bg-[#f4f6f0] p-3 text-center border border-emerald-200/50">
+            <Truck className="mb-1 h-4 w-4 text-emerald-800" />
+            <span className="text-[10px] font-bold text-foreground">Free Delivery</span>
+            <span className="text-[9px] text-muted-foreground">All over Pakistan</span>
           </div>
-          <div className="flex flex-col items-center justify-center rounded-xl bg-muted/30 p-3 text-center">
-            <RotateCcw className="mb-1 h-4 w-4 text-muted-foreground" />
-            <span className="text-[10px] font-semibold text-foreground">Easy Returns</span>
+          <div className="flex flex-col items-center justify-center rounded-xl bg-[#f4f6f0] p-3 text-center border border-emerald-200/50">
+            <Banknote className="mb-1 h-4 w-4 text-emerald-800" />
+            <span className="text-[10px] font-bold text-foreground">Cash On Delivery</span>
+            <span className="text-[9px] text-muted-foreground">Pay upon arrival</span>
           </div>
-          <div className="flex flex-col items-center justify-center rounded-xl bg-muted/30 p-3 text-center">
-            <ShieldCheck className="mb-1 h-4 w-4 text-muted-foreground" />
-            <span className="text-[10px] font-semibold text-foreground">100% Authentic</span>
+          <div className="flex flex-col items-center justify-center rounded-xl bg-[#f4f6f0] p-3 text-center border border-emerald-200/50">
+            <ShieldCheck className="mb-1 h-4 w-4 text-emerald-800" />
+            <span className="text-[10px] font-bold text-foreground">100% Authentic</span>
+            <span className="text-[9px] text-muted-foreground">Direct from brand</span>
           </div>
         </div>
 
         {/* Description */}
         {product.description && (
           <div className="border-t border-border pt-4 space-y-2">
-            <h2 className="text-sm font-bold text-foreground">Product Description</h2>
-            <SafeHtml content={product.description} className="text-xs" />
+            <h2 className="text-sm font-bold text-foreground uppercase tracking-wide">Product Details</h2>
+            <SafeHtml content={product.description} className="text-xs leading-relaxed" />
           </div>
         )}
       </div>

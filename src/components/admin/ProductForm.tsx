@@ -6,6 +6,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { ProductStatus } from '@prisma/client';
 import { MediaUploadModal, SelectedMediaItem } from '@/components/admin/MediaUploadModal';
+import { RichTextEditor } from '@/components/admin/RichTextEditor';
 import { safeFetch } from '@/lib/apiClient';
 import {
   ArrowLeft,
@@ -423,14 +424,12 @@ export function ProductForm({
                 <label htmlFor="prod-description" className="block text-xs font-semibold text-muted-foreground">
                   Description *
                 </label>
-                <textarea
+                <RichTextEditor
                   id="prod-description"
-                  required
-                  rows={5}
                   value={description}
-                  onChange={(e) => setDescription(e.target.value)}
+                  onChange={setDescription}
                   placeholder="Detailed specifications, materials, sizing, and features..."
-                  className="w-full rounded-lg border border-input bg-background p-2.5 text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20"
+                  rows={6}
                 />
               </div>
             </div>
