@@ -34,6 +34,7 @@ export interface CreateShipmentParams {
   totalPieces: number;
   weightKg: number;
   pickupAddressCode?: string;
+  orderType?: string;
 }
 
 export interface ShipmentBookingResult {

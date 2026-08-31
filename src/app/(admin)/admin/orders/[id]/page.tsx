@@ -54,7 +54,8 @@ export default function AdminOrderDetailPage() {
   const [availableCouriers, setAvailableCouriers] = useState<any[]>([]);
   const [selectedCourier, setSelectedCourier] = useState('POSTEX');
   const [selectedCourierAccount, setSelectedCourierAccount] = useState<string>('');
-  const [pickupAddressCode, setPickupAddressCode] = useState('');
+  const [orderType, setOrderType] = useState<string>('Normal');
+  const [pickupAddressCode, setPickupAddressCode] = useState('001');
   const [codAmount, setCodAmount] = useState<number>(0);
   const [weightKg, setWeightKg] = useState<number>(0.5);
   const [pieces, setPieces] = useState<number>(1);
@@ -136,6 +137,8 @@ export default function AdminOrderDetailPage() {
     setCodAmount(isPaid ? 0 : order.totalPrice);
     setWeightKg(resolvedWeight);
     setPieces(1);
+    setOrderType('Normal');
+    setPickupAddressCode('001');
     setCourierNotes(order.notes || '');
     setShowDispatchModal(true);
   };
@@ -149,6 +152,7 @@ export default function AdminOrderDetailPage() {
       const payload = {
         courierCode: selectedCourier,
         courierAccountId: selectedCourierAccount || undefined,
+        orderType,
         pickupAddressCode: pickupAddressCode.trim() || undefined,
         customCodAmount: codAmount,
         weightKg,
@@ -767,6 +771,45 @@ export default function AdminOrderDetailPage() {
                   </select>
                 </div>
               )}
+
+              {/* Order Type and Pickup Warehouse Code */}
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-semibold text-foreground mb-1">
+                    Order Type
+                  </label>
+                  <select
+                    value={orderType}
+                    onChange={(e) => setOrderType(e.target.value)}
+                    className="w-full rounded-lg border border-input bg-background p-2.5 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary font-medium"
+                  >
+                    <option value="Normal">Normal (Standard Delivery)</option>
+                    <option value="Replacement">Replacement (Exchange)</option>
+                    <option value="Overland">Overland (Bulk/Cargo)</option>
+                    <option value="Reverse">Reverse (Customer Return)</option>
+                  </select>
+                  <p className="mt-1 text-[10px] text-muted-foreground">
+                    {orderType === 'Normal' && 'Standard forward delivery to customer.'}
+                    {orderType === 'Replacement' && 'Exchange parcel at customer doorstep.'}
+                    {orderType === 'Overland' && 'Heavy / bulk overland cargo dispatch.'}
+                    {orderType === 'Reverse' && 'Pickup returned package from customer.'}
+                  </p>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-foreground mb-1">
+                    Pickup Warehouse Code
+                  </label>
+                  <input
+                    type="text"
+                    value={pickupAddressCode}
+                    onChange={(e) => setPickupAddressCode(e.target.value)}
+                    placeholder="e.g. 001"
+                    className="w-full rounded-lg border border-input bg-background p-2.5 text-xs text-foreground font-mono focus:outline-none focus:ring-1 focus:ring-primary"
+                  />
+                  <p className="mt-1 text-[10px] text-muted-foreground">Merchant pickup location code (001)</p>
+                </div>
+              </div>
 
               {/* COD Amount Configuration */}
               <div>

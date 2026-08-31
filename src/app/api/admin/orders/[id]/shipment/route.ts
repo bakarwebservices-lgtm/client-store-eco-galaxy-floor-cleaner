@@ -9,6 +9,7 @@ const bookShipmentSchema = z.object({
   courierCode: z.string().min(1, 'Courier code is required'),
   courierAccountId: z.string().uuid().optional(),
   pickupAddressCode: z.string().optional(),
+  orderType: z.string().optional(),
   customCodAmount: z.number().min(0).optional(),
   weightKg: z.number().positive().optional(),
   pieces: z.number().int().min(1).default(1),

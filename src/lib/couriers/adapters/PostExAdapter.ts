@@ -109,7 +109,7 @@ export class PostExAdapter implements ICourierAdapter {
         deliveryAddress: this.sanitizeText(params.recipient.address, 200),
         cityName: this.sanitizeText(params.recipient.city, 50),
         transactionNotes: this.sanitizeText(params.orderNotes || '', 100),
-        orderType: 'Normal', // Normal | Reverse
+        orderType: params.orderType || 'Normal',
         items: params.totalPieces || 1,
         pickupAddressCode: params.pickupAddressCode || credentials.pickupAddressCode || '001',
       };

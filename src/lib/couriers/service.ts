@@ -11,6 +11,7 @@ export interface BookShipmentOptions {
   courierCode: string;
   courierAccountId?: string;
   pickupAddressCode?: string;
+  orderType?: string;
   customCodAmount?: number;
   weightKg?: number;
   pieces?: number;
@@ -87,7 +88,7 @@ export async function resolveCourierCredentials(
 export async function bookShipmentForOrder(
   options: BookShipmentOptions
 ): Promise<ShipmentBookingResult & { shipmentId: string }> {
-  const { orderId, courierCode, courierAccountId, pickupAddressCode, customCodAmount, weightKg, pieces, orderNotes } =
+  const { orderId, courierCode, courierAccountId, pickupAddressCode, orderType, customCodAmount, weightKg, pieces, orderNotes } =
     options;
 
   // 1. Fetch Order with Items and Customer
@@ -173,6 +174,7 @@ export async function bookShipmentForOrder(
     totalPieces: pieces || 1,
     weightKg: calculatedWeight,
     pickupAddressCode,
+    orderType,
   };
 
   // 6. Execute Courier API Call
