@@ -116,7 +116,7 @@ export function CourierSettingsTab() {
     setSelectedCourier(availableCouriers[0]?.code || 'POSTEX');
     setAccountTitle('');
     setApiToken('');
-    setPickupAddressCode('');
+    setPickupAddressCode('001');
     setEnvironment('production');
     setIsDefault(accounts.length === 0);
     setShowModal(true);

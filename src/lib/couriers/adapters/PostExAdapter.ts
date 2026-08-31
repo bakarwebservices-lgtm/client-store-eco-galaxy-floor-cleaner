@@ -111,7 +111,7 @@ export class PostExAdapter implements ICourierAdapter {
         transactionNotes: this.sanitizeText(params.orderNotes || '', 100),
         orderType: 'Normal', // Normal | Reverse
         items: params.totalPieces || 1,
-        pickupAddressCode: params.pickupAddressCode || credentials.pickupAddressCode || '',
+        pickupAddressCode: params.pickupAddressCode || credentials.pickupAddressCode || '001',
       };
 
       const res = await fetch(`${baseUrl}/services/integration/api/order/v3/create-order`, {
