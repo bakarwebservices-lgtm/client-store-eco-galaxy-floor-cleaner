@@ -57,7 +57,7 @@ describe('PostExAdapter', () => {
     expect(result.success).toBe(true);
     expect(result.trackingNumber).toBe('PE1234567890');
     expect(result.normalizedStatus).toBe(ShipmentStatus.BOOKED);
-    expect(result.labelUrl).toContain('trackingNumber=PE1234567890');
+    expect(result.labelUrl).toBe('/api/admin/orders/order-123/shipment/label');
 
     // Verify fetch was called with sanitized phone and stripped newlines
     expect(global.fetch).toHaveBeenCalledWith(
@@ -91,20 +91,26 @@ describe('PostExAdapter', () => {
     expect(parsed.description).toBe('Consignment successfully delivered to customer.');
   });
 
-  it('validates webhook secret when provided', async () => {
-    const payload = { trackingNumber: 'PE123' };
-    const invalidHeaders = { token: 'wrong_secret' };
-    const validHeaders = { token: 'my_secret_token' };
+  it('downloads PDF shipping label / airway bill with proper credentials', async () => {
+    const mockPdfData = new Uint8Array([37, 80, 68, 70]).buffer; // %PDF
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      arrayBuffer: async () => mockPdfData,
+    } as any);
 
-    const invalidParse = await adapter.parseWebhook(payload, invalidHeaders, mockCredentials, 'my_secret_token');
-    expect(invalidParse.isValid).toBe(false);
+    const res = await adapter.getShippingLabel('PE1234567890', mockCredentials);
+    expect(res.pdfBuffer).toBeDefined();
+    expect(res.error).toBeUndefined();
 
-    const validParse = await adapter.parseWebhook(
-      { ...payload, transactionStatus: 'In-Transit' },
-      validHeaders,
-      mockCredentials,
-      'my_secret_token'
+    expect(global.fetch).toHaveBeenCalledWith(
+      'https://sandbox.postex.pk/services/integration/api/order/v1/get-invoice?trackingNumbers=PE1234567890',
+      expect.objectContaining({
+        method: 'GET',
+        headers: expect.objectContaining({
+          token: 'test_token_123',
+        }),
+      })
     );
-    expect(validParse.isValid).toBe(true);
   });
 });

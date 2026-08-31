@@ -148,7 +148,7 @@ export class PostExAdapter implements ICourierAdapter {
       }
 
       const rawStatus = dist.orderStatus || dist.transactionStatus || 'Booked';
-      const labelUrl = `${baseUrl}/services/integration/api/order/v1/invoice?trackingNumber=${trackingNumber}`;
+      const labelUrl = params.orderId ? `/api/admin/orders/${params.orderId}/shipment/label` : undefined;
       const trackingUrl = `https://postex.pk/tracking?cn=${trackingNumber}`;
 
       return {
@@ -236,13 +236,17 @@ export class PostExAdapter implements ICourierAdapter {
 
       if (Array.isArray(trackingHistory)) {
         for (const item of trackingHistory) {
-          const rawStatus = item.status || item.transactionStatus || 'Update';
+          const rawStatus = item.status || item.transactionStatus || item.transactionStatusMessage || 'Update';
           historyItems.push({
             status: mapPostExStatus(rawStatus),
             rawStatus,
-            description: item.statusDescription || item.remarks || rawStatus,
+            description: item.statusDescription || item.transactionStatusMessage || item.remarks || rawStatus,
             location: item.cityName || item.location || undefined,
-            timestamp: item.transactionDatetime ? new Date(item.transactionDatetime) : new Date(),
+            timestamp: item.transactionDatetime
+              ? new Date(item.transactionDatetime)
+              : item.updatedAt
+              ? new Date(item.updatedAt)
+              : new Date(),
           });
         }
       }
@@ -360,8 +364,25 @@ export class PostExAdapter implements ICourierAdapter {
     credentials: CourierCredentials
   ): Promise<{ labelUrl?: string; pdfBuffer?: Buffer; error?: string }> {
     const baseUrl = this.getBaseUrl(credentials);
-    const labelUrl = `${baseUrl}/services/integration/api/order/v1/invoice?trackingNumber=${encodeURIComponent(trackingNumber)}`;
-    return { labelUrl };
+    try {
+      const res = await fetch(
+        `${baseUrl}/services/integration/api/order/v1/get-invoice?trackingNumbers=${encodeURIComponent(trackingNumber)}`,
+        {
+          method: 'GET',
+          headers: this.getHeaders(credentials),
+        }
+      );
+
+      if (!res.ok) {
+        return { error: `Failed to fetch PostEx airway bill (status ${res.status}).` };
+      }
+
+      const arrayBuffer = await res.arrayBuffer();
+      const pdfBuffer = Buffer.from(arrayBuffer);
+      return { pdfBuffer };
+    } catch (err: any) {
+      return { error: `Exception downloading PostEx airway bill: ${err?.message || err}` };
+    }
   }
 
   async getPickupLocations(credentials: CourierCredentials): Promise<PickupLocation[]> {

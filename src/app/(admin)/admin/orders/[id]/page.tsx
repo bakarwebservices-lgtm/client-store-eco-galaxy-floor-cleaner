@@ -586,9 +586,9 @@ export default function AdminOrderDetailPage() {
 
                 {/* Logistics Action Buttons */}
                 <div className="flex flex-col gap-2">
-                  {activeShipment.labelUrl && (
+                  {activeShipment.trackingNumber && (
                     <a
-                      href={activeShipment.labelUrl}
+                      href={`/api/admin/orders/${order.id}/shipment/label`}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="w-full flex items-center justify-center gap-1.5 rounded-lg border border-border bg-card py-2 text-xs font-semibold text-foreground hover:bg-muted transition-colors"
