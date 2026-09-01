@@ -167,10 +167,16 @@ export async function POST(req: NextRequest) {
       const taxAmount = 0;
       const totalPrice = Math.max(0, liveSubtotal - discountAmount + shippingAmount + taxAmount);
 
-      // 6. Customer & Guest Email Match Resolution (BUILD_STANDARDS 2.4)
+      // 6. Customer & Guest Match Resolution (BUILD_STANDARDS 2.4)
       const normalizedEmail = shippingAddress.email.toLowerCase().trim();
-      let customer = await tx.customer.findUnique({
-        where: { email: normalizedEmail },
+      const normalizedPhone = shippingAddress.phone.trim();
+      let customer = await tx.customer.findFirst({
+        where: {
+          OR: [
+            { email: normalizedEmail },
+            { phone: normalizedPhone },
+          ],
+        },
       });
 
       let guestOrderPossiblyLinked = false;
@@ -181,14 +187,14 @@ export async function POST(req: NextRequest) {
             email: normalizedEmail,
             firstName: shippingAddress.firstName.trim(),
             lastName: shippingAddress.lastName.trim(),
-            phone: shippingAddress.phone.trim(),
+            phone: normalizedPhone,
             passwordHash: null,
           },
         });
       } else {
         if (!cart.customerId || cart.customerId !== customer.id) {
           guestOrderPossiblyLinked = true;
-          console.log(`[Email Service Stub] Guest checkout matched existing account (${normalizedEmail}). Flagged guestOrderPossiblyLinked.`);
+          console.log(`[Email Service Stub] Guest checkout matched existing account (${normalizedEmail} / ${normalizedPhone}). Flagged guestOrderPossiblyLinked.`);
         }
       }
 
