@@ -7,7 +7,7 @@ export const BulkIdsSchema = z.object({
 
 export const BulkOrderActionSchema = z.object({
   ids: z.array(z.string().min(1)).min(1, 'Select at least one order'),
-  action: z.enum(['UPDATE_FULFILLMENT', 'UPDATE_PAYMENT', 'CANCEL', 'DELETE']),
+  action: z.enum(['UPDATE_FULFILLMENT', 'UPDATE_PAYMENT', 'CANCEL', 'DELETE', 'SYNC_COURIER']),
   fulfillmentStatus: z.nativeEnum(FulfillmentStatus).optional(),
   paymentStatus: z.nativeEnum(PaymentStatus).optional(),
   sendNotification: z.boolean().default(true),

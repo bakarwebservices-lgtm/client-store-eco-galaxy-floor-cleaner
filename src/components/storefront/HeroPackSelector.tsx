@@ -126,7 +126,6 @@ export function HeroPackSelector({
       router.push('/checkout');
     } catch (err) {
       console.error('Failed direct checkout buy now:', err);
-    } finally {
       setLoadingAction(null);
     }
   };

@@ -3,6 +3,8 @@ import { db } from '@/lib/db';
 import { requireAdminAuth } from '@/lib/auth/admin';
 import { BulkOrderActionSchema } from '@/lib/validation/bulk';
 import { sendFulfillmentUpdateEmail } from '@/lib/email';
+import { refreshShipmentTracking } from '@/lib/couriers/service';
+import { ShipmentStatus } from '@prisma/client';
 
 export async function POST(req: NextRequest) {
   try {
@@ -127,6 +129,33 @@ export async function POST(req: NextRequest) {
         success: true,
         count: deleted.count,
         message: `Deleted ${deleted.count} orders.`,
+      });
+    }
+
+    if (action === 'SYNC_COURIER') {
+      const shipments = await db.shipment.findMany({
+        where: {
+          orderId: { in: ids },
+          trackingNumber: { not: '' },
+          status: { notIn: [ShipmentStatus.CANCELLED] },
+        },
+        select: { id: true },
+      });
+
+      let syncedCount = 0;
+      for (const shipment of shipments) {
+        try {
+          const res = await refreshShipmentTracking(shipment.id);
+          if (res.success) syncedCount++;
+        } catch (err) {
+          console.warn(`[BulkCourierSync] Failed to sync shipment ${shipment.id}:`, err);
+        }
+      }
+
+      return NextResponse.json({
+        success: true,
+        count: syncedCount,
+        message: `Synchronized real-time tracking for ${syncedCount} of ${shipments.length} shipment(s).`,
       });
     }
 

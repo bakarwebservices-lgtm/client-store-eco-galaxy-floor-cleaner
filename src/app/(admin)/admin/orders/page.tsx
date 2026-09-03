@@ -3,7 +3,7 @@
 import { formatCurrency } from '@/lib/format';
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { Search, Eye, Filter, RefreshCw, AlertCircle, ShoppingBag, CheckCircle, XCircle, Trash2, CheckSquare } from 'lucide-react';
+import { Search, Eye, Filter, RefreshCw, AlertCircle, ShoppingBag, CheckCircle, XCircle, Trash2, CheckSquare, Truck } from 'lucide-react';
 import { BulkActionBar, BulkActionOption } from '@/components/admin/BulkActionBar';
 import { safeFetch } from '@/lib/apiClient';
 
@@ -16,6 +16,11 @@ export default function AdminOrdersPage() {
   const [fulfillmentFilter, setFulfillmentFilter] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  // Live PostEx Courier Sync State
+  const [syncingPostex, setSyncingPostex] = useState(false);
+  const [syncNotice, setSyncNotice] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+  const [rowSyncingId, setRowSyncingId] = useState<string | null>(null);
 
   // Bulk state
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
@@ -54,6 +59,58 @@ export default function AdminOrdersPage() {
     fetchOrders();
   };
 
+  const handleSyncPostEx = async () => {
+    setSyncingPostex(true);
+    setSyncNotice(null);
+    try {
+      const res = await fetch('/api/admin/courier/sync', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ courierCode: 'POSTEX' }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || 'Failed to sync with PostEx');
+      }
+      setSyncNotice({
+        type: 'success',
+        message: data.message || `Synchronized ${data.synced || 0} active PostEx shipments.`,
+      });
+      await fetchOrders();
+    } catch (err: any) {
+      setSyncNotice({
+        type: 'error',
+        message: err.message || 'Error syncing with PostEx',
+      });
+    } finally {
+      setSyncingPostex(false);
+    }
+  };
+
+  const handleSyncSingleOrder = async (orderId: string) => {
+    setRowSyncingId(orderId);
+    setSyncNotice(null);
+    try {
+      const res = await fetch(`/api/admin/orders/${orderId}/shipment/sync`, {
+        method: 'POST',
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed to sync shipment');
+      setSyncNotice({
+        type: 'success',
+        message: `Order shipment synced successfully (Status: ${data.status}).`,
+      });
+      await fetchOrders();
+    } catch (err: any) {
+      setSyncNotice({
+        type: 'error',
+        message: err.message || 'Error syncing shipment',
+      });
+    } finally {
+      setRowSyncingId(null);
+    }
+  };
+
   // Toggle single item
   const toggleSelect = (id: string) => {
     setSelectedIds((prev) =>
@@ -77,7 +134,12 @@ export default function AdminOrdersPage() {
 
     let payload: any = { ids: selectedIds };
 
-    if (actionKey === 'FULFILL') {
+    if (actionKey === 'SYNC_COURIER') {
+      payload = {
+        ids: selectedIds,
+        action: 'SYNC_COURIER',
+      };
+    } else if (actionKey === 'FULFILL') {
       payload = {
         ids: selectedIds,
         action: 'UPDATE_FULFILLMENT',
@@ -120,6 +182,10 @@ export default function AdminOrdersPage() {
         throw new Error(reqErr || 'Failed to perform bulk action');
       }
 
+      setSyncNotice({
+        type: 'success',
+        message: `Bulk action completed successfully for ${selectedIds.length} order(s).`,
+      });
       await fetchOrders();
     } catch (err: any) {
       setError(err.message || 'Bulk operation failed');
@@ -129,6 +195,7 @@ export default function AdminOrdersPage() {
   };
 
   const bulkActions: BulkActionOption[] = [
+    { label: 'Sync PostEx Status', actionKey: 'SYNC_COURIER', variant: 'outline', icon: Truck },
     { label: 'Mark Fulfilled', actionKey: 'FULFILL', variant: 'success', icon: CheckCircle },
     { label: 'Mark Unfulfilled', actionKey: 'UNFULFILL', variant: 'outline' },
     { label: 'Mark Paid', actionKey: 'PAID', variant: 'outline' },
@@ -158,15 +225,56 @@ export default function AdminOrdersPage() {
           </p>
         </div>
 
-        <button
-          type="button"
-          onClick={fetchOrders}
-          className="flex items-center gap-1.5 rounded-lg border border-border bg-card px-3 py-1.5 text-xs font-semibold text-foreground hover:bg-muted transition-colors self-start sm:self-auto"
-        >
-          <RefreshCw className="h-3.5 w-3.5" />
-          <span>Refresh</span>
-        </button>
+        <div className="flex flex-wrap items-center gap-2 self-start sm:self-auto">
+          <button
+            type="button"
+            onClick={handleSyncPostEx}
+            disabled={syncingPostex || loading}
+            className="flex items-center gap-1.5 rounded-lg border border-primary/40 bg-primary/10 px-3 py-1.5 text-xs font-bold text-primary hover:bg-primary/20 disabled:opacity-50 transition-colors shadow-sm"
+            title="Fetch real-time delivery status for all active in-flight shipments from PostEx API"
+          >
+            <Truck className={`h-3.5 w-3.5 ${syncingPostex ? 'animate-bounce' : ''}`} />
+            <RefreshCw className={`h-3 w-3 ${syncingPostex ? 'animate-spin' : ''}`} />
+            <span>{syncingPostex ? 'Syncing PostEx...' : 'Sync PostEx Status'}</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={fetchOrders}
+            disabled={loading}
+            className="flex items-center gap-1.5 rounded-lg border border-border bg-card px-3 py-1.5 text-xs font-semibold text-foreground hover:bg-muted transition-colors disabled:opacity-50"
+          >
+            <RefreshCw className={`h-3.5 w-3.5 ${loading ? 'animate-spin' : ''}`} />
+            <span>Refresh</span>
+          </button>
+        </div>
       </div>
+
+      {syncNotice && (
+        <div
+          className={`flex items-center justify-between gap-2 rounded-xl p-3.5 text-xs ${
+            syncNotice.type === 'success'
+              ? 'border border-emerald-500/30 bg-emerald-500/10 text-emerald-800 dark:text-emerald-300'
+              : 'border border-destructive/30 bg-destructive/10 text-destructive'
+          }`}
+        >
+          <div className="flex items-center gap-2">
+            {syncNotice.type === 'success' ? (
+              <CheckCircle className="h-4 w-4 shrink-0 text-emerald-600 dark:text-emerald-400" />
+            ) : (
+              <AlertCircle className="h-4 w-4 shrink-0 text-destructive" />
+            )}
+            <span className="font-medium">{syncNotice.message}</span>
+          </div>
+          <button
+            type="button"
+            onClick={() => setSyncNotice(null)}
+            className="text-xs font-bold opacity-70 hover:opacity-100 px-2 py-0.5"
+          >
+            Dismiss
+          </button>
+        </div>
+      )}
 
       {error && (
         <div className="flex items-center gap-2 rounded-xl border border-destructive/30 bg-destructive/10 p-4 text-xs text-destructive">
@@ -233,6 +341,7 @@ export default function AdminOrdersPage() {
                 <th className="p-3.5 font-bold">Customer</th>
                 <th className="p-3.5 font-bold">Payment</th>
                 <th className="p-3.5 font-bold">Fulfillment</th>
+                <th className="p-3.5 font-bold">Courier / Tracking</th>
                 <th className="p-3.5 font-bold text-right">Items</th>
                 <th className="p-3.5 font-bold text-right">Total</th>
                 <th className="p-3.5 font-bold text-center">Actions</th>
@@ -241,7 +350,7 @@ export default function AdminOrdersPage() {
             <tbody className="divide-y divide-border">
               {loading ? (
                 <tr>
-                  <td colSpan={9} className="p-12 text-center text-muted-foreground">
+                  <td colSpan={10} className="p-12 text-center text-muted-foreground">
                     Loading orders...
                   </td>
                 </tr>
@@ -308,6 +417,44 @@ export default function AdminOrdersPage() {
                           {order.fulfillmentStatus}
                         </span>
                       </td>
+                      <td className="p-3.5">
+                        {order.shipments?.[0] ? (
+                          <div className="space-y-1">
+                            <div className="flex items-center gap-1.5">
+                              <span
+                                className={`inline-flex rounded px-1.5 py-0.5 text-[9px] font-bold font-mono ${
+                                  order.shipments[0].status === 'DELIVERED'
+                                    ? 'bg-success/10 text-success'
+                                    : order.shipments[0].status === 'RETURNED_TO_ORIGIN'
+                                    ? 'bg-destructive/10 text-destructive'
+                                    : 'bg-primary/10 text-primary'
+                                }`}
+                              >
+                                {order.shipments[0].status}
+                              </span>
+                              <span className="text-[10px] text-muted-foreground font-semibold">
+                                {order.shipments[0].courierCode}
+                              </span>
+                            </div>
+                            <div className="flex items-center gap-1.5 text-[10px] font-mono text-muted-foreground">
+                              <span className="truncate max-w-[110px]" title={order.shipments[0].trackingNumber}>
+                                {order.shipments[0].trackingNumber}
+                              </span>
+                              <button
+                                type="button"
+                                onClick={() => handleSyncSingleOrder(order.id)}
+                                disabled={rowSyncingId === order.id}
+                                className="p-0.5 text-muted-foreground hover:text-primary transition-colors disabled:opacity-50"
+                                title="Sync live status from PostEx"
+                              >
+                                <RefreshCw className={`h-2.5 w-2.5 ${rowSyncingId === order.id ? 'animate-spin text-primary' : ''}`} />
+                              </button>
+                            </div>
+                          </div>
+                        ) : (
+                          <span className="text-[11px] text-muted-foreground">Unbooked</span>
+                        )}
+                      </td>
                       <td className="p-3.5 text-right font-medium text-muted-foreground">
                         {order.items?.length || 0}
                       </td>
@@ -328,7 +475,7 @@ export default function AdminOrdersPage() {
                 })
               ) : (
                 <tr>
-                  <td colSpan={9} className="p-12 text-center space-y-2">
+                  <td colSpan={10} className="p-12 text-center space-y-2">
                     <ShoppingBag className="mx-auto h-8 w-8 text-muted-foreground" />
                     <p className="text-sm font-semibold text-foreground">No orders found</p>
                     <p className="text-xs text-muted-foreground">Customer orders will appear here once placed.</p>

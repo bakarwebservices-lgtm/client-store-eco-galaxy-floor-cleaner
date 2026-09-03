@@ -44,6 +44,18 @@ export async function GET(req: NextRequest) {
         include: {
           customer: { select: { id: true, email: true, firstName: true, lastName: true, phone: true } },
           items: true,
+          shipments: {
+            where: { status: { not: ShipmentStatus.CANCELLED } },
+            orderBy: { createdAt: 'desc' },
+            take: 1,
+            select: {
+              id: true,
+              courierCode: true,
+              courierName: true,
+              trackingNumber: true,
+              status: true,
+            },
+          },
         },
       }),
       db.order.count({ where }),

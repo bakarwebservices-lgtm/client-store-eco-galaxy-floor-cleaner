@@ -283,10 +283,12 @@ export default async function OrderSuccessPage({
               <span>{shippingAddr.phone}</span>
             </div>
 
-            <div className="flex items-center gap-2">
-              <Mail className="h-4 w-4 text-muted-foreground shrink-0" />
-              <span>{shippingAddr.email}</span>
-            </div>
+            {shippingAddr.email && (
+              <div className="flex items-center gap-2">
+                <Mail className="h-4 w-4 text-muted-foreground shrink-0" />
+                <span>{shippingAddr.email}</span>
+              </div>
+            )}
           </div>
 
           <div className="border-t border-border pt-4">

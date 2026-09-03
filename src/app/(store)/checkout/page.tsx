@@ -162,17 +162,22 @@ export default function CheckoutPage() {
 
     if (items.length === 0) {
       setCheckoutError('Your shopping bag is empty.');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
       return;
     }
 
     const addrCheck = validateAddressLine(address, 'Pakistan');
     if (!addrCheck.valid) {
       setCheckoutError(addrCheck.error || 'Please provide a complete street address');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      document.getElementById('checkout-address')?.focus();
       return;
     }
 
     if (!isPhoneValid(phone, 'Pakistan')) {
       setCheckoutError('Please provide a valid 11-digit mobile number (e.g. 0300 1234567)');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      document.getElementById('checkout-phone')?.focus();
       return;
     }
 
@@ -183,7 +188,7 @@ export default function CheckoutPage() {
       shippingAddress: {
         firstName: firstName.trim(),
         lastName: lastName.trim(),
-        email: email.trim(),
+        email: email.trim() || null,
         phone: normalizePhone(phone, 'Pakistan'),
         address: address.trim(),
         apartment: apartment.trim() || null,
@@ -206,6 +211,7 @@ export default function CheckoutPage() {
 
       if (!ok) {
         setCheckoutError(error || 'Failed to place order.');
+        window.scrollTo({ top: 0, behavior: 'smooth' });
         setIsSubmitting(false);
         return;
       }
@@ -218,6 +224,7 @@ export default function CheckoutPage() {
     } catch (err: any) {
       console.error('Checkout error:', err);
       setCheckoutError(err?.message || 'Network error while placing order.');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
       setIsSubmitting(false);
     }
   };
@@ -269,16 +276,19 @@ export default function CheckoutPage() {
             </h2>
 
             <div className="space-y-1">
-              <label htmlFor="checkout-email" className="block text-[11px] font-semibold text-muted-foreground">Email Address *</label>
+              <div className="flex items-center justify-between">
+                <label htmlFor="checkout-email" className="block text-[11px] font-semibold text-muted-foreground">
+                  Email Address <span className="font-normal text-muted-foreground/80">(Optional)</span>
+                </label>
+                <span className="text-[10px] text-muted-foreground">Order confirmation &amp; updates</span>
+              </div>
               <input
                 id="checkout-email"
                 type="email"
-                required
-                aria-required="true"
                 autoComplete="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="name@example.com"
+                placeholder="name@example.com (optional)"
                 className="w-full rounded-lg border border-input bg-background p-2.5 text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20"
               />
             </div>
@@ -496,6 +506,12 @@ export default function CheckoutPage() {
             </div>
 
             {/* Submit CTA */}
+            {checkoutError && (
+              <p className="text-center text-xs font-semibold text-destructive px-1 bg-destructive/10 border border-destructive/20 rounded-lg py-2">
+                {checkoutError}
+              </p>
+            )}
+
             <button
               type="submit"
               disabled={isSubmitting}

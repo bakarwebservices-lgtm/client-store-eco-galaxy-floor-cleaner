@@ -168,14 +168,18 @@ export async function POST(req: NextRequest) {
       const totalPrice = Math.max(0, liveSubtotal - discountAmount + shippingAmount + taxAmount);
 
       // 6. Customer & Guest Match Resolution (BUILD_STANDARDS 2.4)
-      const normalizedEmail = shippingAddress.email.toLowerCase().trim();
+      const rawEmail = shippingAddress.email?.trim();
+      const normalizedEmail = rawEmail ? rawEmail.toLowerCase() : null;
       const normalizedPhone = shippingAddress.phone.trim();
+
+      const customerLookupConditions: any[] = [{ phone: normalizedPhone }];
+      if (normalizedEmail) {
+        customerLookupConditions.push({ email: normalizedEmail });
+      }
+
       let customer = await tx.customer.findFirst({
         where: {
-          OR: [
-            { email: normalizedEmail },
-            { phone: normalizedPhone },
-          ],
+          OR: customerLookupConditions,
         },
       });
 
@@ -194,7 +198,7 @@ export async function POST(req: NextRequest) {
       } else {
         if (!cart.customerId || cart.customerId !== customer.id) {
           guestOrderPossiblyLinked = true;
-          console.log(`[Email Service Stub] Guest checkout matched existing account (${normalizedEmail} / ${normalizedPhone}). Flagged guestOrderPossiblyLinked.`);
+          console.log(`[Email Service Stub] Guest checkout matched existing account (${normalizedEmail || 'no-email'} / ${normalizedPhone}). Flagged guestOrderPossiblyLinked.`);
         }
       }
 
@@ -207,7 +211,7 @@ export async function POST(req: NextRequest) {
         orderNumber,
         amount: totalPrice,
         currency,
-        customerEmail: normalizedEmail,
+        customerEmail: normalizedEmail || undefined,
         customerName: `${shippingAddress.firstName} ${shippingAddress.lastName}`,
         customerPhone: shippingAddress.phone,
       });
@@ -291,39 +295,41 @@ if (!orderResult) {
   throw lastError || new Error('Failed to process checkout after multiple attempts.');
 }
 
-// Dispatch order confirmation email (resilient / error-safe)
-try {
-  await sendOrderConfirmationEmail({
-    id: orderResult.id,
-    orderNumber: orderResult.orderNumber,
-    email: shippingAddress.email,
-    currency: orderResult.currency,
-    subtotal: orderResult.subtotal,
-    shippingFee: orderResult.shippingAmount,
-    discountTotal: orderResult.discountAmount,
-    totalPrice: orderResult.totalPrice,
-    paymentMethod: orderResult.paymentMethod,
-    items: orderResult.items.map((it: any) => ({
-      productTitle: it.productTitle,
-      variantTitle: it.variantTitle,
-      sku: it.sku,
-      quantity: it.quantity,
-      unitPrice: it.unitPrice,
-      totalPrice: it.totalPrice,
-    })),
-    shippingAddress: {
-      firstName: shippingAddress.firstName,
-      lastName: shippingAddress.lastName,
-      addressLine1: shippingAddress.address,
-      addressLine2: shippingAddress.apartment,
-      city: shippingAddress.city,
-      province: shippingAddress.province,
-      postalCode: shippingAddress.postalCode,
-      phone: shippingAddress.phone,
-    },
-  });
-} catch (emailErr) {
-  console.error('[Checkout] Failed to dispatch order confirmation email:', emailErr);
+// Dispatch order confirmation email (resilient / error-safe, only if email was provided)
+if (shippingAddress.email?.trim()) {
+  try {
+    await sendOrderConfirmationEmail({
+      id: orderResult.id,
+      orderNumber: orderResult.orderNumber,
+      email: shippingAddress.email.trim(),
+      currency: orderResult.currency,
+      subtotal: orderResult.subtotal,
+      shippingFee: orderResult.shippingAmount,
+      discountTotal: orderResult.discountAmount,
+      totalPrice: orderResult.totalPrice,
+      paymentMethod: orderResult.paymentMethod,
+      items: orderResult.items.map((it: any) => ({
+        productTitle: it.productTitle,
+        variantTitle: it.variantTitle,
+        sku: it.sku,
+        quantity: it.quantity,
+        unitPrice: it.unitPrice,
+        totalPrice: it.totalPrice,
+      })),
+      shippingAddress: {
+        firstName: shippingAddress.firstName,
+        lastName: shippingAddress.lastName,
+        addressLine1: shippingAddress.address,
+        addressLine2: shippingAddress.apartment,
+        city: shippingAddress.city,
+        province: shippingAddress.province,
+        postalCode: shippingAddress.postalCode,
+        phone: shippingAddress.phone,
+      },
+    });
+  } catch (emailErr) {
+    console.error('[Checkout] Failed to dispatch order confirmation email:', emailErr);
+  }
 }
 
 // Mark any abandoned checkout session as recovered

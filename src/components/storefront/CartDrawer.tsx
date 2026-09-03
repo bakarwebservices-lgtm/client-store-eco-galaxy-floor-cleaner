@@ -4,13 +4,26 @@ import { formatCurrency } from '@/lib/format';
 import React, { useEffect, useRef } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
+import { useRouter, usePathname } from 'next/navigation';
 import { X, Trash2, ShoppingBag, ArrowRight, ShieldCheck } from 'lucide-react';
 import { useCart } from '@/context/CartContext';
 
 export function CartDrawer() {
+  const router = useRouter();
+  const pathname = usePathname();
   const { isOpen, closeCart, items, totalItems, subtotal, updateQuantity, removeItem } = useCart();
   const drawerRef = useRef<HTMLDivElement>(null);
   const closeButtonRef = useRef<HTMLButtonElement>(null);
+
+  // Auto-close on route changes
+  useEffect(() => {
+    closeCart();
+  }, [pathname]);
+
+  const handleNavigate = (href: string) => {
+    router.push(href);
+    closeCart();
+  };
 
   // Focus trap & Escape key listener (BUILD_STANDARDS 4.6)
   useEffect(() => {
@@ -112,13 +125,13 @@ export function CartDrawer() {
                   <div className="flex flex-1 flex-col justify-between">
                     <div>
                       <div className="flex items-start justify-between gap-2">
-                        <Link
-                          href={`/products/${item.productSlug}`}
-                          onClick={closeCart}
-                          className="text-xs font-semibold text-foreground hover:text-primary transition-colors line-clamp-1"
+                        <button
+                          type="button"
+                          onClick={() => handleNavigate(`/products/${item.productSlug}`)}
+                          className="text-left text-xs font-semibold text-foreground hover:text-primary transition-colors line-clamp-1"
                         >
                           {item.productName}
-                        </Link>
+                        </button>
                         <button
                           type="button"
                           onClick={() => removeItem(item.id)}
@@ -185,13 +198,13 @@ export function CartDrawer() {
                   <p className="text-sm font-semibold text-foreground">Your bag is empty</p>
                   <p className="text-xs text-muted-foreground">Discover quality products in our store catalog.</p>
                 </div>
-                <Link
-                  href="/products"
-                  onClick={closeCart}
+                <button
+                  type="button"
+                  onClick={() => handleNavigate('/products')}
                   className="inline-block rounded-lg bg-primary px-5 py-2 text-xs font-bold text-primary-foreground shadow hover:bg-primary-hover transition-colors"
                 >
                   Explore Catalog
-                </Link>
+                </button>
               </div>
             )}
           </div>
@@ -210,21 +223,21 @@ export function CartDrawer() {
               </p>
 
               <div className="grid grid-cols-2 gap-2 pt-1">
-                <Link
-                  href="/cart"
-                  onClick={closeCart}
+                <button
+                  type="button"
+                  onClick={() => handleNavigate('/cart')}
                   className="flex items-center justify-center rounded-lg border border-border py-2.5 text-xs font-bold text-foreground hover:bg-muted transition-colors"
                 >
                   View Cart Page
-                </Link>
-                <Link
-                  href="/checkout"
-                  onClick={closeCart}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleNavigate('/checkout')}
                   className="flex items-center justify-center gap-1.5 rounded-lg bg-primary py-2.5 text-xs font-bold text-primary-foreground shadow hover:bg-primary-hover transition-transform active:scale-[0.98]"
                 >
                   <span>Checkout</span>
                   <ArrowRight className="h-3.5 w-3.5" />
-                </Link>
+                </button>
               </div>
 
               <div className="flex items-center justify-center gap-1.5 text-[11px] text-muted-foreground pt-1">

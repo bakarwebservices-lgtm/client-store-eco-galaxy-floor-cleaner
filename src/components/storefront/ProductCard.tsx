@@ -1,11 +1,11 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { formatCurrency } from '@/lib/format';
 import { useCart } from '@/context/CartContext';
-import { ShoppingBag, ArrowRight, Sparkles } from 'lucide-react';
+import { ShoppingBag, ArrowRight, Sparkles, Loader2 } from 'lucide-react';
 
 export interface ProductCardProps {
   id: string;
@@ -22,6 +22,7 @@ export interface ProductCardProps {
 
 export function ProductCard({ product }: { product: ProductCardProps }) {
   const { addItem, openCart } = useCart();
+  const [isAdding, setIsAdding] = useState(false);
   const primaryImage = product.images[0]?.url;
   const secondaryImage = product.images[1]?.url;
 
@@ -33,6 +34,8 @@ export function ProductCard({ product }: { product: ProductCardProps }) {
   const handleQuickAdd = async (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
+    if (isAdding) return;
+    setIsAdding(true);
     try {
       await addItem({
         productId: product.id,
@@ -44,6 +47,8 @@ export function ProductCard({ product }: { product: ProductCardProps }) {
       openCart();
     } catch (err) {
       console.error('Failed to add product to cart:', err);
+    } finally {
+      setIsAdding(false);
     }
   };
 
@@ -133,12 +138,17 @@ export function ProductCard({ product }: { product: ProductCardProps }) {
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 sm:gap-2 pt-1 mt-auto">
           <button
             type="button"
+            disabled={isAdding}
             onClick={handleQuickAdd}
-            className="w-full flex items-center justify-center gap-1.5 rounded-xl border border-primary/30 bg-primary/5 py-2 sm:py-2.5 text-[11px] sm:text-xs font-bold text-primary transition-colors hover:bg-primary/15 active:scale-[0.98]"
+            className="w-full flex items-center justify-center gap-1.5 rounded-xl border border-primary/30 bg-primary/5 py-2 sm:py-2.5 text-[11px] sm:text-xs font-bold text-primary transition-colors hover:bg-primary/15 active:scale-[0.98] disabled:opacity-60"
             aria-label={`Add ${product.name} to cart`}
           >
-            <ShoppingBag className="h-3.5 w-3.5" />
-            <span>Add to Cart</span>
+            {isAdding ? (
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+            ) : (
+              <ShoppingBag className="h-3.5 w-3.5" />
+            )}
+            <span>{isAdding ? 'Adding...' : 'Add to Cart'}</span>
           </button>
           <Link
             href={`/products/${product.slug}`}

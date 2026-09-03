@@ -5,7 +5,7 @@ export interface PaymentInitiationParams {
   orderNumber: string;
   amount: number;
   currency: string;
-  customerEmail: string;
+  customerEmail?: string;
   customerName: string;
   customerPhone?: string;
   returnUrl?: string;
