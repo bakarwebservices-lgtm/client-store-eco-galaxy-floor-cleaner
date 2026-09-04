@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { requireAdminAuth } from '@/lib/auth/admin';
-import { PaymentStatus, FulfillmentStatus } from '@prisma/client';
+import { PaymentStatus, FulfillmentStatus, ShipmentStatus } from '@prisma/client';
 
 export const dynamic = 'force-dynamic';
 
