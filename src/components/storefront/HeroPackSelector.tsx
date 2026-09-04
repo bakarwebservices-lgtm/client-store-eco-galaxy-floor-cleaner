@@ -223,6 +223,7 @@ export function HeroPackSelector({
       <div className="mt-3 text-center">
         <Link
           href={`/products/${selectedSlug}`}
+          prefetch={true}
           className="inline-flex items-center gap-1 text-[11px] font-semibold text-white/80 hover:text-white underline decoration-white/30 underline-offset-4"
         >
           <span>View complete product details &amp; ingredients</span>

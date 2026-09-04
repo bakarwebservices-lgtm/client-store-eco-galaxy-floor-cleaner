@@ -267,37 +267,12 @@ export default function CheckoutPage() {
       )}
 
       <form onSubmit={handleSubmitOrder} className="grid grid-cols-1 gap-8 lg:grid-cols-12">
-        {/* Left 7 Cols: Contact, Shipping, Payment */}
+        {/* Left 7 Cols: Shipping, Contact, Payment */}
         <div className="lg:col-span-7 space-y-6">
-          {/* Contact Information */}
-          <div className="rounded-xl border border-border bg-card p-5 space-y-4 shadow-sm">
-            <h2 className="text-sm font-bold uppercase tracking-wider text-foreground">
-              1. Customer Contact
-            </h2>
-
-            <div className="space-y-1">
-              <div className="flex items-center justify-between">
-                <label htmlFor="checkout-email" className="block text-[11px] font-semibold text-muted-foreground">
-                  Email Address <span className="font-normal text-muted-foreground/80">(Optional)</span>
-                </label>
-                <span className="text-[10px] text-muted-foreground">Order confirmation &amp; updates</span>
-              </div>
-              <input
-                id="checkout-email"
-                type="email"
-                autoComplete="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="name@example.com (optional)"
-                className="w-full rounded-lg border border-input bg-background p-2.5 text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20"
-              />
-            </div>
-          </div>
-
           {/* Delivery Address */}
           <div className="rounded-xl border border-border bg-card p-5 space-y-4 shadow-sm">
             <h2 className="text-sm font-bold uppercase tracking-wider text-foreground">
-              2. Delivery Address
+              1. Delivery Address
             </h2>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -359,12 +334,31 @@ export default function CheckoutPage() {
                 className="w-full rounded-lg border border-input bg-background p-2.5 text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20"
               />
             </div>
+
+            {/* Email Address (Optional) - placed at bottom */}
+            <div className="space-y-1 pt-2 border-t border-border/60">
+              <div className="flex items-center justify-between">
+                <label htmlFor="checkout-email" className="block text-[11px] font-semibold text-muted-foreground">
+                  Email Address <span className="font-normal text-muted-foreground/80">(Optional)</span>
+                </label>
+                <span className="text-[10px] text-muted-foreground">For receipt &amp; tracking updates</span>
+              </div>
+              <input
+                id="checkout-email"
+                type="email"
+                autoComplete="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="name@example.com (optional)"
+                className="w-full rounded-lg border border-input bg-background p-2.5 text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20"
+              />
+            </div>
           </div>
 
           {/* Payment Method Selection */}
           <div className="rounded-xl border border-border bg-card p-5 space-y-4 shadow-sm">
             <h2 className="text-sm font-bold uppercase tracking-wider text-foreground">
-              3. Payment Method
+              2. Payment Method
             </h2>
 
             <div className="space-y-2">

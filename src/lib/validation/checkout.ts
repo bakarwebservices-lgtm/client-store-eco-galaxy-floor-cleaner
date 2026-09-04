@@ -4,7 +4,11 @@ import { normalizePhone, normalizeCity } from '@/lib/geo';
 export const shippingAddressSchema = z.object({
   firstName: z.string().min(1, 'First name is required').max(100),
   lastName: z.string().min(1, 'Last name is required').max(100),
-  email: z.string().email('Valid email is required').optional().nullable().or(z.literal('')),
+  email: z
+    .preprocess(
+      (val) => (typeof val === 'string' && val.trim() === '' ? null : val ?? null),
+      z.string().email('Please provide a valid email address or leave it blank').nullable().optional()
+    ),
   phone: z
     .string()
     .min(8, 'Valid phone number is required (min 8 digits)')

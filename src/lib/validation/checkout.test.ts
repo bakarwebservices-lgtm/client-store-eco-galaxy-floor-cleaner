@@ -11,15 +11,21 @@ describe('shippingAddressSchema', () => {
     country: 'Pakistan',
   };
 
-  it('validates successfully when email is omitted or empty string', () => {
+  it('validates successfully when email is omitted, empty string, whitespace, or null', () => {
     const res1 = shippingAddressSchema.safeParse({ ...baseValid });
     expect(res1.success).toBe(true);
 
     const res2 = shippingAddressSchema.safeParse({ ...baseValid, email: '' });
     expect(res2.success).toBe(true);
+    if (res2.success) expect(res2.data.email).toBeNull();
 
-    const res3 = shippingAddressSchema.safeParse({ ...baseValid, email: null });
+    const res3 = shippingAddressSchema.safeParse({ ...baseValid, email: '   ' });
     expect(res3.success).toBe(true);
+    if (res3.success) expect(res3.data.email).toBeNull();
+
+    const res4 = shippingAddressSchema.safeParse({ ...baseValid, email: null });
+    expect(res4.success).toBe(true);
+    if (res4.success) expect(res4.data.email).toBeNull();
   });
 
   it('validates successfully when a valid email is provided', () => {

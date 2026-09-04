@@ -53,9 +53,17 @@ export function ProductCard({ product }: { product: ProductCardProps }) {
   };
 
   return (
-    <div className="group relative flex flex-col h-full overflow-hidden rounded-2xl border border-border/80 bg-card transition-all duration-300 hover:border-primary/40 hover:shadow-xl shadow-sm">
+    <div className="group relative flex flex-col h-full overflow-hidden rounded-2xl border border-border/80 bg-card transition-all duration-300 hover:border-primary/40 hover:shadow-xl shadow-sm cursor-pointer active:scale-[0.99]">
+      {/* Full-card accessible overlay link for instant 1-click navigation */}
+      <Link
+        href={`/products/${product.slug}`}
+        prefetch={true}
+        className="absolute inset-0 z-10"
+        aria-label={`View ${product.name}`}
+      />
+
       {/* Image container */}
-      <Link href={`/products/${product.slug}`} className="relative aspect-[4/5] w-full overflow-hidden bg-muted/20 block">
+      <div className="relative aspect-[4/5] w-full overflow-hidden bg-muted/20 block">
         {primaryImage ? (
           <>
             <Image
@@ -84,7 +92,7 @@ export function ProductCard({ product }: { product: ProductCardProps }) {
         )}
 
         {/* Discount Badge */}
-        <div className="absolute left-2 top-2 sm:left-3 sm:top-3 flex flex-col gap-1 z-10">
+        <div className="pointer-events-none absolute left-2 top-2 sm:left-3 sm:top-3 flex flex-col gap-1 z-10">
           {hasDiscount && (
             <span
               style={{ backgroundColor: 'var(--accent, #10ACB7)' }}
@@ -97,12 +105,12 @@ export function ProductCard({ product }: { product: ProductCardProps }) {
         </div>
 
         {/* COD Badge */}
-        <div className="absolute right-2 top-2 sm:right-3 sm:top-3 z-10">
+        <div className="pointer-events-none absolute right-2 top-2 sm:right-3 sm:top-3 z-10">
           <span className="inline-flex items-center rounded-full bg-white/90 backdrop-blur px-2 py-0.5 sm:px-2.5 sm:py-1 text-[9px] sm:text-[10px] font-bold uppercase tracking-wider text-foreground shadow-sm border border-border/60">
             COD
           </span>
         </div>
-      </Link>
+      </div>
 
       {/* Info Section */}
       <div className="flex flex-1 flex-col p-3 sm:p-5 space-y-2 sm:space-y-3">
@@ -112,11 +120,9 @@ export function ProductCard({ product }: { product: ProductCardProps }) {
             <span>•</span>
             <span>Lavender</span>
           </div>
-          <Link href={`/products/${product.slug}`} className="block">
-            <h3 className="text-xs sm:text-base font-bold text-foreground transition-colors group-hover:text-primary line-clamp-2 leading-snug">
-              {product.name}
-            </h3>
-          </Link>
+          <h3 className="text-xs sm:text-base font-bold text-foreground transition-colors group-hover:text-primary line-clamp-2 leading-snug">
+            {product.name}
+          </h3>
         </div>
 
         {/* Price display */}
@@ -135,12 +141,12 @@ export function ProductCard({ product }: { product: ProductCardProps }) {
         </div>
 
         {/* CTAs: 1 column on mobile 2-col cards, 2 columns on tablet/desktop */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 sm:gap-2 pt-1 mt-auto">
+        <div className="relative z-20 grid grid-cols-1 sm:grid-cols-2 gap-1.5 sm:gap-2 pt-1 mt-auto">
           <button
             type="button"
             disabled={isAdding}
             onClick={handleQuickAdd}
-            className="w-full flex items-center justify-center gap-1.5 rounded-xl border border-primary/30 bg-primary/5 py-2 sm:py-2.5 text-[11px] sm:text-xs font-bold text-primary transition-colors hover:bg-primary/15 active:scale-[0.98] disabled:opacity-60"
+            className="w-full flex items-center justify-center gap-1.5 rounded-xl border border-primary/30 bg-primary/5 py-2 sm:py-2.5 text-[11px] sm:text-xs font-bold text-primary transition-colors hover:bg-primary/15 active:scale-95 disabled:opacity-60"
             aria-label={`Add ${product.name} to cart`}
           >
             {isAdding ? (
@@ -152,7 +158,8 @@ export function ProductCard({ product }: { product: ProductCardProps }) {
           </button>
           <Link
             href={`/products/${product.slug}`}
-            className="w-full flex items-center justify-center gap-1 rounded-xl bg-primary py-2 sm:py-2.5 text-[11px] sm:text-xs font-bold text-primary-foreground shadow-sm transition-all hover:bg-primary-hover active:scale-[0.98]"
+            prefetch={true}
+            className="w-full flex items-center justify-center gap-1 rounded-xl bg-primary py-2 sm:py-2.5 text-[11px] sm:text-xs font-bold text-primary-foreground shadow-sm transition-all hover:bg-primary-hover active:scale-95"
           >
             <span>View Pack</span>
             <ArrowRight className="h-3.5 w-3.5" />
