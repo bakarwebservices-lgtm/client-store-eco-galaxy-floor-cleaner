@@ -295,6 +295,21 @@ export async function sendFulfillmentUpdateEmail(
     email: string;
     currency: string;
     totalPrice: number;
+    subtotal?: number;
+    discountAmount?: number;
+    shippingAmount?: number;
+    paymentMethod?: string;
+    paymentStatus?: string;
+    trackingNumber?: string;
+    trackingUrl?: string;
+    courierName?: string;
+    items?: Array<{
+      productTitle: string;
+      variantTitle?: string | null;
+      quantity: number;
+      unitPrice: number;
+      totalPrice: number;
+    }>;
     shippingAddress: OrderEmailAddress;
   },
   storeNameOverride?: string
@@ -304,9 +319,92 @@ export async function sendFulfillmentUpdateEmail(
 
   const addr = order.shippingAddress;
   const addressHtml = `
-    ${addr.firstName} ${addr.lastName}<br/>
-    ${addr.addressLine1}${addr.addressLine2 ? `<br/>${addr.addressLine2}` : ''}<br/>
-    ${addr.city}${addr.province ? `, ${addr.province}` : ''}${addr.postalCode ? ` ${addr.postalCode}` : ''}
+    ${addr.firstName || ''} ${addr.lastName || ''}<br/>
+    ${addr.addressLine1 || ''}${addr.addressLine2 ? `<br/>${addr.addressLine2}` : ''}<br/>
+    ${addr.city || ''}${addr.province ? `, ${addr.province}` : ''}${addr.postalCode ? ` ${addr.postalCode}` : ''}
+    ${addr.phone ? `<br/>Phone: ${addr.phone}` : ''}
+  `;
+
+  const itemsHtml = order.items && order.items.length > 0
+    ? `
+      <div style="margin-bottom: 20px;">
+        <table style="width: 100%; border-collapse: collapse; font-size: 13px;">
+          <thead>
+            <tr style="border-bottom: 1px solid #e5e5e5; color: #666; text-align: left;">
+              <th style="padding: 8px 0; font-weight: 600;">Item</th>
+              <th style="padding: 8px; text-align: center; font-weight: 600;">Qty</th>
+              <th style="padding: 8px 0; text-align: right; font-weight: 600;">Price</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${order.items.map(item => `
+              <tr style="border-bottom: 1px solid #f2f2f2;">
+                <td style="padding: 10px 0;">
+                  <strong style="color: #111;">${item.productTitle}</strong>
+                  ${item.variantTitle ? `<br/><span style="font-size: 11px; color: #777;">Option: ${item.variantTitle}</span>` : ''}
+                </td>
+                <td style="padding: 10px; text-align: center; color: #555;">${item.quantity}</td>
+                <td style="padding: 10px 0; text-align: right; font-weight: 600; color: #111;">
+                  ${order.currency} ${item.totalPrice.toLocaleString()}
+                </td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      </div>
+    `
+    : '';
+
+  const trackingHtml = order.trackingNumber
+    ? `
+      <div style="margin-bottom: 20px; background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px; padding: 16px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+          <span style="font-size: 12px; font-weight: 700; color: #166534; text-transform: uppercase; letter-spacing: 0.05em;">
+            Consignment Tracking (${order.courierName || 'Courier'})
+          </span>
+        </div>
+        <p style="margin: 0 0 10px 0; font-size: 14px; font-family: monospace; font-weight: 700; color: #111827;">
+          ${order.trackingNumber}
+        </p>
+        ${order.trackingUrl ? `
+          <a href="${order.trackingUrl}" target="_blank" rel="noopener noreferrer" style="display: inline-block; background-color: #16a34a; color: #ffffff; padding: 8px 16px; border-radius: 6px; text-decoration: none; font-size: 12px; font-weight: 700;">
+            Track Your Package
+          </a>
+        ` : ''}
+      </div>
+    `
+    : '';
+
+  const paymentBreakdownHtml = `
+    <div style="background: #fafafa; border: 1px solid #f0f0f0; border-radius: 8px; padding: 14px; margin-bottom: 20px; font-size: 12px;">
+      ${typeof order.subtotal === 'number' ? `
+        <div style="display: flex; justify-content: space-between; margin-bottom: 6px; color: #555;">
+          <span>Subtotal</span>
+          <span>${order.currency} ${order.subtotal.toLocaleString()}</span>
+        </div>
+      ` : ''}
+      ${typeof order.discountAmount === 'number' && order.discountAmount > 0 ? `
+        <div style="display: flex; justify-content: space-between; margin-bottom: 6px; color: #16a34a; font-weight: 600;">
+          <span>Discount Applied</span>
+          <span>- ${order.currency} ${order.discountAmount.toLocaleString()}</span>
+        </div>
+      ` : ''}
+      ${typeof order.shippingAmount === 'number' ? `
+        <div style="display: flex; justify-content: space-between; margin-bottom: 6px; color: #555;">
+          <span>Delivery Charges</span>
+          <span>${order.shippingAmount === 0 ? 'FREE' : `${order.currency} ${order.shippingAmount.toLocaleString()}`}</span>
+        </div>
+      ` : ''}
+      <div style="display: flex; justify-content: space-between; border-top: 1px solid #eaeaea; padding-top: 8px; font-size: 14px; font-weight: 800; color: #111;">
+        <span>Total (${order.paymentMethod || 'COD'})</span>
+        <span>${order.currency} ${order.totalPrice.toLocaleString()}</span>
+      </div>
+      ${order.paymentStatus ? `
+        <div style="margin-top: 6px; font-size: 11px; color: #666;">
+          Payment Status: <strong>${order.paymentStatus === 'PAID' ? 'PAID in full' : 'Due upon Delivery (Cash on Delivery)'}</strong>
+        </div>
+      ` : ''}
+    </div>
   `;
 
   const html = `
@@ -321,6 +419,10 @@ export async function sendFulfillmentUpdateEmail(
       <p style="color: #555; font-size: 13px; line-height: 1.5; margin-bottom: 20px;">
         Great news! Order <strong>#${order.orderNumber}</strong> has been fulfilled and dispatched for delivery.
       </p>
+
+      ${trackingHtml}
+      ${itemsHtml}
+      ${paymentBreakdownHtml}
 
       <div style="margin-bottom: 24px; background: #fafafa; border: 1px solid #f0f0f0; border-radius: 8px; padding: 16px;">
         <h3 style="font-size: 11px; text-transform: uppercase; color: #888; letter-spacing: 0.05em; margin-top: 0; margin-bottom: 8px;">Delivery Destination</h3>
@@ -342,7 +444,7 @@ export async function sendFulfillmentUpdateEmail(
     to: order.email,
     subject: `Your Order #${order.orderNumber} has Shipped! | ${storeName}`,
     html,
-    text: `Good news! Your order #${order.orderNumber} with ${storeName} has been fulfilled and is on its way.`,
+    text: `Good news! Your order #${order.orderNumber} with ${storeName} has been fulfilled and is on its way. Total: ${order.currency} ${order.totalPrice}. Tracking: ${order.trackingNumber || 'Processing'}.`,
   });
 
   return res.success;

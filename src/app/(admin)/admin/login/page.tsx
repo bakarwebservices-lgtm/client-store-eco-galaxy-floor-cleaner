@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, Suspense } from 'react';
+import React, { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Lock, Mail, AlertCircle, Loader2, ShieldCheck, Eye, EyeOff } from 'lucide-react';
 import { safeFetch } from '@/lib/apiClient';
@@ -15,6 +15,23 @@ function LoginForm() {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [storeName, setStoreName] = useState<string>('');
+  const [logoUrl, setLogoUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    async function loadStoreBranding() {
+      try {
+        const { ok, data } = await safeFetch<any>('/api/settings');
+        if (ok && data?.settings) {
+          if (data.settings.storeName) setStoreName(data.settings.storeName);
+          if (data.settings.logoUrl) setLogoUrl(data.settings.logoUrl);
+        }
+      } catch {
+        // Fallback to default
+      }
+    }
+    loadStoreBranding();
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -59,11 +76,17 @@ function LoginForm() {
     <div className="w-full max-w-md space-y-6 rounded-xl border border-border bg-card p-6 shadow-sm sm:p-8">
       {/* Header Branding */}
       <div className="text-center space-y-2">
-        <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-primary/10 text-primary">
-          <ShieldCheck className="h-6 w-6" />
-        </div>
+        {logoUrl ? (
+          <div className="mx-auto flex h-14 w-14 items-center justify-center overflow-hidden rounded-xl border border-border/80 bg-muted/40 p-1.5 shadow-xs">
+            <img src={logoUrl} alt={storeName || 'Store Logo'} className="h-full w-full object-contain" />
+          </div>
+        ) : (
+          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-primary/10 text-primary">
+            <ShieldCheck className="h-6 w-6" />
+          </div>
+        )}
         <h1 className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
-          Admin Portal
+          {storeName ? `${storeName} Admin` : 'Admin Portal'}
         </h1>
         <p className="text-sm text-muted-foreground">
           Sign in to manage store catalog, orders, and settings
