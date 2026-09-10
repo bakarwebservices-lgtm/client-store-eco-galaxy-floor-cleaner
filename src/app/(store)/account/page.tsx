@@ -4,12 +4,15 @@ import { formatCurrency } from '@/lib/format';
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { ShoppingBag, MapPin, User, LogOut, Package, ArrowRight, AlertTriangle, CheckCircle, Mail } from 'lucide-react';
+import { ShoppingBag, MapPin, User, LogOut, Package, ArrowRight, AlertTriangle, CheckCircle, Mail, Heart } from 'lucide-react';
+import { useWishlist } from '@/context/WishlistContext';
 
 export const dynamic = 'force-dynamic';
 
 export default function CustomerAccountDashboard() {
   const router = useRouter();
+  const { totalWishlist, totalWishlistItems } = useWishlist();
+  const wishlistCount = totalWishlistItems ?? totalWishlist ?? 0;
   const [customer, setCustomer] = useState<any | null>(null);
   const [orders, setOrders] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -131,10 +134,10 @@ export default function CustomerAccountDashboard() {
       </div>
 
       {/* Account Navigation Grid */}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <Link
           href="/account/orders"
-          className="flex items-center justify-between rounded-xl border border-border bg-card p-5 shadow-sm hover:border-primary/50 transition-colors"
+          className="flex items-center justify-between rounded-xl border border-border bg-card p-5 shadow-xs hover:border-primary/50 transition-colors"
         >
           <div className="flex items-center gap-3">
             <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 text-primary">
@@ -149,8 +152,26 @@ export default function CustomerAccountDashboard() {
         </Link>
 
         <Link
+          href="/wishlist"
+          className="flex items-center justify-between rounded-xl border border-border bg-card p-5 shadow-xs hover:border-primary/50 transition-colors"
+        >
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 text-primary">
+              <Heart className="h-5 w-5" />
+            </div>
+            <div>
+              <h2 className="text-xs font-bold text-foreground">My Wishlist</h2>
+              <p className="text-[11px] text-muted-foreground">
+                {wishlistCount} saved {wishlistCount === 1 ? 'item' : 'items'}
+              </p>
+            </div>
+          </div>
+          <ArrowRight className="h-4 w-4 text-muted-foreground" />
+        </Link>
+
+        <Link
           href="/account/addresses"
-          className="flex items-center justify-between rounded-xl border border-border bg-card p-5 shadow-sm hover:border-primary/50 transition-colors"
+          className="flex items-center justify-between rounded-xl border border-border bg-card p-5 shadow-xs hover:border-primary/50 transition-colors"
         >
           <div className="flex items-center gap-3">
             <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 text-primary">
@@ -166,7 +187,7 @@ export default function CustomerAccountDashboard() {
 
         <Link
           href="/account/profile"
-          className="flex items-center justify-between rounded-xl border border-border bg-card p-5 shadow-sm hover:border-primary/50 transition-colors"
+          className="flex items-center justify-between rounded-xl border border-border bg-card p-5 shadow-xs hover:border-primary/50 transition-colors"
         >
           <div className="flex items-center gap-3">
             <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 text-primary">

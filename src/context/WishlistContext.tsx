@@ -14,6 +14,7 @@ export interface WishlistItem {
 interface WishlistContextType {
   wishlist: WishlistItem[];
   totalWishlist: number;
+  totalWishlistItems: number;
   isInWishlist: (productId: string) => boolean;
   toggleWishlist: (item: { id: string; name: string; slug: string; price: number; imageUrl?: string }) => boolean;
   removeFromWishlist: (productId: string) => void;
@@ -100,6 +101,7 @@ export function WishlistProvider({ children }: { children: React.ReactNode }) {
       value={{
         wishlist,
         totalWishlist: wishlist.length,
+        totalWishlistItems: wishlist.length,
         isInWishlist,
         toggleWishlist,
         removeFromWishlist,
