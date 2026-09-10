@@ -29,6 +29,47 @@ describe('Bulk Validation Schemas', () => {
     }
   });
 
+  it('validates bulk order courier synchronization action', () => {
+    const valid = BulkOrderActionSchema.safeParse({
+      ids: ['ord-1', 'ord-2'],
+      action: 'SYNC_COURIER',
+    });
+    expect(valid.success).toBe(true);
+  });
+
+  it('validates bulk order cancellation with restock toggle and ledger reason', () => {
+    // Default restockInventory should be true
+    const validDefault = BulkOrderActionSchema.safeParse({
+      ids: ['ord-1', 'ord-2'],
+      action: 'CANCEL',
+    });
+    expect(validDefault.success).toBe(true);
+    if (validDefault.success && validDefault.data.action === 'CANCEL') {
+      expect(validDefault.data.restockInventory).toBe(true);
+    }
+
+    // Explicit false restock and custom reason
+    const validExplicit = BulkOrderActionSchema.safeParse({
+      ids: ['ord-1', 'ord-2'],
+      action: 'CANCEL',
+      restockInventory: false,
+      reason: 'Batch cancellation due to warehouse flood',
+    });
+    expect(validExplicit.success).toBe(true);
+    if (validExplicit.success && validExplicit.data.action === 'CANCEL') {
+      expect(validExplicit.data.restockInventory).toBe(false);
+      expect(validExplicit.data.reason).toBe('Batch cancellation due to warehouse flood');
+    }
+
+    // Reason exceeding 500 characters should fail
+    const invalidReason = BulkOrderActionSchema.safeParse({
+      ids: ['ord-1'],
+      action: 'CANCEL',
+      reason: 'a'.repeat(501),
+    });
+    expect(invalidReason.success).toBe(false);
+  });
+
   it('validates bulk product status actions', () => {
     const valid = BulkProductActionSchema.safeParse({
       ids: ['prod-1'],

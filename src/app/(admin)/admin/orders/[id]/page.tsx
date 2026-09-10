@@ -87,6 +87,19 @@ export default function AdminOrderDetailPage() {
   const [restockInventory, setRestockInventory] = useState(true);
   const [refundPayment, setRefundPayment] = useState(true);
 
+  // Cancel Dialog state
+  const [showCancelModal, setShowCancelModal] = useState(false);
+  const [cancelReason, setCancelReason] = useState('');
+  const [cancelRestock, setCancelRestock] = useState(true);
+
+  // Direct Status Dropdown Restock state
+  const [statusReason, setStatusReason] = useState('');
+  const [statusRestock, setStatusRestock] = useState(true);
+
+  // Quick Memo state
+  const [quickMemo, setQuickMemo] = useState('');
+  const [addingMemo, setAddingMemo] = useState(false);
+
   // Courier Dispatch Modal state
   const [showDispatchModal, setShowDispatchModal] = useState(false);
   const [courierAccounts, setCourierAccounts] = useState<any[]>([]);
@@ -320,15 +333,50 @@ export default function AdminOrderDetailPage() {
       const res = await fetch(`/api/admin/orders/${id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ paymentStatus, fulfillmentStatus, notes }),
+        body: JSON.stringify({
+          paymentStatus,
+          fulfillmentStatus,
+          notes,
+          restockInventory: statusRestock,
+          statusReason: statusReason.trim() || undefined,
+        }),
       });
-      if (!res.ok) throw new Error('Failed to update order status');
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || 'Failed to update order status');
+      }
       setMsg({ type: 'success', text: 'Order status updated successfully.' });
+      setStatusReason('');
       await fetchOrder();
     } catch (err: any) {
       setMsg({ type: 'error', text: err.message });
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleAddQuickMemo = async () => {
+    if (!quickMemo.trim()) return;
+    setAddingMemo(true);
+    setMsg(null);
+    try {
+      const memoText = quickMemo.trim();
+      const res = await fetch(`/api/admin/orders/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ledgerMemo: memoText }),
+      });
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || 'Failed to add memo');
+      }
+      setMsg({ type: 'success', text: 'Memo added to order audit ledger.' });
+      setQuickMemo('');
+      await fetchOrder();
+    } catch (err: any) {
+      setMsg({ type: 'error', text: err.message });
+    } finally {
+      setAddingMemo(false);
     }
   };
 
@@ -504,19 +552,35 @@ export default function AdminOrderDetailPage() {
     }
   };
 
-  const handleCancelOrder = async () => {
-    if (!confirm('Are you sure you want to cancel this order? This will release reserved inventory back to stock.')) {
+  const handleOpenCancelModal = () => {
+    setCancelReason('');
+    setCancelRestock(!hasActiveBooking);
+    setShowCancelModal(true);
+  };
+
+  const handleConfirmCancel = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!cancelReason.trim()) {
+      alert('Please provide a reason for cancelling this order.');
       return;
     }
     setActionLoading(true);
     setMsg(null);
     try {
-      const res = await fetch(`/api/admin/orders/${id}/cancel`, { method: 'POST' });
+      const res = await fetch(`/api/admin/orders/${id}/cancel`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          reason: cancelReason.trim(),
+          restockInventory: cancelRestock,
+        }),
+      });
       if (!res.ok) {
         const data = await res.json();
         throw new Error(data.error || 'Failed to cancel order');
       }
-      setMsg({ type: 'success', text: 'Order has been cancelled and stock returned.' });
+      setMsg({ type: 'success', text: 'Order has been cancelled and ledger updated.' });
+      setShowCancelModal(false);
       await fetchOrder();
     } catch (err: any) {
       setMsg({ type: 'error', text: err.message });
@@ -705,12 +769,12 @@ export default function AdminOrderDetailPage() {
               ) : (
                 <button
                   type="button"
-                  onClick={handleCancelOrder}
+                  onClick={handleOpenCancelModal}
                   disabled={actionLoading}
                   className="flex items-center gap-1.5 rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-1.5 text-xs font-semibold text-destructive hover:bg-destructive/20 transition-colors disabled:opacity-50"
                 >
                   <XCircle className="h-3.5 w-3.5" />
-                  <span>{actionLoading ? 'Cancelling...' : 'Cancel Order'}</span>
+                  <span>Cancel Order</span>
                 </button>
               )}
             </>
@@ -803,6 +867,49 @@ export default function AdminOrderDetailPage() {
               </div>
             </div>
 
+            {/* Dynamic Restock & Reason Box when setting REFUNDED or RETURNED */}
+            {(paymentStatus === 'REFUNDED' || fulfillmentStatus === 'RETURNED') && !isCancelled && (
+              <div className="rounded-xl border border-warning/40 bg-warning/10 p-4 space-y-3 animate-in fade-in-50 duration-200">
+                <div className="flex items-center gap-2">
+                  <RotateCcw className="h-4 w-4 text-warning" />
+                  <span className="text-xs font-bold text-foreground">
+                    Restock & Audit Controls ({paymentStatus === 'REFUNDED' ? 'Payment Refund' : 'Fulfillment Return'})
+                  </span>
+                </div>
+
+                {isReturned || isCancelled ? (
+                  <p className="text-[11px] text-muted-foreground italic">
+                    ℹ️ Inventory for this order was already released/restocked back to warehouse stock.
+                  </p>
+                ) : (
+                  <label className="flex items-center gap-2 text-xs text-foreground cursor-pointer font-medium">
+                    <input
+                      type="checkbox"
+                      checked={statusRestock}
+                      onChange={(e) => setStatusRestock(e.target.checked)}
+                      className="rounded border-input text-primary focus:ring-primary"
+                    />
+                    <span>
+                      Restock items back to warehouse inventory ({order.items?.reduce((s: number, it: any) => s + it.quantity, 0) || 0} total units)
+                    </span>
+                  </label>
+                )}
+
+                <div>
+                  <label className="block text-[11px] font-semibold text-muted-foreground mb-1">
+                    Reason / Ledger Memo for Status Change
+                  </label>
+                  <input
+                    type="text"
+                    value={statusReason}
+                    onChange={(e) => setStatusReason(e.target.value)}
+                    placeholder="e.g. Parcel refused at doorstep, customer size exchange, defective..."
+                    className="w-full rounded-lg border border-input bg-background p-2 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                  />
+                </div>
+              </div>
+            )}
+
             <div className="space-y-1.5 pt-1">
               <label className="block text-[11px] font-semibold text-muted-foreground">Internal Notes & Audit Log</label>
               <textarea
@@ -812,6 +919,31 @@ export default function AdminOrderDetailPage() {
                 placeholder="Special customer requests, delivery notes, WhatsApp agreements..."
                 className="w-full rounded-lg border border-input bg-background p-2.5 text-xs text-foreground focus:outline-none font-mono text-[11px]"
               />
+
+              {/* Quick Memo / Ledger Entry Bar */}
+              <div className="flex items-center gap-2 pt-1">
+                <input
+                  type="text"
+                  value={quickMemo}
+                  onChange={(e) => setQuickMemo(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      handleAddQuickMemo();
+                    }
+                  }}
+                  placeholder="Add quick timestamped memo to ledger (e.g. Customer called to confirm address)..."
+                  className="flex-1 rounded-lg border border-input bg-background px-3 py-2 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                />
+                <button
+                  type="button"
+                  disabled={!quickMemo.trim() || addingMemo}
+                  onClick={handleAddQuickMemo}
+                  className="rounded-lg border border-border bg-card px-3.5 py-2 text-xs font-bold text-foreground hover:bg-muted disabled:opacity-50 transition-colors shadow-xs"
+                >
+                  {addingMemo ? 'Adding...' : '+ Add Memo'}
+                </button>
+              </div>
             </div>
 
             {!isCancelled && (
@@ -1999,6 +2131,97 @@ export default function AdminOrderDetailPage() {
                 >
                   {actionLoading && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
                   <span>{actionLoading ? 'Processing...' : 'Confirm Return'}</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Cancel Dialog / Modal with Reason & Restock Toggle */}
+      {showCancelModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm">
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="cancel-dialog-title"
+            className="w-full max-w-md rounded-2xl border border-border bg-card p-6 shadow-2xl space-y-4 animate-in zoom-in-95 duration-150"
+          >
+            <div className="flex items-center justify-between border-b border-border pb-3">
+              <div className="flex items-center gap-2">
+                <XCircle className="h-5 w-5 text-destructive" />
+                <h3 id="cancel-dialog-title" className="text-sm font-bold text-foreground">
+                  Cancel Order {order.orderNumber}
+                </h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowCancelModal(false)}
+                className="text-xs text-muted-foreground hover:text-foreground"
+              >
+                ✕
+              </button>
+            </div>
+
+            {hasActiveBooking && (
+              <div className="rounded-lg border border-warning/40 bg-warning/10 p-3 text-xs text-warning-foreground space-y-1">
+                <div className="flex items-center gap-1.5 font-bold text-warning">
+                  <AlertTriangle className="h-4 w-4" />
+                  <span>Active Courier Shipment In Progress</span>
+                </div>
+                <p className="text-[11px] leading-relaxed">
+                  Tracking #<strong>{activeShipment?.trackingNumber}</strong> is currently active with {activeShipment?.courierName || 'the courier'}. If the physical parcel is still in transit, keep restock unchecked until goods arrive back at your warehouse.
+                </p>
+              </div>
+            )}
+
+            <form onSubmit={handleConfirmCancel} className="space-y-4">
+              <div>
+                <label className="block text-xs font-semibold text-foreground mb-1">
+                  Cancellation Reason / Ledger Memo <span className="text-destructive">*</span>
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={cancelReason}
+                  onChange={(e) => setCancelReason(e.target.value)}
+                  placeholder="e.g. Customer cancelled on WhatsApp, fake number, duplicate order..."
+                  className="w-full rounded-lg border border-input bg-background p-2.5 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                />
+              </div>
+
+              <div className="pt-1">
+                <label className="flex items-center gap-2 text-xs text-foreground cursor-pointer font-medium">
+                  <input
+                    type="checkbox"
+                    checked={cancelRestock}
+                    onChange={(e) => setCancelRestock(e.target.checked)}
+                    className="rounded border-input text-primary focus:ring-primary"
+                  />
+                  <span>
+                    Restock items back to warehouse stock ({order.items?.reduce((s: number, it: any) => s + it.quantity, 0) || 0} units)
+                  </span>
+                </label>
+                <p className="text-[10px] text-muted-foreground mt-1 ml-6">
+                  {cancelRestock ? 'Inventory quantities will be restored immediately.' : 'Inventory quantities will remain unchanged.'}
+                </p>
+              </div>
+
+              <div className="flex items-center justify-end gap-2 pt-4 border-t border-border">
+                <button
+                  type="button"
+                  onClick={() => setShowCancelModal(false)}
+                  className="rounded-lg border border-border px-3.5 py-2 text-xs font-medium text-foreground hover:bg-muted"
+                >
+                  Keep Order
+                </button>
+                <button
+                  type="submit"
+                  disabled={actionLoading}
+                  className="flex items-center gap-1.5 rounded-lg bg-destructive px-4 py-2 text-xs font-bold text-destructive-foreground shadow hover:bg-destructive/90 disabled:opacity-50"
+                >
+                  {actionLoading && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+                  <span>{actionLoading ? 'Cancelling...' : 'Confirm Cancellation'}</span>
                 </button>
               </div>
             </form>

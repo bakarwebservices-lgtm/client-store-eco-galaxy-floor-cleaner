@@ -11,6 +11,8 @@ export const BulkOrderActionSchema = z.object({
   fulfillmentStatus: z.nativeEnum(FulfillmentStatus).optional(),
   paymentStatus: z.nativeEnum(PaymentStatus).optional(),
   sendNotification: z.boolean().default(true),
+  restockInventory: z.boolean().default(true),
+  reason: z.string().max(500).optional(),
 });
 
 export const BulkProductActionSchema = z.object({

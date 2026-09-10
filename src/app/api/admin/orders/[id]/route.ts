@@ -1,9 +1,10 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest, NextResponse, after } from 'next/server';
 import { db } from '@/lib/db';
 import { requireAdminAuth } from '@/lib/auth/admin';
 import { PaymentStatus, FulfillmentStatus, ShipmentStatus } from '@prisma/client';
 import { z } from 'zod';
 import { sendFulfillmentUpdateEmail } from '@/lib/email';
+import { dispatchRestockAlerts } from '@/lib/email/restock';
 
 export const dynamic = 'force-dynamic';
 
@@ -22,7 +23,10 @@ const lineItemUpdateSchema = z.object({
 const updateOrderSchema = z.object({
   paymentStatus: z.nativeEnum(PaymentStatus).optional(),
   fulfillmentStatus: z.nativeEnum(FulfillmentStatus).optional(),
-  notes: z.string().max(5000).optional(),
+  notes: z.string().max(10000).optional(),
+  restockInventory: z.boolean().optional(),
+  statusReason: z.string().max(500).optional(),
+  ledgerMemo: z.string().max(1000).optional(),
   shippingAddress: z
     .object({
       name: z.string().optional(),
@@ -123,7 +127,7 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    await requireAdminAuth();
+    const admin = await requireAdminAuth();
     const { id } = await params;
     const body = await req.json();
 
@@ -144,6 +148,9 @@ export async function PATCH(
       shippingAmount,
       items,
       sendNotificationEmail,
+      restockInventory,
+      statusReason,
+      ledgerMemo,
     } = parsed.data;
 
     // Fetch existing order with items, customer, and active shipments
@@ -171,6 +178,15 @@ export async function PATCH(
       return NextResponse.json({ error: 'Cannot edit a cancelled order.' }, { status: 400 });
     }
 
+    const isBecomingRefunded = paymentStatus === PaymentStatus.REFUNDED && existing.paymentStatus !== PaymentStatus.REFUNDED;
+    const isBecomingReturned = fulfillmentStatus === FulfillmentStatus.RETURNED && existing.fulfillmentStatus !== FulfillmentStatus.RETURNED;
+    
+    // Safety check: is stock already released (cancelled or returned)?
+    const isAlreadyReleased = Boolean(existing.cancelledAt) || existing.fulfillmentStatus === FulfillmentStatus.RETURNED;
+    const shouldRestock = restockInventory === true && !isAlreadyReleased && (isBecomingRefunded || isBecomingReturned);
+
+    const replenishedVariantsToAlert: { productId: string; variantId: string }[] = [];
+
     // Execute order mutations inside a transactional block
     await db.$transaction(async (tx) => {
       // 1. Process Line Item Modifications (if provided)
@@ -180,10 +196,16 @@ export async function PATCH(
             // Deleted line item: reverse inventory & remove from DB
             const existingItem = existing.items.find((ei) => ei.id === item.id);
             if (existingItem?.variantId) {
-              await tx.productVariant.update({
+              const varExists = await tx.productVariant.findUnique({
                 where: { id: existingItem.variantId },
-                data: { inventoryQty: { increment: existingItem.quantity } },
+                select: { id: true },
               });
+              if (varExists) {
+                await tx.productVariant.update({
+                  where: { id: existingItem.variantId },
+                  data: { inventoryQty: { increment: existingItem.quantity } },
+                });
+              }
             }
             await tx.orderItem.delete({ where: { id: item.id } });
           } else if (item.id) {
@@ -195,31 +217,49 @@ export async function PATCH(
               if (variantChanged) {
                 // Restore old variant inventory
                 if (existingItem.variantId) {
-                  await tx.productVariant.update({
+                  const oldVar = await tx.productVariant.findUnique({
                     where: { id: existingItem.variantId },
-                    data: { inventoryQty: { increment: existingItem.quantity } },
+                    select: { id: true },
                   });
+                  if (oldVar) {
+                    await tx.productVariant.update({
+                      where: { id: existingItem.variantId },
+                      data: { inventoryQty: { increment: existingItem.quantity } },
+                    });
+                  }
                 }
                 // Decrement new variant inventory
                 if (item.variantId) {
-                  await tx.productVariant.update({
+                  const newVar = await tx.productVariant.findUnique({
                     where: { id: item.variantId },
-                    data: { inventoryQty: { decrement: item.quantity } },
+                    select: { id: true },
                   });
+                  if (newVar) {
+                    await tx.productVariant.update({
+                      where: { id: item.variantId },
+                      data: { inventoryQty: { decrement: item.quantity } },
+                    });
+                  }
                 }
               } else if (existingItem.variantId && item.quantity !== existingItem.quantity) {
                 // Same variant, adjusted quantity
                 const diff = item.quantity - existingItem.quantity;
-                if (diff > 0) {
-                  await tx.productVariant.update({
-                    where: { id: existingItem.variantId },
-                    data: { inventoryQty: { decrement: diff } },
-                  });
-                } else if (diff < 0) {
-                  await tx.productVariant.update({
-                    where: { id: existingItem.variantId },
-                    data: { inventoryQty: { increment: Math.abs(diff) } },
-                  });
+                const varExists = await tx.productVariant.findUnique({
+                  where: { id: existingItem.variantId },
+                  select: { id: true },
+                });
+                if (varExists) {
+                  if (diff > 0) {
+                    await tx.productVariant.update({
+                      where: { id: existingItem.variantId },
+                      data: { inventoryQty: { decrement: diff } },
+                    });
+                  } else if (diff < 0) {
+                    await tx.productVariant.update({
+                      where: { id: existingItem.variantId },
+                      data: { inventoryQty: { increment: Math.abs(diff) } },
+                    });
+                  }
                 }
               }
 
@@ -254,10 +294,16 @@ export async function PATCH(
             }
 
             if (item.variantId) {
-              await tx.productVariant.update({
+              const varExists = await tx.productVariant.findUnique({
                 where: { id: item.variantId },
-                data: { inventoryQty: { decrement: item.quantity } },
+                select: { id: true },
               });
+              if (varExists) {
+                await tx.productVariant.update({
+                  where: { id: item.variantId },
+                  data: { inventoryQty: { decrement: item.quantity } },
+                });
+              }
             }
 
             const newTotal = Number((item.quantity * item.unitPrice).toFixed(2));
@@ -312,13 +358,54 @@ export async function PATCH(
         };
       }
 
-      // 4. Update the order record
+      // 4. If Restock Requested (via status transition): Safely increment variant quantities
+      if (shouldRestock) {
+        for (const it of currentItems) {
+          if (it.variantId) {
+            const currentVariant = await tx.productVariant.findUnique({
+              where: { id: it.variantId },
+              select: { id: true, productId: true, inventoryQty: true },
+            });
+            if (currentVariant) {
+              await tx.productVariant.update({
+                where: { id: it.variantId },
+                data: { inventoryQty: { increment: it.quantity } },
+              });
+              if (currentVariant.inventoryQty === 0 && it.quantity > 0) {
+                replenishedVariantsToAlert.push({
+                  productId: currentVariant.productId,
+                  variantId: currentVariant.id,
+                });
+              }
+            }
+          }
+        }
+      }
+
+      // 5. Append structured audit ledger memos
+      let updatedNotes = typeof notes === 'string' ? notes : (existing.notes || '');
+
+      if (ledgerMemo?.trim()) {
+        updatedNotes += `\n[${new Date().toISOString()}] Memo by ${admin.name}: "${ledgerMemo.trim()}"`;
+      }
+
+      if (isBecomingRefunded) {
+        const restockAudit = isAlreadyReleased ? 'ALREADY_RELEASED' : (shouldRestock ? 'YES' : 'NO');
+        updatedNotes += `\n[${new Date().toISOString()}] Payment Marked REFUNDED by ${admin.name}: Reason: "${statusReason?.trim() || 'Admin Refund'}". Restocked: ${restockAudit}.`;
+      } else if (isBecomingReturned) {
+        const restockAudit = isAlreadyReleased ? 'ALREADY_RELEASED' : (shouldRestock ? 'YES' : 'NO');
+        updatedNotes += `\n[${new Date().toISOString()}] Fulfillment Marked RETURNED by ${admin.name}: Reason: "${statusReason?.trim() || 'Admin Return'}". Restocked: ${restockAudit}.`;
+      } else if (statusReason?.trim()) {
+        updatedNotes += `\n[${new Date().toISOString()}] Status Updated by ${admin.name}: Reason: "${statusReason.trim()}"`;
+      }
+
+      // 6. Update the order record
       await tx.order.update({
         where: { id },
         data: {
           ...(paymentStatus ? { paymentStatus } : {}),
           ...(fulfillmentStatus ? { fulfillmentStatus } : {}),
-          ...(typeof notes === 'string' ? { notes } : {}),
+          notes: updatedNotes,
           shippingAddress: mergedAddress as any,
           subtotal: newSubtotal,
           discountAmount: finalDiscount,
@@ -328,7 +415,23 @@ export async function PATCH(
       });
     });
 
-    // 5. Fetch the updated order with full relations
+    // Background Hook: Send restock waitlist alerts if variants were replenished
+    if (replenishedVariantsToAlert.length > 0) {
+      after(async () => {
+        try {
+          for (const target of replenishedVariantsToAlert) {
+            await dispatchRestockAlerts({
+              productId: target.productId,
+              variantId: target.variantId,
+            });
+          }
+        } catch (err) {
+          console.error('[PATCH Restock Alert Error]', err);
+        }
+      });
+    }
+
+    // 7. Fetch the updated order with full relations
     const updated = await db.order.findUnique({
       where: { id },
       include: {

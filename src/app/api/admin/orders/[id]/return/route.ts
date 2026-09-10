@@ -53,6 +53,10 @@ export async function POST(
       return NextResponse.json({ error: 'This order has already been processed as returned.' }, { status: 400 });
     }
 
+    if (order.cancelledAt !== null) {
+      return NextResponse.json({ error: 'This order has already been cancelled.' }, { status: 400 });
+    }
+
     const replenishedVariantsToAlert: { productId: string; variantId: string }[] = [];
 
     await db.$transaction(async (tx) => {
