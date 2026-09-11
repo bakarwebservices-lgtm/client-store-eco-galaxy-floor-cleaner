@@ -990,6 +990,72 @@ export default function AdminSettingsPage() {
         {activeTab === 'notifications' && (
           <div className="max-w-3xl space-y-6">
             {/* Meta WhatsApp Cloud API Automation & PostEx Auto-Booking Engine */}
+            {/* Storefront WhatsApp Floating Support Widget */}
+            <div className="rounded-xl border border-border bg-card p-6 shadow-sm space-y-5">
+              <div className="flex items-center justify-between border-b border-border pb-3">
+                <div>
+                  <h2 className="text-sm font-semibold text-foreground flex items-center gap-2">
+                    <MessageSquare className="h-4 w-4 text-emerald-500" />
+                    <span>Storefront WhatsApp Support Button</span>
+                  </h2>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    Displays a floating WhatsApp icon in the bottom-right corner of your storefront for customer chat assistance.
+                  </p>
+                </div>
+                <label className="relative inline-flex items-center cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={Boolean(settings['whatsapp.floating_button_enabled'])}
+                    onChange={(e) => handleChange('whatsapp.floating_button_enabled', e.target.checked)}
+                    className="sr-only peer"
+                  />
+                  <div className="w-9 h-5 bg-muted peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-border after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-emerald-500"></div>
+                </label>
+              </div>
+
+              {Boolean(settings['whatsapp.floating_button_enabled']) && (
+                <div className="space-y-4 pt-1 animate-in fade-in-50 duration-200">
+                  <div>
+                    <label className="block text-xs font-medium text-foreground mb-1">
+                      Support WhatsApp Phone Number
+                    </label>
+                    <input
+                      type="text"
+                      value={settings['whatsapp.phone_number'] || ''}
+                      onChange={(e) => handleChange('whatsapp.phone_number', e.target.value)}
+                      placeholder={settings['store.phone'] || '0300 1234567'}
+                      className="w-full rounded-lg border border-border bg-background px-3.5 py-2 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                    />
+                    <p className="mt-1 text-[11px] text-muted-foreground">
+                      Pakistani mobile number customers will reach when tapping the floating bubble. If left blank, defaults to your primary Store Phone.
+                    </p>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-medium text-foreground mb-1">
+                      Pre-filled Customer WhatsApp Message (Optional)
+                    </label>
+                    <textarea
+                      rows={2}
+                      value={settings['whatsapp.custom_message'] || ''}
+                      onChange={(e) => handleChange('whatsapp.custom_message', e.target.value)}
+                      placeholder="Hi! I have a question about your products on {store_name}."
+                      className="w-full rounded-lg border border-border bg-background px-3.5 py-2 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                    />
+                    <p className="mt-1 text-[11px] text-muted-foreground">
+                      Pre-filled message when a customer taps the chat button. Available tag: {'{store_name}'}
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {!Boolean(settings['whatsapp.floating_button_enabled']) && (
+                <div className="rounded-lg border border-border/70 bg-muted/30 p-3 text-xs text-muted-foreground leading-relaxed">
+                  💡 <strong>Floating Chat Hidden:</strong> The floating WhatsApp button is hidden from storefront visitors.
+                </div>
+              )}
+            </div>
+
             <WhatsAppAutomationCard settings={settings} handleChange={handleChange} />
 
             {/* Customer Accounts & Authentication Layer */}
