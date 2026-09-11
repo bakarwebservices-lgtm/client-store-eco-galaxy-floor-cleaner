@@ -6,6 +6,7 @@ import { getSetting } from '@/lib/settings';
 import { getPaymentGateway } from '@/lib/payments/registry';
 import { signOrderAccessToken } from '@/lib/auth/token';
 import { sendOrderConfirmationEmail } from '@/lib/email';
+import { sendWhatsAppOrderConfirmation } from '@/lib/whatsapp/client';
 import { DiscountType, PaymentStatus, FulfillmentStatus, ProductStatus } from '@prisma/client';
 
 import crypto from 'crypto';
@@ -27,6 +28,8 @@ export async function POST(req: NextRequest) {
     }
 
     const { shippingAddress, paymentMethod, couponCode, notes } = parsed.data;
+
+    const whatsappEnabled = await getSetting<boolean>('whatsapp.order_confirmation_enabled', true);
 
     // 1. Fetch active cart
     const cart = await getActiveCart();
@@ -330,6 +333,14 @@ if (shippingAddress.email?.trim()) {
   } catch (emailErr) {
     console.error('[Checkout] Failed to dispatch order confirmation email:', emailErr);
   }
+}
+
+
+// Trigger automated WhatsApp confirmation if enabled
+if (whatsappEnabled) {
+  sendWhatsAppOrderConfirmation(orderResult.id).catch((waErr) => {
+    console.warn('[Checkout] Failed to trigger WhatsApp confirmation:', waErr);
+  });
 }
 
 // Mark any abandoned checkout session as recovered

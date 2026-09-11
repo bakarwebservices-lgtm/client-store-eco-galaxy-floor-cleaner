@@ -149,6 +149,16 @@ export const notificationAndAuthSchema = z.object({
   ),
   'whatsapp.phone_number': z.string().max(50).optional().default(''),
   'whatsapp.custom_message': z.string().max(500).optional().default(''),
+  'whatsapp.floating_button_enabled': z.boolean().default(true),
+  'whatsapp.business_phone_number_id': z.string().max(100).optional().default(''),
+  'whatsapp.system_access_token': z.string().max(500).optional().default(''),
+  'whatsapp.webhook_verify_token': z.string().max(100).optional().default(''),
+  'whatsapp.meta_app_secret': z.string().max(100).optional().default(''),
+  'whatsapp.confirmation_template': z.string().max(100).optional().default('order_confirmation_v1'),
+  'whatsapp.dispatch_template': z.string().max(100).optional().default('order_dispatched_v1'),
+  'whatsapp.auto_reminder_24h': z.boolean().default(true),
+  'courier.auto_book_mode': z.enum(['MANUAL', 'FULL_AUTO', 'THRESHOLD']).default('THRESHOLD'),
+  'courier.auto_book_threshold': z.coerce.number().min(0).default(5000),
 });
 
 /**
@@ -206,4 +216,14 @@ export const DEFAULT_SETTINGS: AllSettingsInput = {
   'whatsapp.order_confirmation_enabled': true,
   'whatsapp.phone_number': '',
   'whatsapp.custom_message': '',
+  'whatsapp.floating_button_enabled': true,
+  'whatsapp.business_phone_number_id': '',
+  'whatsapp.system_access_token': '',
+  'whatsapp.webhook_verify_token': '',
+  'whatsapp.meta_app_secret': '',
+  'whatsapp.confirmation_template': 'order_confirmation_v1',
+  'whatsapp.dispatch_template': 'order_dispatched_v1',
+  'whatsapp.auto_reminder_24h': true,
+  'courier.auto_book_mode': 'THRESHOLD',
+  'courier.auto_book_threshold': 5000,
 };

@@ -32,6 +32,7 @@ import {
   CheckCircle2,
   DollarSign,
   Tag,
+  MessageSquare,
 } from 'lucide-react';
 import { formatCurrency } from '@/lib/format';
 import { safeFetch } from '@/lib/apiClient';
@@ -147,6 +148,18 @@ export default function AdminOrderDetailPage() {
   // Fulfill Order Modal state
   const [showFulfillModal, setShowFulfillModal] = useState(false);
   const [sendEmailOnFulfill, setSendEmailOnFulfill] = useState(true);
+
+  // WhatsApp Resend state
+  const [resendingWhatsApp, setResendingWhatsApp] = useState(false);
+  const [resendCooldown, setResendCooldown] = useState<number>(0);
+
+  useEffect(() => {
+    if (resendCooldown <= 0) return;
+    const timer = setInterval(() => {
+      setResendCooldown((prev) => (prev > 0 ? prev - 1 : 0));
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [resendCooldown]);
 
   const returnModalRef = useRef<HTMLDivElement>(null);
   const dispatchModalRef = useRef<HTMLDivElement>(null);
@@ -377,6 +390,32 @@ export default function AdminOrderDetailPage() {
       setMsg({ type: 'error', text: err.message });
     } finally {
       setAddingMemo(false);
+    }
+  };
+
+  const handleResendWhatsApp = async () => {
+    setResendingWhatsApp(true);
+    setMsg(null);
+    try {
+      const res = await fetch('/api/admin/whatsapp/resend', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ orderId: id }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        if (res.status === 429 && data.remainingSeconds) {
+          setResendCooldown(data.remainingSeconds);
+        }
+        throw new Error(data.error || 'Failed to resend confirmation');
+      }
+      setMsg({ type: 'success', text: 'WhatsApp confirmation resent to customer!' });
+      setResendCooldown(300); // 5-minute anti-spam cooldown
+      await fetchOrder();
+    } catch (err: any) {
+      setMsg({ type: 'error', text: err.message });
+    } finally {
+      setResendingWhatsApp(false);
     }
   };
 
@@ -733,6 +772,36 @@ export default function AdminOrderDetailPage() {
               {isReturned && (
                 <span className="rounded bg-destructive/10 px-2 py-0.5 text-[10px] font-bold text-destructive">
                   RETURNED (RMA)
+                </span>
+              )}
+
+              {/* WhatsApp Confirmation Status Badge */}
+              {order.whatsappConfirmationStatus && (
+                <span
+                  className={`rounded-full px-2.5 py-0.5 text-[10px] font-bold flex items-center gap-1 ${
+                    order.whatsappConfirmationStatus === 'CONFIRMED'
+                      ? 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400'
+                      : order.whatsappConfirmationStatus === 'CANCELLED'
+                      ? 'bg-destructive/15 text-destructive'
+                      : order.whatsappConfirmationStatus === 'EXPIRED'
+                      ? 'bg-muted text-muted-foreground'
+                      : order.whatsappConfirmationStatus === 'CONFIRMED_COURIER_FAILED'
+                      ? 'bg-amber-500/15 text-amber-600'
+                      : 'bg-blue-500/15 text-blue-600'
+                  }`}
+                >
+                  <MessageCircle className="h-3 w-3" />
+                  <span>
+                    {order.whatsappConfirmationStatus === 'CONFIRMED'
+                      ? 'WhatsApp: Confirmed'
+                      : order.whatsappConfirmationStatus === 'CANCELLED'
+                      ? 'WhatsApp: Cancelled'
+                      : order.whatsappConfirmationStatus === 'EXPIRED'
+                      ? 'WhatsApp: Expired (>48h)'
+                      : order.whatsappConfirmationStatus === 'CONFIRMED_COURIER_FAILED'
+                      ? 'WhatsApp: Confirmed (PostEx Error)'
+                      : 'WhatsApp: Awaiting Confirmation'}
+                  </span>
                 </span>
               )}
             </div>
@@ -1191,6 +1260,97 @@ export default function AdminOrderDetailPage() {
                 )}
               </div>
             )}
+          </div>
+
+          {/* WhatsApp Order Confirmation & Resend Engine */}
+          <div className="rounded-xl border border-border bg-card p-5 space-y-4 shadow-sm">
+            <div className="flex items-center justify-between border-b border-border pb-3">
+              <div className="flex items-center gap-2">
+                <MessageSquare className="h-4 w-4 text-emerald-500" />
+                <h2 className="text-xs font-bold uppercase tracking-wider text-foreground">
+                  WhatsApp Confirmation
+                </h2>
+              </div>
+              <span
+                className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${
+                  order.whatsappConfirmationStatus === 'CONFIRMED'
+                    ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400'
+                    : order.whatsappConfirmationStatus === 'CANCELLED'
+                    ? 'bg-destructive/10 text-destructive'
+                    : order.whatsappConfirmationStatus === 'EXPIRED'
+                    ? 'bg-muted text-muted-foreground'
+                    : order.whatsappConfirmationStatus === 'CONFIRMED_COURIER_FAILED'
+                    ? 'bg-amber-500/10 text-amber-600'
+                    : 'bg-blue-500/10 text-blue-600'
+                }`}
+              >
+                {order.whatsappConfirmationStatus === 'CONFIRMED'
+                  ? 'Confirmed by Customer'
+                  : order.whatsappConfirmationStatus === 'CANCELLED'
+                  ? 'Cancelled by Customer'
+                  : order.whatsappConfirmationStatus === 'EXPIRED'
+                  ? 'Expired (>48h)'
+                  : order.whatsappConfirmationStatus === 'CONFIRMED_COURIER_FAILED'
+                  ? 'Confirmed (Booking Failed)'
+                  : 'Awaiting Customer Response'}
+              </span>
+            </div>
+
+            <div className="space-y-3 text-xs">
+              {order.whatsappConfirmedAt && (
+                <p className="text-[11px] text-muted-foreground flex items-center justify-between">
+                  <span>Confirmed At:</span>
+                  <strong className="text-foreground font-mono">
+                    {new Date(order.whatsappConfirmedAt).toLocaleString()}
+                  </strong>
+                </p>
+              )}
+
+              {order.whatsappLastSentAt && (
+                <p className="text-[11px] text-muted-foreground flex items-center justify-between">
+                  <span>Last Message Sent:</span>
+                  <span className="font-mono">{new Date(order.whatsappLastSentAt).toLocaleTimeString()}</span>
+                </p>
+              )}
+
+              {/* Action Button: Only visible when NOT confirmed and NOT cancelled */}
+              {order.whatsappConfirmationStatus !== 'CONFIRMED' &&
+                order.whatsappConfirmationStatus !== 'CANCELLED' &&
+                !isCancelled && (
+                  <div className="pt-2 border-t border-border space-y-2">
+                    <button
+                      type="button"
+                      onClick={handleResendWhatsApp}
+                      disabled={resendingWhatsApp || resendCooldown > 0}
+                      className="w-full flex items-center justify-center gap-1.5 rounded-lg bg-emerald-600 py-2 text-xs font-bold text-white hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-sm"
+                    >
+                      {resendingWhatsApp ? (
+                        <>
+                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                          <span>Resending Message...</span>
+                        </>
+                      ) : resendCooldown > 0 ? (
+                        <>
+                          <Clock className="h-3.5 w-3.5" />
+                          <span>
+                            Resend available in {Math.floor(resendCooldown / 60)}:
+                            {(resendCooldown % 60).toString().padStart(2, '0')}
+                          </span>
+                        </>
+                      ) : (
+                        <>
+                          <Send className="h-3.5 w-3.5" />
+                          <span>📲 Resend WhatsApp Confirmation</span>
+                        </>
+                      )}
+                    </button>
+
+                    <p className="text-[10px] text-muted-foreground leading-relaxed">
+                      ℹ️ <strong>Note:</strong> Resend only if the customer reports not receiving the initial message. Both messages link to this same order and will not duplicate it.
+                    </p>
+                  </div>
+                )}
+            </div>
           </div>
 
           {/* Customer Profile Card with WhatsApp Link */}

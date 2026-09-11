@@ -458,13 +458,20 @@ model Order {
   updatedAt DateTime  @updatedAt @map("updated_at")
   deletedAt DateTime? @map("deleted_at") // soft delete
 
-  customer Customer    @relation(fields: [customerId], references: [id])
-  items    OrderItem[]
-  shipments Shipment[]
+  // WhatsApp Order Confirmation & Communication
+  whatsappConfirmationStatus String?   @default("PENDING") @map("whatsapp_confirmation_status") // "PENDING" | "CONFIRMED" | "CANCELLED" | "EXPIRED" | "CONFIRMED_COURIER_FAILED"
+  whatsappConfirmedAt        DateTime? @map("whatsapp_confirmed_at")
+  whatsappLastSentAt         DateTime? @map("whatsapp_last_sent_at")
+
+  customer     Customer      @relation(fields: [customerId], references: [id])
+  items        OrderItem[]
+  shipments    Shipment[]
+  whatsappLogs WhatsAppLog[]
 
   @@index([customerId])
   @@index([paymentStatus])
   @@index([fulfillmentStatus])
+  @@index([whatsappConfirmationStatus])
   @@index([orderNumber])
   @@index([createdAt])
   @@index([deletedAt])
@@ -908,6 +915,32 @@ model TrackingEvent {
   @@index([shipmentId])
   @@index([eventTime])
   @@map("tracking_events")
+}
+
+// =============================================================================
+// WHATSAPP COMMUNICATION LOGS
+// Tracks all outbound templates (confirmation, reminder, tracking) and inbound customer replies.
+// =============================================================================
+
+model WhatsAppLog {
+  id             String   @id @default(uuid())
+  orderId        String   @map("order_id")
+  messageId      String?  @map("message_id") // Meta wamid.xxx
+  recipientPhone String   @map("recipient_phone")
+  type           String   // "CONFIRMATION_REQUEST" | "REMINDER_24H" | "DISPATCH_AWB" | "CUSTOMER_REPLY" | "EXPIRED_NOTICE"
+  direction      String   @default("OUTBOUND") // "OUTBOUND" | "INBOUND"
+  status         String   @default("SENT") // "SENT" | "DELIVERED" | "READ" | "FAILED" | "RECEIVED"
+  payload        Json?
+  error          String?
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  order          Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@index([orderId])
+  @@index([messageId])
+  @@index([recipientPhone])
+  @@index([type])
+  @@map("whatsapp_logs")
 }
 
 // =============================================================================

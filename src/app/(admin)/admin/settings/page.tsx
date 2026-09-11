@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
+import { WhatsAppAutomationCard } from '@/components/admin/WhatsAppAutomationCard';
 import Link from 'next/link';
 import Image from 'next/image';
 import {
@@ -988,63 +989,8 @@ export default function AdminSettingsPage() {
         {/* Tab: Email, WhatsApp & Customer Accounts */}
         {activeTab === 'notifications' && (
           <div className="max-w-3xl space-y-6">
-            {/* WhatsApp Order Confirmation Section */}
-            <div className="rounded-xl border border-border bg-card p-6 shadow-sm space-y-5">
-              <div className="flex items-center justify-between border-b border-border pb-3">
-                <div>
-                  <h2 className="text-sm font-semibold text-foreground flex items-center gap-2">
-                    <MessageSquare className="h-4 w-4 text-emerald-500" />
-                    <span>WhatsApp Order Confirmation (Recommended for COD)</span>
-                  </h2>
-                  <p className="text-xs text-muted-foreground mt-0.5">
-                    Provides a direct 1-tap WhatsApp confirmation button on the order success screen.
-                  </p>
-                </div>
-                <label className="relative inline-flex items-center cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={Boolean(settings['whatsapp.order_confirmation_enabled'])}
-                    onChange={(e) => handleChange('whatsapp.order_confirmation_enabled', e.target.checked)}
-                    className="sr-only peer"
-                  />
-                  <div className="w-9 h-5 bg-muted peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-border after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-emerald-500"></div>
-                </label>
-              </div>
-
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-xs font-medium text-foreground mb-1">
-                    Store WhatsApp Number
-                  </label>
-                  <input
-                    type="text"
-                    value={settings['whatsapp.phone_number'] || ''}
-                    onChange={(e) => handleChange('whatsapp.phone_number', e.target.value)}
-                    placeholder={settings['store.phone'] || '+92 300 1234567'}
-                    className="w-full rounded-lg border border-border bg-background px-3.5 py-2 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
-                  />
-                  <p className="mt-1 text-[11px] text-muted-foreground">
-                    Format: +92 300 1234567. If left blank, defaults to your primary Store Phone number.
-                  </p>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-medium text-foreground mb-1">
-                    Pre-filled WhatsApp Message Template (Optional)
-                  </label>
-                  <textarea
-                    rows={2}
-                    value={settings['whatsapp.custom_message'] || ''}
-                    onChange={(e) => handleChange('whatsapp.custom_message', e.target.value)}
-                    placeholder="Hi {store_name}! I just placed order #{order_number} for {total_amount}. Please confirm and ship my order to {city}."
-                    className="w-full rounded-lg border border-border bg-background px-3.5 py-2 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
-                  />
-                  <p className="mt-1 text-[11px] text-muted-foreground">
-                    Available tags: {'{store_name}'}, {'{order_number}'}, {'{total_amount}'}, {'{city}'}
-                  </p>
-                </div>
-              </div>
-            </div>
+            {/* Meta WhatsApp Cloud API Automation & PostEx Auto-Booking Engine */}
+            <WhatsAppAutomationCard settings={settings} handleChange={handleChange} />
 
             {/* Customer Accounts & Authentication Layer */}
             <div className="rounded-xl border border-border bg-card p-6 shadow-sm space-y-5">

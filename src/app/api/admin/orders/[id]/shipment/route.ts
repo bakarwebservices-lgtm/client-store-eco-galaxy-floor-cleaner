@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAdminAuth } from '@/lib/auth/admin';
 import { bookShipmentForOrder, cancelShipmentForOrder } from '@/lib/couriers/service';
+import { sendWhatsAppDispatchNotification } from '@/lib/whatsapp/client';
 import { z } from 'zod';
 
 export const dynamic = 'force-dynamic';
@@ -44,6 +45,12 @@ export async function POST(
         { status: 400 }
       );
     }
+
+    
+    // Trigger customer tracking update on WhatsApp asynchronously
+    sendWhatsAppDispatchNotification(id, result.trackingNumber, parsed.data.courierCode || 'PostEx Courier').catch((waErr) => {
+      console.warn('[Admin Dispatch] Failed to send WhatsApp tracking notification:', waErr);
+    });
 
     return NextResponse.json({
       success: true,

@@ -5,7 +5,7 @@ import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import Link from 'next/link';
-import { ShieldCheck, Truck, ArrowLeft, Loader2, Tag, Check, AlertCircle, Banknote, CreditCard } from 'lucide-react';
+import { MessageCircle, ShieldCheck, Truck, ArrowLeft, Loader2, Tag, Check, AlertCircle, Banknote, CreditCard } from 'lucide-react';
 import { useCart } from '@/context/CartContext';
 import { track } from '@/lib/tracking/events';
 import { safeFetch } from '@/lib/apiClient';
@@ -17,6 +17,17 @@ export const dynamic = 'force-dynamic';
 
 export default function CheckoutPage() {
   const router = useRouter();
+
+  useEffect(() => {
+    fetch('/api/settings')
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.settings && data.settings['whatsapp.order_confirmation_enabled'] !== undefined) {
+          setWhatsappEnabled(Boolean(data.settings['whatsapp.order_confirmation_enabled']));
+        }
+      })
+      .catch(() => {});
+  }, []);
   const { items, totalItems, subtotal, freeShippingThreshold, standardShippingCost, currency, refreshCart } = useCart();
 
   // Address form fields
@@ -33,6 +44,7 @@ export default function CheckoutPage() {
 
   // Payment method
   const [paymentMethod, setPaymentMethod] = useState('COD');
+  const [whatsappEnabled, setWhatsappEnabled] = useState<boolean>(true);
 
   // Coupon state
   const [couponCode, setCouponCode] = useState('');
@@ -322,6 +334,16 @@ export default function CheckoutPage() {
               phone={phone}
               setPhone={setPhone}
             />
+
+            {whatsappEnabled && (
+              <div className="flex items-center gap-2 rounded-lg bg-emerald-500/10 border border-emerald-500/20 px-3 py-2 text-emerald-800 dark:text-emerald-300 text-[11px] animate-in fade-in-50 duration-200">
+                <MessageCircle className="h-3.5 w-3.5 flex-shrink-0 text-emerald-600 dark:text-emerald-400" />
+                <span>
+                  🔒 <strong>WhatsApp Confirmation:</strong> We will send an instant order confirmation to your WhatsApp number.
+                </span>
+              </div>
+            )}
+
 
             <div className="space-y-1 pt-1">
               <label htmlFor="checkout-notes" className="block text-[11px] font-semibold text-muted-foreground">Delivery Notes (Optional)</label>
