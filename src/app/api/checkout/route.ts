@@ -56,6 +56,16 @@ export async function POST(req: NextRequest) {
     const accountTitle2 = await getSetting<string>('payment.account_title_2', '');
     const accountNumber2 = await getSetting<string>('payment.account_number_2', '');
     const bankInstructions = await getSetting<string>('payment.bank_instructions', '');
+    const codEnabled = await getSetting<boolean>('payment.cod_enabled', true);
+    const codFee = await getSetting<number>('payment.cod_fee', 0);
+    const codMaxLimit = await getSetting<number>('payment.cod_max_limit', 0);
+
+    if (paymentMethod === 'COD' && !codEnabled) {
+      return NextResponse.json(
+        { error: 'Cash on Delivery (COD) is currently disabled for this store.' },
+        { status: 400 }
+      );
+    }
 
     if (paymentMethod === 'BANK_TRANSFER' && !bankTransferEnabled) {
       return NextResponse.json(

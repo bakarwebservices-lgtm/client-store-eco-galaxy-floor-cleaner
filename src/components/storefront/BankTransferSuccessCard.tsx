@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Landmark, Copy, CheckCheck, MessageSquare, AlertCircle, Sparkles } from 'lucide-react';
+import { Landmark, Copy, CheckCheck, Smartphone, Info, CheckCircle2 } from 'lucide-react';
 import { formatCurrency } from '@/lib/format';
 
 interface BankTransferSuccessCardProps {
@@ -140,9 +140,10 @@ export function BankTransferSuccessCard({
 
       {/* Instructions Note */}
       {instructions && (
-        <p className="text-xs text-muted-foreground italic bg-muted/30 p-3 rounded-lg border border-border/60">
-          ℹ️ {instructions}
-        </p>
+        <div className="flex items-start gap-2.5 text-xs text-muted-foreground bg-muted/40 p-3 rounded-xl border border-border/60">
+          <Info className="h-4 w-4 text-primary shrink-0 mt-0.5" />
+          <p className="leading-relaxed">{instructions}</p>
+        </div>
       )}
 
       {/* 1-Tap WhatsApp Screenshot CTA */}
@@ -154,8 +155,8 @@ export function BankTransferSuccessCard({
             rel="noopener noreferrer"
             className="flex w-full items-center justify-center gap-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 py-3.5 text-xs sm:text-sm font-bold text-white shadow-md transition-all active:scale-[0.99]"
           >
-            <MessageSquare className="h-4 w-4" />
-            <span>📲 Send Payment Screenshot on WhatsApp</span>
+            <Smartphone className="h-4 w-4 shrink-0" />
+            <span>Send Payment Screenshot via WhatsApp</span>
           </a>
           <p className="text-center text-[11px] text-muted-foreground mt-2">
             Order #{orderNumber} is reserved for 48 hours. Once screenshot is received, tracking ID will be sent to your WhatsApp.

@@ -166,6 +166,15 @@ export const notificationAndAuthSchema = z.object({
  */
 
 export const paymentSettingsSchema = z.object({
+  // Cash on Delivery (COD) Settings
+  'payment.cod_enabled': z.boolean().default(true),
+  'payment.cod_title': z.string().max(100).default('Cash on Delivery (COD)'),
+  'payment.cod_instructions': z
+    .string()
+    .max(1000)
+    .default('Pay with cash upon package delivery at your doorstep.'),
+  'payment.cod_fee': z.coerce.number().min(0).default(0),
+  'payment.cod_max_limit': z.coerce.number().min(0).default(0),
   'payment.bank_transfer_enabled': z.boolean().default(false),
   'payment.bank_name': z.string().max(100).default('Meezan Bank'),
   'payment.account_title': z.string().max(100).default(''),
@@ -220,6 +229,11 @@ export const DEFAULT_SETTINGS: AllSettingsInput = {
   'shipping.free_threshold': 5000,
   'shipping.standard_cost': 250,
   'tax.rate': 0,
+  'payment.cod_enabled': true,
+  'payment.cod_title': 'Cash on Delivery (COD)',
+  'payment.cod_instructions': 'Pay with cash upon package delivery at your doorstep.',
+  'payment.cod_fee': 0,
+  'payment.cod_max_limit': 0,
   'payment.bank_transfer_enabled': false,
   'payment.bank_name': 'Meezan Bank',
   'payment.account_title': '',

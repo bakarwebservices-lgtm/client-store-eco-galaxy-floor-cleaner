@@ -48,7 +48,13 @@ export async function GET() {
       whatsappOrderConfirmationEnabled: settings['whatsapp.order_confirmation_enabled'] !== false,
       whatsappNumber: settings['whatsapp.phone_number'] || settings['store.phone'] || '',
       whatsappCustomMessage: settings['whatsapp.custom_message'] || '',
-          // Direct Bank Transfer & Prepayment Incentive Settings
+          // Cash on Delivery (COD) Settings
+      codEnabled: settings['payment.cod_enabled'] !== false,
+      codTitle: settings['payment.cod_title'] || 'Cash on Delivery (COD)',
+      codInstructions: settings['payment.cod_instructions'] || 'Pay with cash upon package delivery at your doorstep.',
+      codFee: Number(settings['payment.cod_fee']) || 0,
+      codMaxLimit: Number(settings['payment.cod_max_limit']) || 0,
+      // Direct Bank Transfer & Prepayment Incentive Settings
       bankTransferEnabled: Boolean(settings['payment.bank_transfer_enabled']),
       bankName: settings['payment.bank_name'] || 'Meezan Bank',
       accountTitle: settings['payment.account_title'] || '',
@@ -62,7 +68,16 @@ export async function GET() {
       bankDiscountValue: Number(settings['payment.bank_discount_value']) || 0,
     };
 
-    return NextResponse.json({ settings: publicSettings });
+    return NextResponse.json(
+      { settings: publicSettings },
+      {
+        headers: {
+          'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+          Pragma: 'no-cache',
+          Expires: '0',
+        },
+      }
+    );
   } catch (error: any) {
     console.error('Failed to load public settings:', error);
     return NextResponse.json({ error: 'Failed to load store settings' }, { status: 500 });

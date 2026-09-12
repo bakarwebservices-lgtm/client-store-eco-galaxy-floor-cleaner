@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import { WhatsAppAutomationCard } from '@/components/admin/WhatsAppAutomationCard';
 import { BankTransferSettingsCard } from '@/components/admin/BankTransferSettingsCard';
+import { CodSettingsCard } from '@/components/admin/CodSettingsCard';
 import Link from 'next/link';
 import Image from 'next/image';
 import {
@@ -921,13 +922,20 @@ export default function AdminSettingsPage() {
         )}
 
         
-        {/* Tab: Payment Methods (Direct Bank Transfer & Prepayment Incentive) */}
+        {/* Tab: Payment Methods (COD, Direct Bank Transfer & Prepayment Incentive) */}
         {activeTab === 'payments' && (
-          <BankTransferSettingsCard
-            settings={settings}
-            handleChange={handleChange}
-            errors={errors}
-          />
+          <div className="space-y-6 max-w-3xl">
+            <CodSettingsCard
+              settings={settings}
+              handleChange={handleChange}
+              errors={errors}
+            />
+            <BankTransferSettingsCard
+              settings={settings}
+              handleChange={handleChange}
+              errors={errors}
+            />
+          </div>
         )}
 
         {/* Tab: Couriers & Logistics */}

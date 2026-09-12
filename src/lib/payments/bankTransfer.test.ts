@@ -45,3 +45,36 @@ describe('BankTransferPaymentGateway & Registry', () => {
     expect(status).toBe(PaymentStatus.UNPAID);
   });
 });
+
+describe('CodPaymentGateway & COD Settings Schema', () => {
+  it('should be registered in paymentRegistry by default', () => {
+    expect(paymentRegistry.hasGateway('COD')).toBe(true);
+    const gateway = getPaymentGateway('COD');
+    expect(gateway).toBeDefined();
+    expect(gateway.name).toBe('COD');
+  });
+
+  it('initiates COD payment with doorstep delivery instructions', async () => {
+    const gateway = getPaymentGateway('COD');
+    const result = await gateway.initiatePayment({
+      orderId: 'test-cod-1',
+      orderNumber: 'ORD-99999',
+      amount: 3200,
+      currency: 'PKR',
+      customerName: 'Fatima Noor',
+    });
+
+    expect(result.success).toBe(true);
+    expect(result.paymentMethod).toBe('COD');
+    expect(result.meta?.instructions).toContain('cash');
+  });
+
+  it('validates default COD settings through paymentSettingsSchema', async () => {
+    const { paymentSettingsSchema } = await import('../validation/settings');
+    const parsed = paymentSettingsSchema.parse({});
+    expect(parsed['payment.cod_enabled']).toBe(true);
+    expect(parsed['payment.cod_title']).toBe('Cash on Delivery (COD)');
+    expect(parsed['payment.cod_fee']).toBe(0);
+    expect(parsed['payment.cod_max_limit']).toBe(0);
+  });
+});

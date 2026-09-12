@@ -34,6 +34,21 @@ export default function CheckoutPage() {
   // Payment method
   const [paymentMethod, setPaymentMethod] = useState<'COD' | 'BANK_TRANSFER'>('COD');
 
+  // Cash on Delivery Settings
+  const [codSettings, setCodSettings] = useState<{
+    enabled: boolean;
+    title: string;
+    instructions: string;
+    fee: number;
+    maxLimit: number;
+  }>({
+    enabled: true,
+    title: 'Cash on Delivery (COD)',
+    instructions: 'Pay with cash upon package delivery at your doorstep.',
+    fee: 0,
+    maxLimit: 0,
+  });
+
   // Bank Transfer & Prepayment Incentive Settings
   const [bankSettings, setBankSettings] = useState<{
     enabled: boolean;
@@ -93,8 +108,24 @@ export default function CheckoutPage() {
         }
         setWhatsappEnabled(s.whatsappOrderConfirmationEnabled !== false);
 
+        const codEn = s.codEnabled !== false;
+        const bankEn = Boolean(s.bankTransferEnabled);
+
+        setCodSettings({
+          enabled: codEn,
+          title: s.codTitle || 'Cash on Delivery (COD)',
+          instructions: s.codInstructions || 'Pay with cash upon package delivery at your doorstep.',
+          fee: Number(s.codFee) || 0,
+          maxLimit: Number(s.codMaxLimit) || 0,
+        });
+
+        // Set initial payment method if COD is disabled
+        if (!codEn && bankEn) {
+          setPaymentMethod('BANK_TRANSFER');
+        }
+
         setBankSettings({
-          enabled: Boolean(s.bankTransferEnabled),
+          enabled: bankEn,
           bankName: s.bankName || 'Meezan Bank',
           accountTitle: s.accountTitle || '',
           accountNumber: s.accountNumber || '',
@@ -143,8 +174,17 @@ export default function CheckoutPage() {
     }
   }
 
+  const isCodBlockedByLimit = Boolean(
+    codSettings.maxLimit > 0 && subtotal > codSettings.maxLimit
+  );
+
+  const appliedCodFee =
+    paymentMethod === 'COD' && codSettings.enabled && !isCodBlockedByLimit && codSettings.fee > 0
+      ? codSettings.fee
+      : 0;
+
   const discountAmount = Math.min(subtotal, couponDiscount + bankTransferDiscount);
-  const grandTotal = Math.max(0, subtotal - discountAmount + shippingCost);
+  const grandTotal = Math.max(0, subtotal - discountAmount + shippingCost + appliedCodFee);
 
   const handleCopyAccount = (textToCopy: string) => {
     if (!textToCopy) return;
@@ -297,6 +337,25 @@ export default function CheckoutPage() {
     if (!city.trim()) {
       triggerValidationError('checkout-city', 'Please select or enter your city.');
       return;
+    }
+
+    if (paymentMethod === 'COD') {
+      if (!codSettings.enabled) {
+        triggerValidationError(undefined, 'Cash on Delivery is currently disabled. Please choose Direct Bank Transfer.');
+        return;
+      }
+      if (isCodBlockedByLimit) {
+        triggerValidationError(
+          undefined,
+          `Cash on Delivery is only available for orders up to ${formatCurrency(codSettings.maxLimit)}. Please choose Direct Bank Transfer.`
+        );
+        return;
+      }
+    } else if (paymentMethod === 'BANK_TRANSFER') {
+      if (!bankSettings.enabled) {
+        triggerValidationError(undefined, 'Direct Bank Transfer is currently not enabled.');
+        return;
+      }
     }
 
     setIsSubmitting(true);
@@ -500,36 +559,52 @@ export default function CheckoutPage() {
 
             <div className="space-y-3">
               {/* Cash On Delivery */}
-              <label
-                className={`flex items-center justify-between p-3.5 rounded-xl border-2 cursor-pointer transition-all ${
-                  paymentMethod === 'COD'
-                    ? 'border-primary bg-primary/5 shadow-xs'
-                    : 'border-border bg-card hover:border-border/80'
-                }`}
-              >
-                <div className="flex items-center gap-3">
-                  <input
-                    type="radio"
-                    name="paymentMethod"
-                    value="COD"
-                    checked={paymentMethod === 'COD'}
-                    onChange={() => setPaymentMethod('COD')}
-                    className="text-primary focus:ring-primary h-4 w-4"
-                  />
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <Banknote className="h-4 w-4 text-primary" />
-                      <span className="text-xs font-bold text-foreground">Cash On Delivery (COD)</span>
+              {codSettings.enabled && (
+                <label
+                  className={`flex items-center justify-between p-3.5 rounded-xl border-2 transition-all ${
+                    isCodBlockedByLimit
+                      ? 'border-border/60 bg-muted/20 opacity-60 cursor-not-allowed'
+                      : paymentMethod === 'COD'
+                      ? 'border-primary bg-primary/5 shadow-xs cursor-pointer'
+                      : 'border-border bg-card hover:border-border/80 cursor-pointer'
+                  }`}
+                >
+                  <div className="flex items-center gap-3">
+                    <input
+                      type="radio"
+                      name="paymentMethod"
+                      value="COD"
+                      disabled={isCodBlockedByLimit}
+                      checked={paymentMethod === 'COD'}
+                      onChange={() => !isCodBlockedByLimit && setPaymentMethod('COD')}
+                      className="text-primary focus:ring-primary h-4 w-4 disabled:opacity-50"
+                    />
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <Banknote className="h-4 w-4 text-primary" />
+                        <span className="text-xs font-bold text-foreground">
+                          {codSettings.title || 'Cash On Delivery (COD)'}
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-muted-foreground mt-0.5">
+                        {isCodBlockedByLimit
+                          ? `Orders above ${formatCurrency(codSettings.maxLimit)} require Bank Transfer prepayment.`
+                          : codSettings.instructions || 'Pay in cash when your parcel arrives at your address.'}
+                      </p>
                     </div>
-                    <p className="text-[11px] text-muted-foreground mt-0.5">
-                      Pay in cash when your parcel arrives at your address.
-                    </p>
                   </div>
-                </div>
-                <span className="rounded-full bg-primary/10 px-2.5 py-0.5 text-[10px] font-bold text-primary">
-                  Standard
-                </span>
-              </label>
+                  <div className="flex items-center gap-2 shrink-0">
+                    {codSettings.fee > 0 && !isCodBlockedByLimit && (
+                      <span className="rounded-full bg-amber-500/10 text-amber-700 dark:text-amber-400 border border-amber-500/20 px-2 py-0.5 text-[10px] font-semibold">
+                        +{formatCurrency(codSettings.fee)} fee
+                      </span>
+                    )}
+                    <span className="rounded-full bg-primary/10 px-2.5 py-0.5 text-[10px] font-bold text-primary">
+                      {isCodBlockedByLimit ? 'Unavailable' : 'Standard'}
+                    </span>
+                  </div>
+                </label>
+              )}
 
               {/* Direct Bank Transfer (IBFT / Raast / Wallets) */}
               {bankSettings.enabled && (
@@ -561,8 +636,10 @@ export default function CheckoutPage() {
                       </div>
                     </div>
                     {bankSettings.discountEnabled && bankSettings.discountValue > 0 ? (
-                      <span className="rounded-full bg-emerald-500/15 border border-emerald-500/30 px-2.5 py-0.5 text-[10px] font-bold text-emerald-700 dark:text-emerald-300 animate-pulse">
-                        ✨ {bankSettings.discountType === 'percentage' ? `${bankSettings.discountValue}% OFF` : `Save ${currency} ${bankSettings.discountValue}`}
+                      <span className="rounded-full bg-emerald-500/15 border border-emerald-500/30 px-2.5 py-0.5 text-[10px] font-bold text-emerald-700 dark:text-emerald-300">
+                        {bankSettings.discountType === 'percentage'
+                          ? `Save ${bankSettings.discountValue}%`
+                          : `Save ${currency} ${bankSettings.discountValue}`}
                       </span>
                     ) : (
                       <span className="rounded-full bg-muted px-2.5 py-0.5 text-[10px] font-semibold text-muted-foreground">
@@ -653,7 +730,7 @@ export default function CheckoutPage() {
                       {/* WhatsApp Screenshot & Instructions Prompt */}
                       <div className="rounded-lg bg-emerald-500/10 border border-emerald-500/20 p-3 text-xs text-emerald-900 dark:text-emerald-200 space-y-1">
                         <div className="flex items-center gap-1.5 font-bold">
-                          <MessageCircle className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                          <Smartphone className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
                           <span>WhatsApp Screenshot Verification:</span>
                         </div>
                         <p className="text-[11px] leading-relaxed opacity-90">
@@ -664,7 +741,7 @@ export default function CheckoutPage() {
 
                       {bankTransferDiscount > 0 && (
                         <div className="flex items-center gap-1.5 text-xs text-emerald-700 dark:text-emerald-300 font-semibold pt-0.5">
-                          <Sparkles className="h-3.5 w-3.5 shrink-0" />
+                          <Tag className="h-3.5 w-3.5 shrink-0" />
                           <span>You save {formatCurrency(bankTransferDiscount)} on this order with Direct Bank Transfer!</span>
                         </div>
                       )}
@@ -673,22 +750,15 @@ export default function CheckoutPage() {
                 </div>
               )}
 
-              {/* Online Gateway Option (Disabled / Future Gateway Slot) */}
-              <div className="flex items-center justify-between p-3.5 rounded-xl border border-border bg-muted/20 opacity-60 cursor-not-allowed">
-                <div className="flex items-center gap-3">
-                  <input type="radio" disabled name="paymentMethod" />
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <CreditCard className="h-4 w-4 text-muted-foreground" />
-                      <span className="text-xs font-medium text-foreground">Debit / Credit Card</span>
-                    </div>
-                    <p className="text-[11px] text-muted-foreground mt-0.5">
-                      Online Visa / Mastercard (Coming Soon)
-                    </p>
-                  </div>
+              {/* Fallback Banner if no payment methods are active */}
+              {!codSettings.enabled && !bankSettings.enabled && (
+                <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-4 text-xs text-amber-900 dark:text-amber-200 space-y-1">
+                  <p className="font-bold">No payment methods currently active</p>
+                  <p className="text-[11px] opacity-90">
+                    Online checkout is temporarily paused. Please place your order directly through customer support on WhatsApp.
+                  </p>
                 </div>
-                <span className="text-[10px] font-semibold text-muted-foreground">Gateway Slot</span>
-              </div>
+              )}
             </div>
           </div>
         </div>
@@ -789,10 +859,17 @@ export default function CheckoutPage() {
               {paymentMethod === 'BANK_TRANSFER' && bankTransferDiscount > 0 && (
                 <div className="flex justify-between text-emerald-600 dark:text-emerald-400 font-semibold">
                   <span className="flex items-center gap-1">
-                    <Sparkles className="h-3 w-3 shrink-0" />
+                    <Tag className="h-3 w-3 shrink-0" />
                     <span>Bank Transfer Discount</span>
                   </span>
                   <span>- {formatCurrency(bankTransferDiscount)}</span>
+                </div>
+              )}
+
+              {appliedCodFee > 0 && (
+                <div className="flex justify-between text-muted-foreground">
+                  <span>COD Handling Surcharge</span>
+                  <span className="font-semibold text-foreground">+ {formatCurrency(appliedCodFee)}</span>
                 </div>
               )}
 
@@ -823,22 +900,31 @@ export default function CheckoutPage() {
             )}
 
             {/* Submit CTA */}
-            <button
-              type="submit"
-              disabled={isSubmitting}
-              className="flex w-full items-center justify-center gap-2 rounded-xl bg-primary py-3.5 text-xs font-bold uppercase tracking-wider text-primary-foreground shadow-lg hover:bg-primary-hover transition-transform active:scale-[0.98] disabled:opacity-50"
-            >
-              {isSubmitting ? (
-                <>
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                  <span>Confirming Order...</span>
-                </>
-              ) : paymentMethod === 'BANK_TRANSFER' ? (
-                <span>Confirm Bank Transfer Order ({formatCurrency(grandTotal)})</span>
-              ) : (
-                <span>Place Order with Cash on Delivery ({formatCurrency(grandTotal)})</span>
-              )}
-            </button>
+            {(() => {
+              const hasValidMethod =
+                (codSettings.enabled && !isCodBlockedByLimit) || bankSettings.enabled;
+
+              return (
+                <button
+                  type="submit"
+                  disabled={isSubmitting || !hasValidMethod}
+                  className="flex w-full items-center justify-center gap-2 rounded-xl bg-primary py-3.5 text-xs font-bold uppercase tracking-wider text-primary-foreground shadow-lg hover:bg-primary-hover transition-transform active:scale-[0.98] disabled:opacity-50"
+                >
+                  {isSubmitting ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      <span>Confirming Order...</span>
+                    </>
+                  ) : !hasValidMethod ? (
+                    <span>No Payment Method Available</span>
+                  ) : paymentMethod === 'BANK_TRANSFER' ? (
+                    <span>Confirm Bank Transfer Order ({formatCurrency(grandTotal)})</span>
+                  ) : (
+                    <span>Place Order with Cash on Delivery ({formatCurrency(grandTotal)})</span>
+                  )}
+                </button>
+              );
+            })()}
 
             <div className="flex items-center justify-center gap-1.5 text-[11px] text-muted-foreground pt-1">
               <ShieldCheck className="h-3.5 w-3.5 text-primary" />
