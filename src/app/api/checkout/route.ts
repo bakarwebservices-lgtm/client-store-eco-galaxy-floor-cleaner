@@ -45,6 +45,25 @@ export async function POST(req: NextRequest) {
     const defaultCountry = await getSetting<string>('store.country', 'Pakistan');
     const freeShippingThreshold = await getSetting<number>('shipping.free_threshold', 5000);
     const standardShippingCost = await getSetting<number>('shipping.standard_cost', 250);
+    const bankTransferEnabled = await getSetting<boolean>('payment.bank_transfer_enabled', false);
+    const bankDiscountEnabled = await getSetting<boolean>('payment.bank_discount_enabled', false);
+    const bankDiscountType = await getSetting<string>('payment.bank_discount_type', 'percentage');
+    const bankDiscountValue = await getSetting<number>('payment.bank_discount_value', 5);
+    const bankName = await getSetting<string>('payment.bank_name', 'Meezan Bank');
+    const accountTitle = await getSetting<string>('payment.account_title', '');
+    const accountNumber = await getSetting<string>('payment.account_number', '');
+    const bankName2 = await getSetting<string>('payment.bank_name_2', '');
+    const accountTitle2 = await getSetting<string>('payment.account_title_2', '');
+    const accountNumber2 = await getSetting<string>('payment.account_number_2', '');
+    const bankInstructions = await getSetting<string>('payment.bank_instructions', '');
+
+    if (paymentMethod === 'BANK_TRANSFER' && !bankTransferEnabled) {
+      return NextResponse.json(
+        { error: 'Direct Bank Transfer is currently not enabled for this store.' },
+        { status: 400 }
+      );
+    }
+
 
     const fullCountry = shippingAddress.country || defaultCountry;
 
@@ -165,10 +184,24 @@ export async function POST(req: NextRequest) {
         }
       }
 
+      
+      // 4b. Prepayment Incentive Discount (Bank Transfer)
+      let bankTransferDiscount = 0;
+      if (paymentMethod === 'BANK_TRANSFER' && bankDiscountEnabled && bankDiscountValue > 0) {
+        const netEligibleSubtotal = Math.max(0, liveSubtotal - discountAmount);
+        if (bankDiscountType === 'percentage') {
+          bankTransferDiscount = Math.round(((netEligibleSubtotal * bankDiscountValue) / 100) * 100) / 100;
+        } else {
+          bankTransferDiscount = Math.min(netEligibleSubtotal, bankDiscountValue);
+        }
+      }
+
+      const totalDiscount = Math.min(liveSubtotal, discountAmount + bankTransferDiscount);
+
       // 5. Calculate Shipping & Totals
       const shippingAmount = liveSubtotal >= freeShippingThreshold ? 0 : standardShippingCost;
       const taxAmount = 0;
-      const totalPrice = Math.max(0, liveSubtotal - discountAmount + shippingAmount + taxAmount);
+      const totalPrice = Math.max(0, liveSubtotal - totalDiscount + shippingAmount + taxAmount);
 
       // 6. Customer & Guest Match Resolution (BUILD_STANDARDS 2.4)
       const rawEmail = shippingAddress.email?.trim();
@@ -219,6 +252,24 @@ export async function POST(req: NextRequest) {
         customerPhone: shippingAddress.phone,
       });
 
+      
+      const paymentMeta = {
+        ...(paymentInit.meta || {}),
+        ...(paymentMethod === 'BANK_TRANSFER'
+          ? {
+              bankName,
+              accountTitle,
+              accountNumber,
+              bankName2: bankName2 || null,
+              accountTitle2: accountTitle2 || null,
+              accountNumber2: accountNumber2 || null,
+              bankInstructions,
+              couponDiscount: discountAmount,
+              bankTransferDiscount,
+            }
+          : {}),
+      };
+
       // 8. Shipping Snapshot
       const shippingAddressSnapshot = {
         name: `${shippingAddress.firstName} ${shippingAddress.lastName}`.trim(),
@@ -240,7 +291,7 @@ export async function POST(req: NextRequest) {
           paymentStatus: PaymentStatus.UNPAID,
           fulfillmentStatus: FulfillmentStatus.UNFULFILLED,
           paymentMethod: gateway.name,
-          paymentMeta: paymentInit.meta || {},
+          paymentMeta,
           subtotal: liveSubtotal,
           discountAmount,
           shippingAmount,

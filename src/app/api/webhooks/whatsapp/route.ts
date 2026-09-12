@@ -161,6 +161,14 @@ async function handleIncomingMessage(msg: any, contact?: any) {
     }
 
     // A4. Automated PostEx Dispatch Check
+        // Bank Transfer Gate: Never auto-book unpaid bank transfer orders with couriers!
+    if (order.paymentMethod === 'BANK_TRANSFER' && order.paymentStatus !== 'PAID') {
+      console.log(
+        `[WhatsApp Webhook] Order #${order.orderNumber} confirmed by customer on WhatsApp, but payment method is BANK_TRANSFER and paymentStatus is ${order.paymentStatus}. Holding courier dispatch pending merchant receipt verification.`
+      );
+      return;
+    }
+
     const autoBookMode = await getSetting<AutoBookMode>('courier.auto_book_mode', 'THRESHOLD');
     const autoBookThreshold = await getSetting<number>('courier.auto_book_threshold', 5000);
 

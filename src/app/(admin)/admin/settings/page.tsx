@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { WhatsAppAutomationCard } from '@/components/admin/WhatsAppAutomationCard';
+import { BankTransferSettingsCard } from '@/components/admin/BankTransferSettingsCard';
 import Link from 'next/link';
 import Image from 'next/image';
 import {
@@ -22,6 +23,8 @@ import {
   RefreshCw,
   Sliders,
   DollarSign,
+  CreditCard,
+  Landmark,
   Sparkles,
   Mail,
   MessageSquare,
@@ -40,13 +43,14 @@ import {
 } from '@/lib/validation/settings';
 import { safeFetch } from '@/lib/apiClient';
 
-type SettingsTab = 'identity' | 'contact' | 'theme' | 'shipping' | 'couriers' | 'tracking' | 'notifications' | 'social';
+type SettingsTab = 'identity' | 'contact' | 'theme' | 'shipping' | 'payments' | 'couriers' | 'tracking' | 'notifications' | 'social';
 
 const TABS: { id: SettingsTab; label: string; icon: React.ComponentType<{ className?: string }> }[] = [
   { id: 'identity', label: 'Store Identity', icon: Building2 },
   { id: 'contact', label: 'Contact Details', icon: Phone },
   { id: 'theme', label: 'Theme & Styling', icon: Palette },
   { id: 'shipping', label: 'Shipping & Taxes', icon: DollarSign },
+  { id: 'payments', label: 'Payment Methods', icon: CreditCard },
   { id: 'couriers', label: 'Couriers & Logistics', icon: Truck },
   { id: 'notifications', label: 'Email & WhatsApp', icon: MessageSquare },
   { id: 'tracking', label: 'Analytics & Tracking', icon: BarChart3 },
@@ -914,6 +918,16 @@ export default function AdminSettingsPage() {
               </div>
             </div>
           </div>
+        )}
+
+        
+        {/* Tab: Payment Methods (Direct Bank Transfer & Prepayment Incentive) */}
+        {activeTab === 'payments' && (
+          <BankTransferSettingsCard
+            settings={settings}
+            handleChange={handleChange}
+            errors={errors}
+          />
         )}
 
         {/* Tab: Couriers & Logistics */}

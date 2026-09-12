@@ -33,6 +33,7 @@ import {
   DollarSign,
   Tag,
   MessageSquare,
+  Landmark,
 } from 'lucide-react';
 import { formatCurrency } from '@/lib/format';
 import { safeFetch } from '@/lib/apiClient';
@@ -360,6 +361,34 @@ export default function AdminOrderDetailPage() {
       }
       setMsg({ type: 'success', text: 'Order status updated successfully.' });
       setStatusReason('');
+      await fetchOrder();
+    } catch (err: any) {
+      setMsg({ type: 'error', text: err.message });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  
+  const handleMarkPaymentReceived = async () => {
+    if (!confirm('Mark payment as RECEIVED and PAID for this Bank Transfer order?')) return;
+    setSaving(true);
+    setMsg(null);
+    try {
+      const res = await fetch(`/api/admin/orders/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          paymentStatus: 'PAID',
+          ledgerMemo: '[Bank Transfer Verified]: Admin marked payment as received / PAID after verifying screenshot.',
+        }),
+      });
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || 'Failed to update payment status');
+      }
+      setPaymentStatus('PAID');
+      setMsg({ type: 'success', text: 'Bank Transfer marked as PAID and verified!' });
       await fetchOrder();
     } catch (err: any) {
       setMsg({ type: 'error', text: err.message });
@@ -895,6 +924,46 @@ export default function AdminOrderDetailPage() {
                 Payment Method: <strong className="text-foreground">{order.paymentMethod}</strong>
               </span>
             </div>
+
+            
+            {/* Bank Transfer Verification Banner & 1-Click Action */}
+            {order.paymentMethod === 'BANK_TRANSFER' && (
+              <div
+                className={`rounded-xl border p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 animate-in fade-in-50 duration-200 ${
+                  paymentStatus === 'PAID'
+                    ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-800 dark:text-emerald-300'
+                    : 'border-amber-500/40 bg-amber-500/10 text-amber-900 dark:text-amber-200'
+                }`}
+              >
+                <div className="flex items-start gap-2.5">
+                  <Landmark className="h-5 w-5 shrink-0 mt-0.5" />
+                  <div>
+                    <p className="text-xs font-bold">
+                      {paymentStatus === 'PAID'
+                        ? '🟢 Bank Transfer Payment Verified & Paid'
+                        : '⚠️ Direct Bank Transfer — Payment Verification Pending'}
+                    </p>
+                    <p className="text-[11px] opacity-90 mt-0.5">
+                      {paymentStatus === 'PAID'
+                        ? 'Funds verified in store ledger. Shipment can be booked with courier at Rs. 0 COD.'
+                        : 'Customer selected Bank Transfer. Verify payment screenshot before dispatching parcel.'}
+                    </p>
+                  </div>
+                </div>
+
+                {paymentStatus !== 'PAID' && !isCancelled && (
+                  <button
+                    type="button"
+                    onClick={handleMarkPaymentReceived}
+                    disabled={saving}
+                    className="inline-flex items-center justify-center gap-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white px-3.5 py-2 text-xs font-bold shadow-xs transition-all shrink-0 active:scale-95 disabled:opacity-50"
+                  >
+                    <CheckCircle2 className="h-4 w-4" />
+                    <span>Mark Payment Received (PAID)</span>
+                  </button>
+                )}
+              </div>
+            )}
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-1.5">

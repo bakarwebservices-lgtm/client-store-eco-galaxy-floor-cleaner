@@ -164,7 +164,28 @@ export const notificationAndAuthSchema = z.object({
 /**
  * Unified all-settings schema for batch update
  */
+
+export const paymentSettingsSchema = z.object({
+  'payment.bank_transfer_enabled': z.boolean().default(false),
+  'payment.bank_name': z.string().max(100).default('Meezan Bank'),
+  'payment.account_title': z.string().max(100).default(''),
+  'payment.account_number': z.string().max(100).default(''),
+  'payment.bank_name_2': z.string().max(100).optional().default(''),
+  'payment.account_title_2': z.string().max(100).optional().default(''),
+  'payment.account_number_2': z.string().max(100).optional().default(''),
+  'payment.bank_instructions': z
+    .string()
+    .max(1000)
+    .default(
+      'Please transfer the total order amount to the bank account above and send your payment screenshot with Order # to our WhatsApp for immediate dispatch.'
+    ),
+  'payment.bank_discount_enabled': z.boolean().default(false),
+  'payment.bank_discount_type': z.enum(['percentage', 'fixed']).default('percentage'),
+  'payment.bank_discount_value': z.coerce.number().min(0).default(5),
+});
+
 export const allSettingsSchema = z.object({
+  ...paymentSettingsSchema.shape,
   ...storeIdentitySchema.shape,
   ...contactSettingsSchema.shape,
   ...themeSettingsSchema.shape,
@@ -199,6 +220,18 @@ export const DEFAULT_SETTINGS: AllSettingsInput = {
   'shipping.free_threshold': 5000,
   'shipping.standard_cost': 250,
   'tax.rate': 0,
+  'payment.bank_transfer_enabled': false,
+  'payment.bank_name': 'Meezan Bank',
+  'payment.account_title': '',
+  'payment.account_number': '',
+  'payment.bank_name_2': '',
+  'payment.account_title_2': '',
+  'payment.account_number_2': '',
+  'payment.bank_instructions':
+    'Please transfer the total order amount to the bank account above and send your payment screenshot with Order # to our WhatsApp for immediate dispatch.',
+  'payment.bank_discount_enabled': false,
+  'payment.bank_discount_type': 'percentage',
+  'payment.bank_discount_value': 5,
   'tracking.meta_pixel_id': '',
   'tracking.ga4_measurement_id': '',
   'tracking.custom_url': '',

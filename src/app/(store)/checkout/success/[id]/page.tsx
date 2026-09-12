@@ -7,8 +7,9 @@ import { notFound, redirect } from 'next/navigation';
 import { cookies } from 'next/headers';
 import { db } from '@/lib/db';
 import { verifyOrderAccessToken } from '@/lib/auth/token';
-import { CheckCircle2, ShoppingBag, Truck, Package, Phone, Mail, MapPin, ShieldAlert, MessageSquare } from 'lucide-react';
+import { CheckCircle2, ShoppingBag, Truck, Package, Phone, Mail, MapPin, ShieldAlert, MessageSquare, Landmark } from 'lucide-react';
 import { OrderSuccessTracker } from './OrderSuccessTracker';
+import { BankTransferSuccessCard } from '@/components/storefront/BankTransferSuccessCard';
 
 export const dynamic = 'force-dynamic';
 
@@ -88,6 +89,8 @@ export default async function OrderSuccessPage({
   }
 
   const shippingAddr: any = order.shippingAddress;
+  const isBankTransfer = order.paymentMethod === 'BANK_TRANSFER';
+  const bankMeta = (order.paymentMeta as Record<string, any>) || {};
 
   // Query WhatsApp and Brand settings for 1-tap confirmation
   let storeName = 'Store';
@@ -95,6 +98,13 @@ export default async function OrderSuccessPage({
   let whatsappEnabled = true;
   let whatsappNumber = '';
   let whatsappTemplate = '';
+  let dbBankName = 'Meezan Bank';
+  let dbAccountTitle = '';
+  let dbAccountNumber = '';
+  let dbBankName2 = '';
+  let dbAccountTitle2 = '';
+  let dbAccountNumber2 = '';
+  let dbBankInstructions = '';
 
   try {
     const settings = await db.setting.findMany({
@@ -106,6 +116,13 @@ export default async function OrderSuccessPage({
             'whatsapp.order_confirmation_enabled',
             'whatsapp.phone_number',
             'whatsapp.custom_message',
+            'payment.bank_name',
+            'payment.account_title',
+            'payment.account_number',
+            'payment.bank_name_2',
+            'payment.account_title_2',
+            'payment.account_number_2',
+            'payment.bank_instructions',
           ],
         },
       },
@@ -117,6 +134,13 @@ export default async function OrderSuccessPage({
       if (s.key === 'whatsapp.order_confirmation_enabled') whatsappEnabled = s.value === true || s.value === 'true';
       if (s.key === 'whatsapp.phone_number' && s.value) whatsappNumber = String(s.value);
       if (s.key === 'whatsapp.custom_message' && s.value) whatsappTemplate = String(s.value);
+      if (s.key === 'payment.bank_name' && s.value) dbBankName = String(s.value);
+      if (s.key === 'payment.account_title' && s.value) dbAccountTitle = String(s.value);
+      if (s.key === 'payment.account_number' && s.value) dbAccountNumber = String(s.value);
+      if (s.key === 'payment.bank_name_2' && s.value) dbBankName2 = String(s.value);
+      if (s.key === 'payment.account_title_2' && s.value) dbAccountTitle2 = String(s.value);
+      if (s.key === 'payment.account_number_2' && s.value) dbAccountNumber2 = String(s.value);
+      if (s.key === 'payment.bank_instructions' && s.value) dbBankInstructions = String(s.value);
     }
   } catch {
     // fallback
@@ -124,6 +148,7 @@ export default async function OrderSuccessPage({
 
   const targetWhatsApp = (whatsappNumber || storePhone).replace(/[^0-9]/g, '');
 
+  // Standard COD confirmation message
   let rawMsg =
     whatsappTemplate ||
     'Hi {store_name}! I just placed order #{order_number} for {total_amount}. Please confirm and ship my order to {city}.';
@@ -136,6 +161,20 @@ export default async function OrderSuccessPage({
   const whatsappUrl = targetWhatsApp
     ? `https://wa.me/${targetWhatsApp}?text=${encodeURIComponent(rawMsg)}`
     : null;
+
+  // Bank Transfer Screenshot pre-filled WhatsApp message
+  const receiptMsg = `Hi ${storeName}! I have transferred ${formatCurrency(order.totalPrice, order.currency)} for Order #${order.orderNumber} via Bank Transfer. Here is my payment receipt screenshot:`;
+  const whatsappReceiptUrl = targetWhatsApp
+    ? `https://wa.me/${targetWhatsApp}?text=${encodeURIComponent(receiptMsg)}`
+    : null;
+
+  const bankName = bankMeta.bankName || dbBankName;
+  const accountTitle = bankMeta.accountTitle || dbAccountTitle || storeName;
+  const accountNumber = bankMeta.accountNumber || dbAccountNumber;
+  const bankName2 = bankMeta.bankName2 || dbBankName2;
+  const accountTitle2 = bankMeta.accountTitle2 || dbAccountTitle2;
+  const accountNumber2 = bankMeta.accountNumber2 || dbAccountNumber2;
+  const bankInstructions = bankMeta.bankInstructions || dbBankInstructions;
 
   return (
     <main className="mx-auto max-w-4xl px-4 py-12 sm:px-6 lg:px-8 space-y-8">
@@ -152,14 +191,42 @@ export default async function OrderSuccessPage({
           We have received your order <strong className="text-foreground font-mono">{order.orderNumber}</strong> and our team is preparing it for shipment.
         </p>
         <div className="pt-2">
-          <span className="inline-flex items-center gap-1.5 rounded-full bg-primary/10 px-3 py-1 text-xs font-bold text-primary">
-            Payment: Cash On Delivery (Pending Delivery)
+          <span
+            className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-bold ${
+              isBankTransfer
+                ? 'bg-amber-500/10 text-amber-700 dark:text-amber-400 border border-amber-500/20'
+                : 'bg-primary/10 text-primary'
+            }`}
+          >
+            {isBankTransfer
+              ? order.paymentStatus === 'PAID'
+                ? 'Payment: Direct Bank Transfer (Verified & Paid)'
+                : 'Payment: Direct Bank Transfer (Pending Verification)'
+              : 'Payment: Cash On Delivery (Pending Delivery)'}
           </span>
         </div>
       </div>
 
-      {/* 1-Tap WhatsApp Order Confirmation Card */}
-      {whatsappEnabled && whatsappUrl && (
+      {/* Dedicated Bank Transfer Verification Card */}
+      {isBankTransfer && order.paymentStatus !== 'PAID' && (
+        <BankTransferSuccessCard
+          orderNumber={order.orderNumber}
+          totalPrice={order.totalPrice}
+          currency={order.currency}
+          bankName={bankName}
+          accountTitle={accountTitle}
+          accountNumber={accountNumber}
+          bankName2={bankName2}
+          accountTitle2={accountTitle2}
+          accountNumber2={accountNumber2}
+          instructions={bankInstructions}
+          whatsappUrl={whatsappReceiptUrl}
+          storeName={storeName}
+        />
+      )}
+
+      {/* 1-Tap WhatsApp Order Confirmation Card (for COD orders) */}
+      {!isBankTransfer && whatsappEnabled && whatsappUrl && (
         <div className="rounded-2xl border border-emerald-500/30 bg-emerald-500/10 p-5 sm:p-6 space-y-3 shadow-sm">
           <div className="flex items-center gap-2.5">
             <div className="flex h-9 w-9 items-center justify-center rounded-full bg-emerald-500 text-white shadow-sm shrink-0">
@@ -237,8 +304,14 @@ export default async function OrderSuccessPage({
               <span className="font-medium text-foreground">{formatCurrency(order.subtotal, order.currency)}</span>
             </div>
             {order.discountAmount > 0 && (
-              <div className="flex justify-between text-success">
-                <span>Coupon Discount ({order.couponCode})</span>
+              <div className="flex justify-between text-success font-medium">
+                <span>
+                  {order.couponCode
+                    ? `Discount (${order.couponCode})`
+                    : isBankTransfer
+                    ? 'Prepayment Incentive Discount'
+                    : 'Discount'}
+                </span>
                 <span>- {formatCurrency(order.discountAmount, order.currency)}</span>
               </div>
             )}

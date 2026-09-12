@@ -48,6 +48,18 @@ export async function GET() {
       whatsappOrderConfirmationEnabled: settings['whatsapp.order_confirmation_enabled'] !== false,
       whatsappNumber: settings['whatsapp.phone_number'] || settings['store.phone'] || '',
       whatsappCustomMessage: settings['whatsapp.custom_message'] || '',
+          // Direct Bank Transfer & Prepayment Incentive Settings
+      bankTransferEnabled: Boolean(settings['payment.bank_transfer_enabled']),
+      bankName: settings['payment.bank_name'] || 'Meezan Bank',
+      accountTitle: settings['payment.account_title'] || '',
+      accountNumber: settings['payment.account_number'] || '',
+      bankName2: settings['payment.bank_name_2'] || '',
+      accountTitle2: settings['payment.account_title_2'] || '',
+      accountNumber2: settings['payment.account_number_2'] || '',
+      bankInstructions: settings['payment.bank_instructions'] || '',
+      bankDiscountEnabled: Boolean(settings['payment.bank_discount_enabled']),
+      bankDiscountType: (settings['payment.bank_discount_type'] as 'percentage' | 'fixed') || 'percentage',
+      bankDiscountValue: Number(settings['payment.bank_discount_value']) || 0,
     };
 
     return NextResponse.json({ settings: publicSettings });

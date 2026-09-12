@@ -1,5 +1,6 @@
 import { IPaymentGateway } from './types';
 import { CodPaymentGateway } from './adapters/CodAdapter';
+import { BankTransferPaymentGateway } from './adapters/BankTransferAdapter';
 
 class PaymentGatewayRegistry {
   private gateways: Map<string, IPaymentGateway> = new Map();
@@ -7,6 +8,7 @@ class PaymentGatewayRegistry {
   constructor() {
     // Register default COD gateway
     this.registerGateway(new CodPaymentGateway());
+    this.registerGateway(new BankTransferPaymentGateway());
   }
 
   registerGateway(gateway: IPaymentGateway): void {

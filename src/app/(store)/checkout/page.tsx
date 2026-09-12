@@ -5,7 +5,7 @@ import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import Link from 'next/link';
-import { MessageCircle, ShieldCheck, Truck, ArrowLeft, Loader2, Tag, Check, AlertCircle, Banknote, CreditCard } from 'lucide-react';
+import { ShieldCheck, Truck, ArrowLeft, Loader2, Tag, Check, AlertCircle, Banknote, CreditCard, MessageCircle, Landmark, Copy, Sparkles, Smartphone, CheckCheck } from 'lucide-react';
 import { useCart } from '@/context/CartContext';
 import { track } from '@/lib/tracking/events';
 import { safeFetch } from '@/lib/apiClient';
@@ -17,17 +17,6 @@ export const dynamic = 'force-dynamic';
 
 export default function CheckoutPage() {
   const router = useRouter();
-
-  useEffect(() => {
-    fetch('/api/settings')
-      .then((res) => res.json())
-      .then((data) => {
-        if (data.settings && data.settings['whatsapp.order_confirmation_enabled'] !== undefined) {
-          setWhatsappEnabled(Boolean(data.settings['whatsapp.order_confirmation_enabled']));
-        }
-      })
-      .catch(() => {});
-  }, []);
   const { items, totalItems, subtotal, freeShippingThreshold, standardShippingCost, currency, refreshCart } = useCart();
 
   // Address form fields
@@ -43,8 +32,39 @@ export default function CheckoutPage() {
   const [notes, setNotes] = useState('');
 
   // Payment method
-  const [paymentMethod, setPaymentMethod] = useState('COD');
-  const [whatsappEnabled, setWhatsappEnabled] = useState<boolean>(true);
+  const [paymentMethod, setPaymentMethod] = useState<'COD' | 'BANK_TRANSFER'>('COD');
+
+  // Bank Transfer & Prepayment Incentive Settings
+  const [bankSettings, setBankSettings] = useState<{
+    enabled: boolean;
+    bankName: string;
+    accountTitle: string;
+    accountNumber: string;
+    bankName2: string;
+    accountTitle2: string;
+    accountNumber2: string;
+    instructions: string;
+    discountEnabled: boolean;
+    discountType: 'percentage' | 'fixed';
+    discountValue: number;
+    whatsappNumber: string;
+  }>({
+    enabled: false,
+    bankName: '',
+    accountTitle: '',
+    accountNumber: '',
+    bankName2: '',
+    accountTitle2: '',
+    accountNumber2: '',
+    instructions: '',
+    discountEnabled: false,
+    discountType: 'percentage',
+    discountValue: 0,
+    whatsappNumber: '',
+  });
+
+  const [selectedAccountSlot, setSelectedAccountSlot] = useState<1 | 2>(1);
+  const [copiedAccount, setCopiedAccount] = useState(false);
 
   // Coupon state
   const [couponCode, setCouponCode] = useState('');
@@ -55,6 +75,43 @@ export default function CheckoutPage() {
   // Submitting state
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [checkoutError, setCheckoutError] = useState<string | null>(null);
+
+  // Store notification settings (WhatsApp vs Email)
+  const [isEmailRequired, setIsEmailRequired] = useState(false);
+  const [whatsappEnabled, setWhatsappEnabled] = useState(true);
+
+  useEffect(() => {
+    safeFetch<any>('/api/settings').then(({ ok, data }) => {
+      if (ok && data?.settings) {
+        const s = data.settings;
+        if (typeof s.emailRequiredAtCheckout === 'boolean') {
+          setIsEmailRequired(s.emailRequiredAtCheckout);
+        } else {
+          const smtp = Boolean(s.emailSmtpEnabled);
+          const wa = s.whatsappOrderConfirmationEnabled !== false;
+          setIsEmailRequired(smtp || !wa);
+        }
+        setWhatsappEnabled(s.whatsappOrderConfirmationEnabled !== false);
+
+        setBankSettings({
+          enabled: Boolean(s.bankTransferEnabled),
+          bankName: s.bankName || 'Meezan Bank',
+          accountTitle: s.accountTitle || '',
+          accountNumber: s.accountNumber || '',
+          bankName2: s.bankName2 || '',
+          accountTitle2: s.accountTitle2 || '',
+          accountNumber2: s.accountNumber2 || '',
+          instructions:
+            s.bankInstructions ||
+            'Please transfer the total order amount to the bank account above and send your payment screenshot with Order # to our WhatsApp for immediate dispatch.',
+          discountEnabled: Boolean(s.bankDiscountEnabled),
+          discountType: s.bankDiscountType || 'percentage',
+          discountValue: Number(s.bankDiscountValue) || 0,
+          whatsappNumber: s.whatsappNumber || '',
+        });
+      }
+    });
+  }, []);
 
   // Abandoned Checkout Session ID
   const [sessionId, setSessionId] = useState<string>('');
@@ -73,8 +130,32 @@ export default function CheckoutPage() {
   }, []);
 
   const shippingCost = subtotal >= freeShippingThreshold ? 0 : (standardShippingCost || 250);
-  const discountAmount = appliedCoupon?.discountAmount || 0;
+  const couponDiscount = appliedCoupon?.discountAmount || 0;
+
+  // Real-time prepayment incentive discount calculation
+  let bankTransferDiscount = 0;
+  if (paymentMethod === 'BANK_TRANSFER' && bankSettings.discountEnabled && bankSettings.discountValue > 0) {
+    const netEligibleSubtotal = Math.max(0, subtotal - couponDiscount);
+    if (bankSettings.discountType === 'percentage') {
+      bankTransferDiscount = Math.round(((netEligibleSubtotal * bankSettings.discountValue) / 100) * 100) / 100;
+    } else {
+      bankTransferDiscount = Math.min(netEligibleSubtotal, bankSettings.discountValue);
+    }
+  }
+
+  const discountAmount = Math.min(subtotal, couponDiscount + bankTransferDiscount);
   const grandTotal = Math.max(0, subtotal - discountAmount + shippingCost);
+
+  const handleCopyAccount = (textToCopy: string) => {
+    if (!textToCopy) return;
+    try {
+      navigator.clipboard.writeText(textToCopy);
+      setCopiedAccount(true);
+      setTimeout(() => setCopiedAccount(false), 2000);
+    } catch {
+      // ignore
+    }
+  };
 
   // Debounced abandoned checkout capture on checkout page
   useEffect(() => {
@@ -168,28 +249,53 @@ export default function CheckoutPage() {
     setCouponError(null);
   };
 
+  const triggerValidationError = (elementId?: string, errorMsg?: string) => {
+    if (errorMsg) setCheckoutError(errorMsg);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    if (elementId) {
+      setTimeout(() => {
+        document.getElementById(elementId)?.focus();
+      }, 150);
+    }
+  };
+
   const handleSubmitOrder = async (e: React.FormEvent) => {
     e.preventDefault();
     setCheckoutError(null);
 
     if (items.length === 0) {
-      setCheckoutError('Your shopping bag is empty.');
-      window.scrollTo({ top: 0, behavior: 'smooth' });
+      triggerValidationError(undefined, 'Your shopping bag is empty.');
+      return;
+    }
+
+    if (isEmailRequired && !email.trim()) {
+      triggerValidationError('checkout-email', 'Please provide a valid email address.');
+      return;
+    }
+
+    if (!firstName.trim()) {
+      triggerValidationError('checkout-first-name', 'Please provide your first name.');
+      return;
+    }
+
+    if (!lastName.trim()) {
+      triggerValidationError('checkout-last-name', 'Please provide your last name.');
       return;
     }
 
     const addrCheck = validateAddressLine(address, 'Pakistan');
     if (!addrCheck.valid) {
-      setCheckoutError(addrCheck.error || 'Please provide a complete street address');
-      window.scrollTo({ top: 0, behavior: 'smooth' });
-      document.getElementById('checkout-address')?.focus();
+      triggerValidationError('checkout-address', addrCheck.error || 'Please provide a complete street address.');
       return;
     }
 
     if (!isPhoneValid(phone, 'Pakistan')) {
-      setCheckoutError('Please provide a valid 11-digit mobile number (e.g. 0300 1234567)');
-      window.scrollTo({ top: 0, behavior: 'smooth' });
-      document.getElementById('checkout-phone')?.focus();
+      triggerValidationError('checkout-phone', 'Please provide a valid 11-digit mobile number (e.g. 0300 1234567).');
+      return;
+    }
+
+    if (!city.trim()) {
+      triggerValidationError('checkout-city', 'Please select or enter your city.');
       return;
     }
 
@@ -222,8 +328,7 @@ export default function CheckoutPage() {
       });
 
       if (!ok) {
-        setCheckoutError(error || 'Failed to place order.');
-        window.scrollTo({ top: 0, behavior: 'smooth' });
+        triggerValidationError(undefined, error || 'Failed to place order.');
         setIsSubmitting(false);
         return;
       }
@@ -235,8 +340,7 @@ export default function CheckoutPage() {
       router.push(`/checkout/success/${data.orderNumber}`);
     } catch (err: any) {
       console.error('Checkout error:', err);
-      setCheckoutError(err?.message || 'Network error while placing order.');
-      window.scrollTo({ top: 0, behavior: 'smooth' });
+      triggerValidationError(undefined, err?.message || 'Network error while placing order.');
       setIsSubmitting(false);
     }
   };
@@ -279,12 +383,43 @@ export default function CheckoutPage() {
       )}
 
       <form onSubmit={handleSubmitOrder} className="grid grid-cols-1 gap-8 lg:grid-cols-12">
-        {/* Left 7 Cols: Shipping, Contact, Payment */}
+        {/* Left 7 Cols: Contact, Shipping, Payment */}
         <div className="lg:col-span-7 space-y-6">
+          {/* Contact Information */}
+          <div className="rounded-xl border border-border bg-card p-5 space-y-4 shadow-sm">
+            <h2 className="text-sm font-bold uppercase tracking-wider text-foreground">
+              1. Customer Contact
+            </h2>
+
+            <div className="space-y-1">
+              <label htmlFor="checkout-email" className="block text-[11px] font-semibold text-muted-foreground">
+                {isEmailRequired ? 'Email Address *' : 'Email Address (Optional)'}
+              </label>
+              <input
+                id="checkout-email"
+                type="email"
+                required={isEmailRequired}
+                aria-required={isEmailRequired ? 'true' : undefined}
+                autoComplete="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder={isEmailRequired ? 'name@example.com' : 'name@example.com (optional)'}
+                className="w-full rounded-lg border border-input bg-background p-2.5 text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20"
+              />
+              <p className="text-[10px] text-muted-foreground">
+                {isEmailRequired
+                  ? 'Order receipts and dispatch updates will be sent to this email.'
+                  : whatsappEnabled
+                  ? 'Order confirmation will be sent via WhatsApp. Enter email if you also want digital receipts.'
+                  : 'Optional — enter your email to receive order updates and digital invoice.'}
+              </p>
+            </div>
+          </div>
+
           {/* Delivery Address */}
           <div className="rounded-xl border border-border bg-card p-5 space-y-4 shadow-sm">
             <h2 className="text-sm font-bold uppercase tracking-wider text-foreground">
-              1. Delivery Address
+              2. Delivery Address
             </h2>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -344,7 +479,6 @@ export default function CheckoutPage() {
               </div>
             )}
 
-
             <div className="space-y-1 pt-1">
               <label htmlFor="checkout-notes" className="block text-[11px] font-semibold text-muted-foreground">Delivery Notes (Optional)</label>
               <textarea
@@ -356,36 +490,23 @@ export default function CheckoutPage() {
                 className="w-full rounded-lg border border-input bg-background p-2.5 text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20"
               />
             </div>
-
-            {/* Email Address (Optional) - placed at bottom */}
-            <div className="space-y-1 pt-2 border-t border-border/60">
-              <div className="flex items-center justify-between">
-                <label htmlFor="checkout-email" className="block text-[11px] font-semibold text-muted-foreground">
-                  Email Address <span className="font-normal text-muted-foreground/80">(Optional)</span>
-                </label>
-                <span className="text-[10px] text-muted-foreground">For receipt &amp; tracking updates</span>
-              </div>
-              <input
-                id="checkout-email"
-                type="email"
-                autoComplete="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="name@example.com (optional)"
-                className="w-full rounded-lg border border-input bg-background p-2.5 text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20"
-              />
-            </div>
           </div>
 
           {/* Payment Method Selection */}
           <div className="rounded-xl border border-border bg-card p-5 space-y-4 shadow-sm">
             <h2 className="text-sm font-bold uppercase tracking-wider text-foreground">
-              2. Payment Method
+              3. Payment Method
             </h2>
 
-            <div className="space-y-2">
-              {/* Cash On Delivery (Active & Only Option) */}
-              <label className="flex items-center justify-between p-3.5 rounded-xl border-2 border-primary bg-primary/5 cursor-pointer">
+            <div className="space-y-3">
+              {/* Cash On Delivery */}
+              <label
+                className={`flex items-center justify-between p-3.5 rounded-xl border-2 cursor-pointer transition-all ${
+                  paymentMethod === 'COD'
+                    ? 'border-primary bg-primary/5 shadow-xs'
+                    : 'border-border bg-card hover:border-border/80'
+                }`}
+              >
                 <div className="flex items-center gap-3">
                   <input
                     type="radio"
@@ -393,7 +514,7 @@ export default function CheckoutPage() {
                     value="COD"
                     checked={paymentMethod === 'COD'}
                     onChange={() => setPaymentMethod('COD')}
-                    className="text-primary focus:ring-primary"
+                    className="text-primary focus:ring-primary h-4 w-4"
                   />
                   <div>
                     <div className="flex items-center gap-2">
@@ -401,14 +522,173 @@ export default function CheckoutPage() {
                       <span className="text-xs font-bold text-foreground">Cash On Delivery (COD)</span>
                     </div>
                     <p className="text-[11px] text-muted-foreground mt-0.5">
-                      Pay in cash when your order arrives at your address. Free delivery across Pakistan.
+                      Pay in cash when your parcel arrives at your address.
                     </p>
                   </div>
                 </div>
                 <span className="rounded-full bg-primary/10 px-2.5 py-0.5 text-[10px] font-bold text-primary">
-                  Selected
+                  Standard
                 </span>
               </label>
+
+              {/* Direct Bank Transfer (IBFT / Raast / Wallets) */}
+              {bankSettings.enabled && (
+                <div
+                  className={`rounded-xl border-2 transition-all overflow-hidden ${
+                    paymentMethod === 'BANK_TRANSFER'
+                      ? 'border-primary bg-primary/5 shadow-xs'
+                      : 'border-border bg-card hover:border-border/80'
+                  }`}
+                >
+                  <label className="flex items-center justify-between p-3.5 cursor-pointer">
+                    <div className="flex items-center gap-3">
+                      <input
+                        type="radio"
+                        name="paymentMethod"
+                        value="BANK_TRANSFER"
+                        checked={paymentMethod === 'BANK_TRANSFER'}
+                        onChange={() => setPaymentMethod('BANK_TRANSFER')}
+                        className="text-primary focus:ring-primary h-4 w-4"
+                      />
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <Landmark className="h-4 w-4 text-primary" />
+                          <span className="text-xs font-bold text-foreground">Direct Bank Transfer / IBFT</span>
+                        </div>
+                        <p className="text-[11px] text-muted-foreground mt-0.5">
+                          Meezan, HBL, Raast, Sadapay, Nayapay & Mobile Banking.
+                        </p>
+                      </div>
+                    </div>
+                    {bankSettings.discountEnabled && bankSettings.discountValue > 0 ? (
+                      <span className="rounded-full bg-emerald-500/15 border border-emerald-500/30 px-2.5 py-0.5 text-[10px] font-bold text-emerald-700 dark:text-emerald-300 animate-pulse">
+                        ✨ {bankSettings.discountType === 'percentage' ? `${bankSettings.discountValue}% OFF` : `Save ${currency} ${bankSettings.discountValue}`}
+                      </span>
+                    ) : (
+                      <span className="rounded-full bg-muted px-2.5 py-0.5 text-[10px] font-semibold text-muted-foreground">
+                        Prepaid
+                      </span>
+                    )}
+                  </label>
+
+                  {/* Expandable Bank Details Accordion */}
+                  {paymentMethod === 'BANK_TRANSFER' && (
+                    <div className="px-4 pb-4 pt-1 border-t border-border/60 space-y-3.5 bg-background/60">
+                      {/* Optional Account Switcher Tabs */}
+                      {Boolean(bankSettings.bankName2 && bankSettings.accountNumber2) && (
+                        <div className="flex gap-2 pt-1">
+                          <button
+                            type="button"
+                            onClick={() => setSelectedAccountSlot(1)}
+                            className={`flex-1 py-1.5 px-3 rounded-lg text-xs font-bold transition-all ${
+                              selectedAccountSlot === 1
+                                ? 'bg-primary text-primary-foreground shadow-xs'
+                                : 'bg-muted/60 text-muted-foreground hover:bg-muted'
+                            }`}
+                          >
+                            {bankSettings.bankName || 'Account 1'}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setSelectedAccountSlot(2)}
+                            className={`flex-1 py-1.5 px-3 rounded-lg text-xs font-bold transition-all ${
+                              selectedAccountSlot === 2
+                                ? 'bg-primary text-primary-foreground shadow-xs'
+                                : 'bg-muted/60 text-muted-foreground hover:bg-muted'
+                            }`}
+                          >
+                            {bankSettings.bankName2 || 'Account 2'}
+                          </button>
+                        </div>
+                      )}
+
+                      {/* Active Account Details Box */}
+                      {(() => {
+                        const activeBank = selectedAccountSlot === 2 ? bankSettings.bankName2 : bankSettings.bankName;
+                        const activeTitle = selectedAccountSlot === 2 ? bankSettings.accountTitle2 : bankSettings.accountTitle;
+                        const activeNumber = selectedAccountSlot === 2 ? bankSettings.accountNumber2 : bankSettings.accountNumber;
+
+                        return (
+                          <div className="rounded-xl border border-border bg-card p-3.5 space-y-2.5 shadow-2xs">
+                            <div className="flex items-center justify-between">
+                              <span className="text-[11px] font-semibold text-muted-foreground">Bank / Provider</span>
+                              <span className="text-xs font-bold text-foreground">{activeBank || 'Bank Transfer'}</span>
+                            </div>
+
+                            <div className="flex items-center justify-between">
+                              <span className="text-[11px] font-semibold text-muted-foreground">Account Title</span>
+                              <span className="text-xs font-bold text-foreground">{activeTitle || 'Store Account'}</span>
+                            </div>
+
+                            <div className="flex items-center justify-between pt-1 border-t border-border/60">
+                              <div>
+                                <span className="text-[11px] font-semibold text-muted-foreground block">Account # / IBAN</span>
+                                <span className="text-xs font-mono font-extrabold text-foreground tracking-wider select-all">
+                                  {activeNumber}
+                                </span>
+                              </div>
+                              <button
+                                type="button"
+                                onClick={() => handleCopyAccount(activeNumber)}
+                                className="inline-flex items-center gap-1.5 rounded-lg bg-primary/10 hover:bg-primary/20 text-primary px-3 py-1.5 text-xs font-bold transition-colors active:scale-95"
+                                title="Copy Account Number"
+                              >
+                                {copiedAccount ? (
+                                  <>
+                                    <CheckCheck className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
+                                    <span className="text-emerald-600 dark:text-emerald-400">Copied!</span>
+                                  </>
+                                ) : (
+                                  <>
+                                    <Copy className="h-3.5 w-3.5" />
+                                    <span>Copy</span>
+                                  </>
+                                )}
+                              </button>
+                            </div>
+                          </div>
+                        );
+                      })()}
+
+                      {/* WhatsApp Screenshot & Instructions Prompt */}
+                      <div className="rounded-lg bg-emerald-500/10 border border-emerald-500/20 p-3 text-xs text-emerald-900 dark:text-emerald-200 space-y-1">
+                        <div className="flex items-center gap-1.5 font-bold">
+                          <MessageCircle className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                          <span>WhatsApp Screenshot Verification:</span>
+                        </div>
+                        <p className="text-[11px] leading-relaxed opacity-90">
+                          {bankSettings.instructions ||
+                            'Transfer the order total to the account above. After placing the order, send your payment screenshot to our WhatsApp for immediate dispatch.'}
+                        </p>
+                      </div>
+
+                      {bankTransferDiscount > 0 && (
+                        <div className="flex items-center gap-1.5 text-xs text-emerald-700 dark:text-emerald-300 font-semibold pt-0.5">
+                          <Sparkles className="h-3.5 w-3.5 shrink-0" />
+                          <span>You save {formatCurrency(bankTransferDiscount)} on this order with Direct Bank Transfer!</span>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Online Gateway Option (Disabled / Future Gateway Slot) */}
+              <div className="flex items-center justify-between p-3.5 rounded-xl border border-border bg-muted/20 opacity-60 cursor-not-allowed">
+                <div className="flex items-center gap-3">
+                  <input type="radio" disabled name="paymentMethod" />
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <CreditCard className="h-4 w-4 text-muted-foreground" />
+                      <span className="text-xs font-medium text-foreground">Debit / Credit Card</span>
+                    </div>
+                    <p className="text-[11px] text-muted-foreground mt-0.5">
+                      Online Visa / Mastercard (Coming Soon)
+                    </p>
+                  </div>
+                </div>
+                <span className="text-[10px] font-semibold text-muted-foreground">Gateway Slot</span>
+              </div>
             </div>
           </div>
         </div>
@@ -499,10 +779,20 @@ export default function CheckoutPage() {
                 <span className="font-semibold text-foreground">{formatCurrency(subtotal)}</span>
               </div>
 
-              {discountAmount > 0 && (
+              {couponDiscount > 0 && (
                 <div className="flex justify-between text-success font-medium">
-                  <span>Coupon Discount</span>
-                  <span>- {formatCurrency(discountAmount)}</span>
+                  <span>Coupon Discount {appliedCoupon?.code ? `(${appliedCoupon.code})` : ''}</span>
+                  <span>- {formatCurrency(couponDiscount)}</span>
+                </div>
+              )}
+
+              {paymentMethod === 'BANK_TRANSFER' && bankTransferDiscount > 0 && (
+                <div className="flex justify-between text-emerald-600 dark:text-emerald-400 font-semibold">
+                  <span className="flex items-center gap-1">
+                    <Sparkles className="h-3 w-3 shrink-0" />
+                    <span>Bank Transfer Discount</span>
+                  </span>
+                  <span>- {formatCurrency(bankTransferDiscount)}</span>
                 </div>
               )}
 
@@ -521,13 +811,18 @@ export default function CheckoutPage() {
               </div>
             </div>
 
-            {/* Submit CTA */}
+            {/* Inline validation alert for mobile & desktop visibility */}
             {checkoutError && (
-              <p className="text-center text-xs font-semibold text-destructive px-1 bg-destructive/10 border border-destructive/20 rounded-lg py-2">
-                {checkoutError}
-              </p>
+              <div className="flex items-start gap-2.5 rounded-xl border border-destructive/30 bg-destructive/10 p-3 text-xs text-destructive animate-in fade-in">
+                <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
+                <div>
+                  <p className="font-semibold">Unable to place order</p>
+                  <p className="mt-0.5">{checkoutError}</p>
+                </div>
+              </div>
             )}
 
+            {/* Submit CTA */}
             <button
               type="submit"
               disabled={isSubmitting}
@@ -538,8 +833,10 @@ export default function CheckoutPage() {
                   <Loader2 className="h-4 w-4 animate-spin" />
                   <span>Confirming Order...</span>
                 </>
+              ) : paymentMethod === 'BANK_TRANSFER' ? (
+                <span>Confirm Bank Transfer Order ({formatCurrency(grandTotal)})</span>
               ) : (
-                <span>Place Order with Cash on Delivery</span>
+                <span>Place Order with Cash on Delivery ({formatCurrency(grandTotal)})</span>
               )}
             </button>
 

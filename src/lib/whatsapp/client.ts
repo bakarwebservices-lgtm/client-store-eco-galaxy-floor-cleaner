@@ -86,6 +86,11 @@ export async function sendWhatsAppOrderConfirmation(
   const totalStr = `${currency} ${order.totalPrice.toLocaleString()}`;
   const addressStr = [shipping.address, shipping.city].filter(Boolean).join(', ');
   const storeName = await getSetting<string>('store.name', 'Our Store');
+  const isBankTransfer = order.paymentMethod === 'BANK_TRANSFER';
+  const paymentMethodLabel = isBankTransfer ? 'Bank Transfer' : 'Cash On Delivery (COD)';
+  const bankNote = isBankTransfer
+    ? `\nℹ️ Please reply to this chat with your payment transfer screenshot.\n`
+    : '';
 
   // Construct payload: Interactive Button message
   // Provides two buttons: "Confirm Order" and "Cancel Order"
@@ -103,8 +108,9 @@ export async function sendWhatsAppOrderConfirmation(
       body: {
         text: `Hello ${customerName}! Thank you for placing your order with ${storeName}.\n\n` +
               `📦 Order: #${order.orderNumber}\n` +
-              `💰 Total (COD): ${totalStr}\n` +
-              `📍 Destination: ${addressStr}\n\n` +
+              `💰 Total (${paymentMethodLabel}): ${totalStr}\n` +
+              `📍 Destination: ${addressStr}\n` +
+              bankNote + '\n' +
               `Please tap below to confirm your order so we can dispatch it right away:`,
       },
       footer: {
