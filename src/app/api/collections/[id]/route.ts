@@ -115,8 +115,35 @@ export async function GET(
       totalProducts = totalCount;
     }
 
+    let allAssignedProductIds: string[] = [];
+    if (collection.type === 'MANUAL') {
+      const allCp = await db.collectionProduct.findMany({
+        where: { collectionId: collection.id },
+        select: { productId: true },
+        orderBy: { position: 'asc' },
+      });
+      allAssignedProductIds = allCp.map((cp) => cp.productId);
+    } else {
+      const allSmart = await db.product.findMany({
+        where: {
+          deletedAt: null,
+          ...(isAdmin ? {} : { status: ProductStatus.ACTIVE }),
+          ...resolveSmartCollectionWhere({
+            ruleField: collection.ruleField,
+            ruleOperator: collection.ruleOperator,
+            ruleValue: collection.ruleValue,
+          }),
+        },
+        select: { id: true },
+      });
+      allAssignedProductIds = allSmart.map((p) => p.id);
+    }
+
     return NextResponse.json({
-      collection,
+      collection: {
+        ...collection,
+        productIds: allAssignedProductIds,
+      },
       products,
       pagination: {
         page,

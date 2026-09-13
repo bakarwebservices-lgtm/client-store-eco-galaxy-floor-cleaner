@@ -21,7 +21,11 @@ export default function EditCollectionPage({
         const res = await fetch(`/api/collections/${id}?admin=true`);
         if (!res.ok) throw new Error('Collection not found');
         const data = await res.json();
-        setCollection(data.collection);
+        setCollection({
+          ...data.collection,
+          productIds: data.collection?.productIds || [],
+          products: data.products || [],
+        });
       } catch (err: any) {
         setError(err.message || 'Failed to load collection');
       } finally {

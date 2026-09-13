@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import Link from 'next/link';
 import { MediaUploadModal } from './MediaUploadModal';
+import { RichTextEditor } from './RichTextEditor';
 import { CollectionSchema, type CollectionInput } from '@/lib/validation/taxonomy';
 import { safeFetch } from '@/lib/apiClient';
 import {
@@ -16,6 +17,8 @@ import {
   ListOrdered,
   Search,
   Check,
+  FolderTree,
+  X,
 } from 'lucide-react';
 
 interface CollectionFormProps {
@@ -49,9 +52,16 @@ export function CollectionForm({ initialData, isEditing = false }: CollectionFor
   // Manual Product Selection
   const [availableProducts, setAvailableProducts] = useState<ProductPickerItem[]>([]);
   const [selectedProductIds, setSelectedProductIds] = useState<string[]>(
-    initialData?.products?.map((p: any) => p.productId || p.id) || []
+    initialData?.productIds || initialData?.products?.map((p: any) => p.productId || p.id) || []
   );
   const [productSearch, setProductSearch] = useState('');
+
+  // Category-to-Collection Bulk Import State
+  const [categoryImportModalOpen, setCategoryImportModalOpen] = useState(false);
+  const [categoriesList, setCategoriesList] = useState<Array<{ id: string; name: string; slug: string }>>([]);
+  const [selectedCategoryImportIds, setSelectedCategoryImportIds] = useState<string[]>([]);
+  const [importingCategories, setImportingCategories] = useState(false);
+  const [importSuccessMsg, setImportSuccessMsg] = useState<string | null>(null);
 
   // Settings
   const [isActive, setIsActive] = useState(initialData?.isActive !== undefined ? initialData.isActive : true);
@@ -70,7 +80,7 @@ export function CollectionForm({ initialData, isEditing = false }: CollectionFor
   useEffect(() => {
     async function loadProducts() {
       try {
-        const res = await fetch('/api/products?admin=true&limit=50');
+        const res = await fetch('/api/products?admin=true&limit=100');
         if (res.ok) {
           const data = await res.json();
           setAvailableProducts(data.products || []);
@@ -81,6 +91,52 @@ export function CollectionForm({ initialData, isEditing = false }: CollectionFor
     }
     loadProducts();
   }, []);
+
+  const openCategoryImportModal = async () => {
+    setCategoryImportModalOpen(true);
+    setImportSuccessMsg(null);
+    try {
+      const res = await fetch('/api/categories?admin=true');
+      if (res.ok) {
+        const data = await res.json();
+        setCategoriesList(data.categories || []);
+      }
+    } catch (err) {
+      console.error('Failed to load categories for import', err);
+    }
+  };
+
+  const handleExecuteCategoryImport = async () => {
+    if (selectedCategoryImportIds.length === 0) return;
+    setImportingCategories(true);
+    setImportSuccessMsg(null);
+    try {
+      const allCategoryProductIds: string[] = [];
+      for (const catId of selectedCategoryImportIds) {
+        const res = await fetch(`/api/categories/${catId}?admin=true&limit=100`);
+        if (res.ok) {
+          const data = await res.json();
+          if (data.products && Array.isArray(data.products)) {
+            allCategoryProductIds.push(...data.products.map((p: any) => p.id));
+          }
+        }
+      }
+
+      const merged = Array.from(new Set([...selectedProductIds, ...allCategoryProductIds]));
+      const addedCount = merged.length - selectedProductIds.length;
+      setSelectedProductIds(merged);
+      setImportSuccessMsg(
+        addedCount > 0
+          ? `Successfully imported ${addedCount} products from selected categories!`
+          : `All products from the selected categories were already in this collection.`
+      );
+      setSelectedCategoryImportIds([]);
+    } catch (err) {
+      console.error('Error importing category products', err);
+    } finally {
+      setImportingCategories(false);
+    }
+  };
 
   const handleNameChange = (val: string) => {
     setName(val);
@@ -222,16 +278,15 @@ export function CollectionForm({ initialData, isEditing = false }: CollectionFor
 
             {/* Description */}
             <div className="space-y-1.5">
-              <label htmlFor="col-desc" className="block text-xs font-semibold text-foreground">
+              <label className="block text-xs font-semibold text-foreground">
                 Description
               </label>
-              <textarea
+              <RichTextEditor
                 id="col-desc"
-                rows={3}
                 value={description}
-                onChange={(e) => setDescription(e.target.value)}
+                onChange={setDescription}
                 placeholder="Brief summary of items in this collection..."
-                className="w-full rounded-lg border border-input bg-background p-2.5 text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20"
+                rows={4}
               />
             </div>
           </div>
@@ -354,11 +409,22 @@ export function CollectionForm({ initialData, isEditing = false }: CollectionFor
             {/* MANUAL Product Picker */}
             {type === 'MANUAL' && (
               <div className="space-y-3 pt-2">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold text-foreground">
-                    Selected Products ({selectedProductIds.length})
-                  </span>
-                  <div className="relative w-48">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-bold text-foreground">
+                      Selected Products ({selectedProductIds.length})
+                    </span>
+                    <button
+                      type="button"
+                      onClick={openCategoryImportModal}
+                      className="inline-flex items-center gap-1.5 rounded-lg border border-primary/30 bg-primary/10 px-2.5 py-1 text-xs font-semibold text-primary hover:bg-primary/20 transition-colors shadow-xs"
+                    >
+                      <FolderTree className="h-3.5 w-3.5" />
+                      <span>Import from Category</span>
+                    </button>
+                  </div>
+
+                  <div className="relative w-full sm:w-48">
                     <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
                     <input
                       type="text"
@@ -369,6 +435,19 @@ export function CollectionForm({ initialData, isEditing = false }: CollectionFor
                     />
                   </div>
                 </div>
+
+                {importSuccessMsg && (
+                  <div className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-2.5 text-xs text-emerald-700 flex items-center justify-between">
+                    <span>{importSuccessMsg}</span>
+                    <button
+                      type="button"
+                      onClick={() => setImportSuccessMsg(null)}
+                      className="opacity-70 hover:opacity-100"
+                    >
+                      <X className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
+                )}
 
                 <div className="max-h-64 overflow-y-auto rounded-xl border border-border bg-background divide-y divide-border">
                   {filteredProducts.length === 0 ? (
@@ -595,6 +674,96 @@ export function CollectionForm({ initialData, isEditing = false }: CollectionFor
         allowMultiple={false}
         title="Select or Upload Collection Banner"
       />
+    )}
+
+    {/* Category Import Modal */}
+    {categoryImportModalOpen && (
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-xs">
+        <div className="w-full max-w-md rounded-2xl border border-border bg-card p-6 shadow-xl space-y-4">
+          <div className="flex items-center justify-between border-b border-border pb-3">
+            <div className="flex items-center gap-2">
+              <FolderTree className="h-4 w-4 text-primary" />
+              <h3 className="text-sm font-bold text-foreground">Import from Category</h3>
+            </div>
+            <button
+              type="button"
+              onClick={() => setCategoryImportModalOpen(false)}
+              className="rounded-lg p-1 text-muted-foreground hover:bg-muted hover:text-foreground"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+
+          <p className="text-xs text-muted-foreground">
+            Select one or more categories. All products currently in these categories will be automatically imported into this collection.
+          </p>
+
+          <div className="max-h-60 overflow-y-auto rounded-xl border border-border bg-background divide-y divide-border">
+            {categoriesList.length === 0 ? (
+              <div className="p-4 text-center text-xs text-muted-foreground">
+                No active categories found
+              </div>
+            ) : (
+              categoriesList.map((cat) => {
+                const isChecked = selectedCategoryImportIds.includes(cat.id);
+                return (
+                  <label
+                    key={cat.id}
+                    className={`flex items-center justify-between p-3 cursor-pointer hover:bg-muted/40 transition-colors ${
+                      isChecked ? 'bg-primary/5' : ''
+                    }`}
+                  >
+                    <div className="flex items-center gap-3">
+                      <input
+                        type="checkbox"
+                        checked={isChecked}
+                        onChange={() => {
+                          setSelectedCategoryImportIds((prev) =>
+                            prev.includes(cat.id)
+                              ? prev.filter((id) => id !== cat.id)
+                              : [...prev, cat.id]
+                          );
+                        }}
+                        className="h-4 w-4 rounded border-border text-primary focus:ring-primary"
+                      />
+                      <span className="text-xs font-semibold text-foreground">{cat.name}</span>
+                    </div>
+                    <span className="text-[10px] text-muted-foreground font-mono">/categories/{cat.slug}</span>
+                  </label>
+                );
+              })
+            )}
+          </div>
+
+          <div className="flex items-center justify-end gap-2 pt-2 border-t border-border">
+            <button
+              type="button"
+              onClick={() => setCategoryImportModalOpen(false)}
+              className="rounded-lg border border-border bg-background px-3 py-1.5 text-xs font-medium text-foreground hover:bg-muted"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              disabled={selectedCategoryImportIds.length === 0 || importingCategories}
+              onClick={async () => {
+                await handleExecuteCategoryImport();
+                setCategoryImportModalOpen(false);
+              }}
+              className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-4 py-1.5 text-xs font-semibold text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
+            >
+              {importingCategories ? (
+                <>
+                  <Loader2 className="h-3 w-3 animate-spin" />
+                  <span>Importing...</span>
+                </>
+              ) : (
+                <span>Import Products ({selectedCategoryImportIds.length} categories)</span>
+              )}
+            </button>
+          </div>
+        </div>
+      </div>
     )}
   </>
   );
