@@ -73,9 +73,11 @@ export async function PUT(request: NextRequest) {
       }
     }
 
-    // Revalidate root layout cache so theme tokens and site identity update immediately
+    // Revalidate root layout and page cache so theme tokens, hero showcase, and site identity update immediately
     try {
       revalidatePath('/', 'layout');
+      revalidatePath('/', 'page');
+      revalidatePath('/');
     } catch {
       // Non-critical in test environments
     }
