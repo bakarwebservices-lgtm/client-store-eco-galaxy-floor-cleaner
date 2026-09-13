@@ -145,6 +145,13 @@ export function HeroPackSelector({
       <div className="grid grid-cols-3 gap-2.5">
         {PACKS.map((pack) => {
           const isSelected = selectedSlug === pack.slug;
+          const liveProd = productMap[pack.slug];
+          const livePrice = liveProd ? liveProd.price : pack.price;
+          const liveCompare = liveProd ? liveProd.comparePrice : pack.comparePrice;
+          const discountPct = (liveCompare && liveCompare > livePrice)
+            ? Math.round(((liveCompare - livePrice) / liveCompare) * 100)
+            : null;
+
           return (
             <button
               key={pack.slug}
@@ -157,15 +164,19 @@ export function HeroPackSelector({
                   : 'bg-black/30 text-white/90 hover:bg-black/50 border border-white/15'
               }`}
             >
-              {pack.highlight && (
+              {discountPct ? (
                 <span className="absolute -top-2.5 left-1/2 -translate-x-1/2 rounded-full bg-amber-400 px-2 py-0.5 text-[9px] font-extrabold uppercase tracking-tight text-black shadow-sm whitespace-nowrap">
-                  35% OFF
+                  {discountPct}% OFF
                 </span>
-              )}
+              ) : pack.highlight ? (
+                <span className="absolute -top-2.5 left-1/2 -translate-x-1/2 rounded-full bg-amber-400 px-2 py-0.5 text-[9px] font-extrabold uppercase tracking-tight text-black shadow-sm whitespace-nowrap">
+                  Best Value
+                </span>
+              ) : null}
               <span className="text-xs font-extrabold">{pack.bottles} {pack.bottles === 1 ? 'Bottle' : 'Bottles'}</span>
               <span className="text-[11px] opacity-90">{pack.bottles}L Total</span>
               <span className="mt-1 text-xs font-bold text-white">
-                Rs. {pack.price.toLocaleString()}
+                Rs. {livePrice.toLocaleString()}
               </span>
             </button>
           );
