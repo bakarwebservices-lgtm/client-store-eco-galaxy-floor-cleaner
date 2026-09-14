@@ -115,7 +115,33 @@ export async function GET(
       return NextResponse.json({ error: 'Order not found' }, { status: 404 });
     }
 
-    return NextResponse.json({ order });
+    // Compute Customer Lifetime Metrics
+    const customerOrders = await db.order.findMany({
+      where: {
+        customerId: order.customerId,
+        deletedAt: null,
+      },
+      select: {
+        id: true,
+        orderNumber: true,
+        totalPrice: true,
+        createdAt: true,
+      },
+      orderBy: { createdAt: 'asc' },
+    });
+
+    const totalOrders = customerOrders.length;
+    const isFirstOrder = customerOrders.length > 0 && customerOrders[0].id === order.id;
+    const lifetimeSpend = customerOrders.reduce((sum, o) => sum + (o.totalPrice || 0), 0);
+
+    return NextResponse.json({
+      order,
+      customerMetrics: {
+        isFirstOrder,
+        totalOrders,
+        lifetimeSpend,
+      },
+    });
   } catch (error: any) {
     if (error.status === 401) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     return NextResponse.json({ error: 'Failed to retrieve order' }, { status: 500 });

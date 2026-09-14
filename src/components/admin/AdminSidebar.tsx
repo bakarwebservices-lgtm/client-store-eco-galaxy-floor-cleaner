@@ -25,6 +25,7 @@ import {
   X,
   Shield,
   ChevronRight,
+  BarChart3,
 } from 'lucide-react';
 import { safeFetch } from '@/lib/apiClient';
 
@@ -45,6 +46,7 @@ const navSections: NavSection[] = [
     title: 'Overview',
     items: [
       { label: 'Dashboard', href: '/admin', icon: LayoutDashboard, exact: true },
+      { label: 'Analytics', href: '/admin/analytics', icon: BarChart3 },
     ],
   },
   {
@@ -83,11 +85,31 @@ const navSections: NavSection[] = [
   },
 ];
 
-export function AdminShell({ children }: { children: React.ReactNode }) {
+function getStoreInitials(name?: string): string {
+  if (!name || !name.trim()) return 'AD';
+  const clean = name.trim();
+  const words = clean.split(/\s+/).filter(Boolean);
+  if (words.length >= 2) {
+    return (words[0][0] + words[1][0]).toUpperCase();
+  }
+  return clean.slice(0, 2).toUpperCase();
+}
+
+export function AdminShell({
+  children,
+  initialStoreName = 'Store',
+  initialLogoUrl,
+}: {
+  children: React.ReactNode;
+  initialStoreName?: string;
+  initialLogoUrl?: string;
+}) {
   const pathname = usePathname();
   const router = useRouter();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [adminUser, setAdminUser] = useState<{ email?: string; name?: string; role?: string } | null>(null);
+  const [storeName, setStoreName] = useState(initialStoreName);
+  const [logoUrl, setLogoUrl] = useState<string | undefined>(initialLogoUrl);
 
   // If on login page, don't show admin shell
   const isLoginPage = pathname === '/admin/login';
@@ -106,7 +128,20 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
       }
     }
 
+    async function loadSettings() {
+      try {
+        const { ok, data } = await safeFetch<any>('/api/settings');
+        if (ok && data?.settings) {
+          if (data.settings.storeName) setStoreName(data.settings.storeName);
+          if (data.settings.logoUrl) setLogoUrl(data.settings.logoUrl);
+        }
+      } catch {
+        // Ignored
+      }
+    }
+
     loadAdminUser();
+    loadSettings();
   }, [isLoginPage]);
 
   // Close mobile drawer on route change
@@ -140,23 +175,39 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
       {/* Top Brand Header */}
       <div>
         <div className="flex h-16 items-center justify-between px-5 border-b border-border">
-          <Link href="/admin" className="flex items-center gap-2.5 font-bold tracking-tight text-foreground">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-primary-foreground text-xs font-black shadow-sm">
-              AW
-            </div>
-            <div className="flex flex-col">
-              <span className="text-sm leading-tight font-extrabold">Admin Hub</span>
-              <span className="text-[10px] text-muted-foreground uppercase tracking-widest font-semibold">Store Manager</span>
+          <Link href="/admin" className="flex items-center gap-2.5 font-bold tracking-tight text-foreground group min-w-0">
+            {logoUrl ? (
+              <div className="relative flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-border/80 bg-muted/30 p-1 shadow-xs">
+                <img
+                  src={logoUrl}
+                  alt={storeName}
+                  className="h-full w-full object-contain"
+                />
+              </div>
+            ) : (
+              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary text-primary-foreground text-xs font-black shadow-sm tracking-wider">
+                {getStoreInitials(storeName)}
+              </div>
+            )}
+            <div className="flex flex-col min-w-0">
+              <span className="text-sm leading-tight font-extrabold truncate max-w-[125px]" title={storeName}>
+                {storeName}
+              </span>
+              <span className="text-[10px] text-muted-foreground uppercase tracking-widest font-semibold">
+                Store Manager
+              </span>
             </div>
           </Link>
-          <div className="hidden lg:flex items-center">
+          <div className="flex items-center shrink-0">
             <Link
               href="/"
               target="_blank"
-              title="View live storefront"
-              className="p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-colors"
+              rel="noopener noreferrer"
+              title="Open live storefront in new tab"
+              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-primary/10 text-primary hover:bg-primary hover:text-primary-foreground transition-all shadow-xs"
             >
-              <ExternalLink className="h-4 w-4" />
+              <span>View Store</span>
+              <ExternalLink className="h-3.5 w-3.5" />
             </Link>
           </div>
         </div>
@@ -197,7 +248,17 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
       </div>
 
       {/* Bottom User Profile & Logout */}
-      <div className="p-3 border-t border-border bg-card/50">
+      <div className="p-3 border-t border-border bg-card/50 space-y-2">
+        <Link
+          href="/"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="flex w-full items-center justify-center gap-2 rounded-lg border border-border bg-background px-3 py-2 text-xs font-semibold text-foreground hover:bg-muted hover:text-primary transition-all shadow-xs"
+        >
+          <span>Back to Storefront</span>
+          <ExternalLink className="h-3.5 w-3.5 opacity-70" />
+        </Link>
+
         <div className="flex items-center justify-between rounded-xl bg-muted/40 p-2.5">
           <div className="flex items-center gap-2.5 min-w-0">
             <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
@@ -245,20 +306,34 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
           {mobileOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
         </button>
 
-        <Link href="/admin" className="flex items-center gap-2 font-bold tracking-tight text-foreground">
-          <div className="flex h-7 w-7 items-center justify-center rounded bg-primary text-primary-foreground text-xs font-black">
-            AW
-          </div>
-          <span className="text-sm font-extrabold">Admin Hub</span>
+        <Link href="/admin" className="flex items-center gap-2 font-bold tracking-tight text-foreground min-w-0">
+          {logoUrl ? (
+            <div className="relative flex h-7 w-7 shrink-0 items-center justify-center overflow-hidden rounded border border-border/80 bg-muted/40 p-0.5">
+              <img
+                src={logoUrl}
+                alt={storeName}
+                className="h-full w-full object-contain"
+              />
+            </div>
+          ) : (
+            <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded bg-primary text-primary-foreground text-xs font-black tracking-wider">
+              {getStoreInitials(storeName)}
+            </div>
+          )}
+          <span className="text-sm font-extrabold truncate max-w-[140px]" title={storeName}>
+            {storeName}
+          </span>
         </Link>
 
         <Link
           href="/"
           target="_blank"
+          rel="noopener noreferrer"
           title="View Store"
-          className="p-2 rounded-lg text-muted-foreground hover:text-foreground"
+          className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-primary/10 text-primary hover:bg-primary hover:text-primary-foreground transition-all shadow-xs"
         >
-          <ExternalLink className="h-4 w-4" />
+          <span>Store</span>
+          <ExternalLink className="h-3 w-3" />
         </Link>
       </div>
 

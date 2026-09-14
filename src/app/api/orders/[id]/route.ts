@@ -91,7 +91,42 @@ export async function GET(
       }
     }
 
-    return NextResponse.json({ order });
+    let customerMetrics: {
+      isFirstOrder: boolean;
+      totalOrders: number;
+      lifetimeSpend: number;
+    } | null = null;
+
+    if (admin) {
+      // Calculate customer order history metrics
+      const customerOrders = await db.order.findMany({
+        where: {
+          customerId: order.customerId,
+          deletedAt: null,
+        },
+        select: {
+          id: true,
+          totalPrice: true,
+          createdAt: true,
+        },
+        orderBy: { createdAt: 'asc' },
+      });
+
+      const totalOrders = customerOrders.length;
+      const isFirstOrder = customerOrders.length > 0 && customerOrders[0].id === order.id;
+      const lifetimeSpend = customerOrders.reduce((sum, o) => sum + (o.totalPrice || 0), 0);
+
+      customerMetrics = {
+        isFirstOrder,
+        totalOrders,
+        lifetimeSpend,
+      };
+    }
+
+    return NextResponse.json({
+      order,
+      customerMetrics,
+    });
   } catch (error) {
     console.error('Failed to get order:', error);
     return NextResponse.json({ error: 'Failed to retrieve order' }, { status: 500 });

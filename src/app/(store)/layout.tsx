@@ -1,4 +1,5 @@
-import React from 'react';
+import React, { Suspense } from 'react';
+import { AttributionTracker } from '@/components/storefront/AttributionTracker';
 import { Navbar } from '@/components/storefront/Navbar';
 import { Footer } from '@/components/storefront/Footer';
 import { CartDrawer } from '@/components/storefront/CartDrawer';
@@ -84,6 +85,9 @@ export default async function StoreLayout({
           <Footer />
           <CartDrawer />
           <FloatingWhatsApp phone={phone} />
+          <Suspense fallback={null}>
+            <AttributionTracker />
+          </Suspense>
         </div>
       </WishlistProvider>
     </CartProvider>

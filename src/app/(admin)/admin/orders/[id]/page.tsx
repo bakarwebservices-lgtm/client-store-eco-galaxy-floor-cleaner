@@ -34,6 +34,9 @@ import {
   Tag,
   MessageSquare,
   Landmark,
+  Globe,
+  Sparkles,
+  Navigation,
 } from 'lucide-react';
 import { formatCurrency } from '@/lib/format';
 import { safeFetch } from '@/lib/apiClient';
@@ -154,6 +157,14 @@ export default function AdminOrderDetailPage() {
   const [resendingWhatsApp, setResendingWhatsApp] = useState(false);
   const [resendCooldown, setResendCooldown] = useState<number>(0);
 
+  // Conversion Summary & Customer Lifetime Metrics
+  const [customerMetrics, setCustomerMetrics] = useState<{
+    isFirstOrder: boolean;
+    totalOrders: number;
+    lifetimeSpend: number;
+  } | null>(null);
+  const [showConversionModal, setShowConversionModal] = useState(false);
+
   useEffect(() => {
     if (resendCooldown <= 0) return;
     const timer = setInterval(() => {
@@ -175,6 +186,9 @@ export default function AdminOrderDetailPage() {
       if (!res.ok) throw new Error('Order not found');
       const data = await res.json();
       setOrder(data.order);
+      if (data.customerMetrics) {
+        setCustomerMetrics(data.customerMetrics);
+      }
       setPaymentStatus(data.order.paymentStatus);
       setFulfillmentStatus(data.order.fulfillmentStatus);
       setNotes(data.order.notes || '');
@@ -369,7 +383,6 @@ export default function AdminOrderDetailPage() {
     }
   };
 
-  
   const handleMarkPaymentReceived = async () => {
     if (!confirm('Mark payment as RECEIVED and PAID for this Bank Transfer order?')) return;
     setSaving(true);
@@ -925,7 +938,6 @@ export default function AdminOrderDetailPage() {
               </span>
             </div>
 
-            
             {/* Bank Transfer Verification Banner & 1-Click Action */}
             {order.paymentMethod === 'BANK_TRANSFER' && (
               <div
@@ -1421,6 +1433,69 @@ export default function AdminOrderDetailPage() {
                 )}
             </div>
           </div>
+
+          {/* Conversion Summary & Attribution Card */}
+          {(() => {
+            const attr = order.paymentMeta?.attribution || null;
+            const isFirst = customerMetrics ? customerMetrics.isFirstOrder : true;
+            const totalOrders = customerMetrics ? customerMetrics.totalOrders : 1;
+            const channel = attr?.source || 'Direct Store Visit';
+            const sessions = attr?.sessionCount || 1;
+
+            return (
+              <div className="rounded-xl border border-border bg-card p-5 space-y-4 shadow-sm relative overflow-hidden">
+                <div className="flex items-center justify-between border-b border-border pb-3">
+                  <div className="flex items-center gap-2">
+                    <Sparkles className="h-4 w-4 text-amber-500" />
+                    <h2 className="text-xs font-bold uppercase tracking-wider text-foreground">Conversion Summary</h2>
+                  </div>
+                  {isFirst ? (
+                    <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+                      1st order
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20">
+                      Order #{totalOrders} (Returning)
+                    </span>
+                  )}
+                </div>
+
+                <div className="space-y-2.5 text-xs text-foreground">
+                  <div className="flex items-start gap-2.5">
+                    <Globe className="h-4 w-4 text-muted-foreground shrink-0 mt-0.5" />
+                    <div>
+                      <p className="font-semibold text-foreground">{channel}</p>
+                      <p className="text-[11px] text-muted-foreground">
+                        {attr?.campaign ? `Campaign: ${attr.campaign}` : (attr?.referrer && attr.referrer !== 'direct' ? `Referrer: ${attr.referrer}` : 'Direct or bookmarked traffic')}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-start gap-2.5">
+                    <Navigation className="h-4 w-4 text-muted-foreground shrink-0 mt-0.5" />
+                    <div>
+                      <p className="font-semibold text-foreground">
+                        {sessions === 1 ? '1 session converted' : `${sessions} sessions before purchasing`}
+                      </p>
+                      <p className="text-[11px] text-muted-foreground">
+                        First arrived at {attr?.landingPage || '/'}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="pt-1">
+                  <button
+                    type="button"
+                    onClick={() => setShowConversionModal(true)}
+                    className="w-full text-center py-2 px-3 rounded-lg border border-border bg-muted/40 hover:bg-muted text-xs font-semibold text-foreground transition-colors"
+                  >
+                    View conversion details
+                  </button>
+                </div>
+              </div>
+            );
+          })()}
 
           {/* Customer Profile Card with WhatsApp Link */}
           <div className="rounded-xl border border-border bg-card p-5 space-y-4 shadow-sm">
@@ -2454,6 +2529,110 @@ export default function AdminOrderDetailPage() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Conversion Details Modal */}
+      {showConversionModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+          <div className="relative w-full max-w-lg rounded-2xl border border-border bg-card p-6 shadow-2xl space-y-5">
+            <div className="flex items-center justify-between border-b border-border pb-4">
+              <div className="flex items-center gap-2.5">
+                <Sparkles className="h-5 w-5 text-amber-500" />
+                <div>
+                  <h3 className="text-base font-bold text-foreground">Conversion Details</h3>
+                  <p className="text-xs text-muted-foreground">Session journey & marketing attribution</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowConversionModal(false)}
+                className="rounded-lg p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+              >
+                <XCircle className="h-5 w-5" />
+              </button>
+            </div>
+
+            {(() => {
+              const attr = order.paymentMeta?.attribution || null;
+              const isFirst = customerMetrics ? customerMetrics.isFirstOrder : true;
+              const totalOrders = customerMetrics ? customerMetrics.totalOrders : 1;
+              const spend = customerMetrics ? customerMetrics.lifetimeSpend : order.totalPrice;
+
+              return (
+                <div className="space-y-4 text-xs">
+                  {/* Customer Status Summary Box */}
+                  <div className="grid grid-cols-3 gap-3 p-3.5 rounded-xl border border-border bg-muted/20 text-center">
+                    <div>
+                      <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider">Customer Type</p>
+                      <p className="font-bold text-foreground mt-0.5">{isFirst ? '1st-Time Buyer' : 'Repeat Buyer'}</p>
+                    </div>
+                    <div>
+                      <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider">Total Orders</p>
+                      <p className="font-bold text-foreground mt-0.5">{totalOrders} order{totalOrders !== 1 ? 's' : ''}</p>
+                    </div>
+                    <div>
+                      <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider">Lifetime Value</p>
+                      <p className="font-bold text-emerald-600 dark:text-emerald-400 mt-0.5">{formatCurrency(spend, order.currency || 'PKR')}</p>
+                    </div>
+                  </div>
+
+                  {/* Customer Journey Timeline */}
+                  <div className="space-y-3 pt-1">
+                    <h4 className="text-xs font-bold text-foreground uppercase tracking-wider">First Session Journey</h4>
+                    
+                    <div className="space-y-2.5 pl-3 border-l-2 border-primary/30 ml-1.5">
+                      <div>
+                        <span className="text-[10px] font-bold text-primary uppercase">Traffic Channel</span>
+                        <p className="text-sm font-semibold text-foreground">{attr?.source || 'Direct Store Visit'}</p>
+                      </div>
+
+                      {attr?.referrer && (
+                        <div>
+                          <span className="text-[10px] font-bold text-muted-foreground uppercase">Referring URL / Domain</span>
+                          <p className="font-mono text-xs text-foreground break-all">{attr.referrer}</p>
+                        </div>
+                      )}
+
+                      {attr?.campaign && (
+                        <div>
+                          <span className="text-[10px] font-bold text-muted-foreground uppercase">Campaign Name</span>
+                          <p className="text-xs font-medium text-foreground">{attr.campaign}</p>
+                        </div>
+                      )}
+
+                      <div>
+                        <span className="text-[10px] font-bold text-muted-foreground uppercase">First Landing Page</span>
+                        <p className="font-mono text-xs text-foreground">{attr?.landingPage || '/'}</p>
+                      </div>
+
+                      {attr?.firstSessionAt && (
+                        <div>
+                          <span className="text-[10px] font-bold text-muted-foreground uppercase">First Visit Timestamp</span>
+                          <p className="text-xs text-muted-foreground">{new Date(attr.firstSessionAt).toLocaleString()}</p>
+                        </div>
+                      )}
+
+                      <div>
+                        <span className="text-[10px] font-bold text-muted-foreground uppercase">Sessions Prior to Order</span>
+                        <p className="text-xs font-semibold text-foreground">{attr?.sessionCount || 1} session{attr?.sessionCount !== 1 ? 's' : ''}</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="pt-3 border-t border-border flex justify-end">
+                    <button
+                      type="button"
+                      onClick={() => setShowConversionModal(false)}
+                      className="rounded-lg bg-primary px-4 py-2 text-xs font-semibold text-primary-foreground hover:bg-primary/90 transition-colors"
+                    >
+                      Close Details
+                    </button>
+                  </div>
+                </div>
+              );
+            })()}
           </div>
         </div>
       )}

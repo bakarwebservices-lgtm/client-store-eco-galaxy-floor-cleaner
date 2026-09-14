@@ -9,6 +9,8 @@ import { sendOrderConfirmationEmail } from '@/lib/email';
 import { sendWhatsAppOrderConfirmation } from '@/lib/whatsapp/client';
 import { DiscountType, PaymentStatus, FulfillmentStatus, ProductStatus } from '@prisma/client';
 
+import { ATTRIBUTION_COOKIE_NAME, AttributionData } from '@/lib/analytics/attribution';
+import { cookies } from 'next/headers';
 import crypto from 'crypto';
 
 export const dynamic = 'force-dynamic';
