@@ -17,6 +17,8 @@ export async function generateMetadata({
   params: Promise<{ slug: string }>;
 }): Promise<Metadata> {
   const { slug } = await params;
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://saas-product-website-seven.vercel.app';
+
   const product = await db.product.findFirst({
     where: { slug, status: ProductStatus.ACTIVE, deletedAt: null },
     include: { images: { take: 1 } },
@@ -24,9 +26,17 @@ export async function generateMetadata({
 
   if (!product) return { title: 'Product Not Found' };
 
+  const productPrice = Number(product.price);
+  const priceStr = `Rs. ${productPrice.toLocaleString('en-PK')}`;
+
+  const baseDescription = product.seoDescription || stripHtml(product.description).slice(0, 120);
+  const description = baseDescription
+    ? `${baseDescription} Buy now for ${priceStr}. Free Delivery & Cash on Delivery across Pakistan.`
+    : `${product.name} — ${priceStr}. Free Delivery & Cash on Delivery across Pakistan.`;
+
   const title = product.seoTitle || `${product.name} | Store`;
-  const description = product.seoDescription || stripHtml(product.description).slice(0, 160);
   const imageUrl = product.images[0]?.url;
+  const ogImages = imageUrl ? [{ url: imageUrl, alt: product.name }] : [];
 
   return {
     title,
@@ -37,7 +47,15 @@ export async function generateMetadata({
     openGraph: {
       title,
       description,
-      images: imageUrl ? [{ url: imageUrl, alt: product.name }] : [],
+      url: `${baseUrl}/products/${product.slug}`,
+      type: 'website',
+      images: ogImages,
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title,
+      description,
+      images: ogImages.map((i) => i.url),
     },
   };
 }
@@ -100,11 +118,23 @@ export default async function ProductDetailPage({
             image: product.images.map((i) => i.url),
             description: product.seoDescription || stripHtml(product.description),
             sku: product.variants[0]?.sku || product.slug,
+            brand: {
+              '@type': 'Brand',
+              name: 'Eco Galaxy',
+            },
             offers: {
               '@type': 'Offer',
               priceCurrency: currency,
-              price: product.price,
+              price: Number(product.price),
               availability: 'https://schema.org/InStock',
+              url: `${process.env.NEXT_PUBLIC_APP_URL || 'https://saas-product-website-seven.vercel.app'}/products/${product.slug}`,
+              priceValidUntil: new Date(
+                new Date().setFullYear(new Date().getFullYear() + 1)
+              ).toISOString().split('T')[0],
+              seller: {
+                '@type': 'Organization',
+                name: 'Eco Galaxy Store',
+              },
             },
           }),
         }}

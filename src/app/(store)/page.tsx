@@ -30,24 +30,78 @@ import {
 
 export async function generateMetadata(): Promise<Metadata> {
   let storeName = 'Eco Galaxy';
-  let tagline = 'Eco Galaxy Floor Cleaner — 1 Liter, 3-bottle and 5-bottle value packs with Free Delivery across Pakistan and Cash on Delivery.';
+  let description = 'Eco Galaxy Floor Cleaner — Free Delivery across Pakistan. Cash on Delivery.';
+  let firstImageUrl: string | null = null;
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://saas-product-website-seven.vercel.app';
+
   try {
-    const settings = await db.setting.findMany({
-      where: { key: { in: ['store.name', 'store.tagline', 'store.description'] } },
-    });
+    const [settings, products] = await Promise.all([
+      db.setting.findMany({
+        where: { key: { in: ['store.name', 'store.tagline', 'store.description'] } },
+      }),
+      db.product.findMany({
+        where: { status: ProductStatus.ACTIVE, deletedAt: null },
+        select: { name: true, price: true, comparePrice: true, images: { take: 1, select: { url: true } } },
+        orderBy: { price: 'asc' },
+        take: 10,
+      }),
+    ]);
+
+    let taglineFromDb: string | null = null;
     for (const s of settings) {
       if (s.key === 'store.name' && s.value) storeName = String(s.value);
-      if ((s.key === 'store.tagline' || s.key === 'store.description') && s.value) tagline = String(s.value);
+      if ((s.key === 'store.tagline' || s.key === 'store.description') && s.value)
+        taglineFromDb = String(s.value);
+    }
+
+    if (products.length > 0) {
+      // Pull the first product image for OpenGraph
+      firstImageUrl = products[0]?.images[0]?.url ?? null;
+
+      // Build a price-inclusive description
+      const cheapest = products[0];
+      const startingPrice = Number(cheapest.price);
+      const currency = 'Rs.';
+
+      // If there are multiple products, list a short pack summary
+      const packSummary = products
+        .slice(0, 3)
+        .map((p) => `${p.name} — ${currency} ${Number(p.price).toLocaleString('en-PK')}`)
+        .join(', ');
+
+      description = taglineFromDb
+        ? `${stripHtml(taglineFromDb)} | Starting from ${currency} ${startingPrice.toLocaleString('en-PK')}.`
+        : `${storeName} Floor Cleaner — Starting from ${currency} ${startingPrice.toLocaleString('en-PK')}. ${packSummary}. Free Delivery & Cash on Delivery across Pakistan.`;
+    } else if (taglineFromDb) {
+      description = stripHtml(taglineFromDb);
     }
   } catch {
-    // fallback
+    // fallback to defaults
   }
+
+  const ogImages = firstImageUrl
+    ? [{ url: firstImageUrl, alt: `${storeName} Floor Cleaner` }]
+    : [];
 
   return {
     title: `${storeName} | Premium Floor Cleaner — Free Delivery Across Pakistan`,
-    description: stripHtml(tagline),
+    description,
     alternates: {
       canonical: '/',
+    },
+    openGraph: {
+      title: `${storeName} | Premium Floor Cleaner`,
+      description,
+      url: baseUrl,
+      siteName: storeName,
+      images: ogImages,
+      type: 'website',
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title: `${storeName} | Premium Floor Cleaner`,
+      description,
+      images: ogImages.map((i) => i.url),
     },
   };
 }
@@ -146,7 +200,68 @@ export default async function HomePage() {
   const cleanPhone = storePhone.replace(/[^0-9]/g, '');
   const intlPhone = cleanPhone.startsWith('0') ? '92' + cleanPhone.slice(1) : cleanPhone.startsWith('92') ? cleanPhone : '92' + cleanPhone;
 
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://saas-product-website-seven.vercel.app';
+  const storeName = 'Eco Galaxy';
+
+  // Build JSON-LD structured data with live prices
+  const websiteJsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'WebSite',
+    name: storeName,
+    url: baseUrl,
+    potentialAction: {
+      '@type': 'SearchAction',
+      target: {
+        '@type': 'EntryPoint',
+        urlTemplate: `${baseUrl}/products?q={search_term_string}`,
+      },
+      'query-input': 'required name=search_term_string',
+    },
+  };
+
+  const itemListJsonLd = featuredProducts.length > 0
+    ? {
+        '@context': 'https://schema.org',
+        '@type': 'ItemList',
+        name: `${storeName} — Floor Cleaner Packs`,
+        url: baseUrl,
+        numberOfItems: featuredProducts.length,
+        itemListElement: featuredProducts.map((p, idx) => ({
+          '@type': 'ListItem',
+          position: idx + 1,
+          item: {
+            '@type': 'Product',
+            name: p.name,
+            url: `${baseUrl}/products/${p.slug}`,
+            image: p.images[0]?.url ?? undefined,
+            offers: {
+              '@type': 'Offer',
+              priceCurrency: 'PKR',
+              price: p.price,
+              availability: 'https://schema.org/InStock',
+              url: `${baseUrl}/products/${p.slug}`,
+              priceValidUntil: new Date(
+                new Date().setFullYear(new Date().getFullYear() + 1)
+              ).toISOString().split('T')[0],
+            },
+          },
+        })),
+      }
+    : null;
+
   return (
+    <>
+      {/* JSON-LD Structured Data — always fresh because page is force-dynamic */}
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(websiteJsonLd) }}
+      />
+      {itemListJsonLd && (
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(itemListJsonLd) }}
+        />
+      )}
     <div className="flex flex-col min-h-screen bg-background">
       {/* 1. HERO SECTION — Dynamic theme background with mobile bottle backdrop */}
       <section
@@ -539,5 +654,6 @@ export default async function HomePage() {
         </div>
       </section>
     </div>
+    </>
   );
 }
