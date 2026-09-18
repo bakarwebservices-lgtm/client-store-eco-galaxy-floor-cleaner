@@ -23,6 +23,10 @@ export default async function StoreLayout({
   let announcementTextColor = '#A7F3D0';
   let primaryColor = '#042A1E';
 
+  let whatsappFloatingEnabled = true;
+  let whatsappPhone = '0346 4815775';
+  let whatsappCustomMessage: string | undefined = undefined;
+
   try {
     const settings = await db.setting.findMany({
       where: {
@@ -37,6 +41,9 @@ export default async function StoreLayout({
             'announcement.bg_color',
             'announcement.text_color',
             'theme.primary_color',
+            'whatsapp.floating_button_enabled',
+            'whatsapp.phone_number',
+            'whatsapp.custom_message',
           ],
         },
       },
@@ -49,6 +56,9 @@ export default async function StoreLayout({
         logoUrl = String(s.value);
       } else if (s.key === 'store.phone' && s.value) {
         phone = String(s.value);
+        if (!whatsappPhone || whatsappPhone === '0346 4815775') {
+          whatsappPhone = String(s.value);
+        }
       } else if (s.key === 'auth.customer_accounts_enabled') {
         customerAccountsEnabled = s.value === true || s.value === 'true';
       } else if (s.key === 'announcement.enabled') {
@@ -61,7 +71,17 @@ export default async function StoreLayout({
         announcementTextColor = String(s.value);
       } else if (s.key === 'theme.primary_color' && s.value) {
         primaryColor = String(s.value);
+      } else if (s.key === 'whatsapp.floating_button_enabled') {
+        whatsappFloatingEnabled = s.value !== false && s.value !== 'false';
+      } else if (s.key === 'whatsapp.phone_number' && s.value) {
+        whatsappPhone = String(s.value);
+      } else if (s.key === 'whatsapp.custom_message' && s.value) {
+        whatsappCustomMessage = String(s.value);
       }
+    }
+
+    if (whatsappCustomMessage) {
+      whatsappCustomMessage = whatsappCustomMessage.replace('{store_name}', storeName);
     }
   } catch {
     // fallback defaults
@@ -84,7 +104,9 @@ export default async function StoreLayout({
           <div className="flex-1">{children}</div>
           <Footer />
           <CartDrawer />
-          <FloatingWhatsApp phone={phone} />
+          {whatsappFloatingEnabled && (
+            <FloatingWhatsApp phone={whatsappPhone || phone} defaultMessage={whatsappCustomMessage} />
+          )}
           <Suspense fallback={null}>
             <AttributionTracker />
           </Suspense>

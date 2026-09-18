@@ -61,7 +61,7 @@ export async function Footer() {
       className="border-t border-border/40 text-white mt-24 transition-colors duration-300"
       style={{ backgroundColor: primaryColor || 'var(--primary, #042A1E)' }}
     >
-      <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
+      <div className="mx-auto max-w-7xl px-4 pt-12 pb-16 sm:px-6 lg:px-8 sm:pb-14">
         <div className="grid grid-cols-1 gap-10 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-5">
           <div className="space-y-4 lg:col-span-2">
             <div className="flex items-center gap-3">
@@ -165,11 +165,11 @@ export async function Footer() {
             <span>Cash on Delivery • Free Delivery Pakistan</span>
             <Link
               href="/admin/login"
-              className="inline-flex items-center gap-1.5 text-white/60 hover:text-white transition-colors"
+              className="inline-flex items-center gap-1.5 rounded-md bg-white/10 px-2.5 py-1 font-medium text-white/80 transition-colors hover:bg-white/20 hover:text-white"
               title="Admin Portal Login"
             >
-              <Lock className="h-3 w-3" />
-              <span>Staff Login</span>
+              <Lock className="h-3 w-3 text-emerald-400" />
+              <span>Admin Login</span>
             </Link>
           </div>
         </div>

@@ -1021,7 +1021,7 @@ export default function AdminSettingsPage() {
                     <span>Storefront WhatsApp Support Button</span>
                   </h2>
                   <p className="text-xs text-muted-foreground mt-0.5">
-                    Displays a floating WhatsApp icon in the bottom-right corner of your storefront for customer chat assistance.
+                    Displays a floating WhatsApp icon in the bottom-left corner of your storefront for customer chat assistance without obstructing footer links.
                   </p>
                 </div>
                 <label className="relative inline-flex items-center cursor-pointer">
