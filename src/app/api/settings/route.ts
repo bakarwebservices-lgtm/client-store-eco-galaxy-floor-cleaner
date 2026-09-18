@@ -17,6 +17,10 @@ export async function GET() {
       }
     }
 
+    const smtpEnabled = Boolean(settings['email.smtp_enabled']);
+    const emailRequiredAtCheckout = smtpEnabled;
+    const whatsappOrderConfirmationEnabled = Boolean(settings['whatsapp.order_confirmation_enabled']);
+
     // Public sanitized settings payload (hides internal tokens)
     const publicSettings = {
       storeName: settings['store.name'],
@@ -40,15 +44,15 @@ export async function GET() {
       facebookUrl: settings['social.facebook'],
       instagramUrl: settings['social.instagram'],
       twitterUrl: settings['social.twitter'],
-      announcementEnabled: settings['announcement.enabled'] !== false,
-      announcementText: settings['announcement.text'] || 'FREE DELIVERY ACROSS PAKISTAN • CASH ON DELIVERY AVAILABLE • 100% ORIGINAL FORMULA',
-      announcementBgColor: settings['announcement.bg_color'] || '#032017',
-      announcementTextColor: settings['announcement.text_color'] || '#A7F3D0',
+      tiktokUrl: settings['social.tiktok'],
       customerAccountsEnabled: Boolean(settings['auth.customer_accounts_enabled']),
-      whatsappOrderConfirmationEnabled: settings['whatsapp.order_confirmation_enabled'] !== false,
+      emailSmtpEnabled: smtpEnabled,
+      whatsappOrderConfirmationEnabled,
+      whatsappFloatingButtonEnabled: settings['whatsapp.floating_button_enabled'] !== false,
+      emailRequiredAtCheckout,
       whatsappNumber: settings['whatsapp.phone_number'] || settings['store.phone'] || '',
       whatsappCustomMessage: settings['whatsapp.custom_message'] || '',
-          // Cash on Delivery (COD) Settings
+      // Cash on Delivery (COD) Settings
       codEnabled: settings['payment.cod_enabled'] !== false,
       codTitle: settings['payment.cod_title'] || 'Cash on Delivery (COD)',
       codInstructions: settings['payment.cod_instructions'] || 'Pay with cash upon package delivery at your doorstep.',
@@ -66,6 +70,33 @@ export async function GET() {
       bankDiscountEnabled: Boolean(settings['payment.bank_discount_enabled']),
       bankDiscountType: (settings['payment.bank_discount_type'] as 'percentage' | 'fixed') || 'percentage',
       bankDiscountValue: Number(settings['payment.bank_discount_value']) || 0,
+      // Dynamic Top Announcement Bar Settings
+      announcementEnabled: Boolean(settings['announcement.enabled']),
+      announcementMode: (settings['announcement.mode'] as 'static' | 'marquee' | 'rotate') || 'static',
+      announcementDismissible: Boolean(settings['announcement.dismissible']),
+      announcementText: settings['announcement.text'] || '',
+      announcementLink: settings['announcement.link'] || '',
+      announcementBgColor: settings['announcement.bg_color'] || '#032017',
+      announcementTextColor: settings['announcement.text_color'] || '#A7F3D0',
+      announcement2Enabled: Boolean(settings['announcement.2.enabled']),
+      announcement2Text: settings['announcement.2.text'] || '',
+      announcement2Link: settings['announcement.2.link'] || '',
+      announcement2BgColor: settings['announcement.2.bg_color'] || '#063B2A',
+      announcement2TextColor: settings['announcement.2.text_color'] || '#FFFFFF',
+      // Hero Section Media Showcase Settings
+      heroMediaType: (settings['hero.media_type'] as 'product' | 'image' | 'video') || 'product',
+      heroSlideInterval: Number(settings['hero.slide_interval']) || 3000,
+      heroImage1Url: settings['hero.image_1_url'] || '',
+      heroImage1Alt: settings['hero.image_1_alt'] || '',
+      heroImage1Link: settings['hero.image_1_link'] || '',
+      heroImage2Url: settings['hero.image_2_url'] || '',
+      heroImage2Alt: settings['hero.image_2_alt'] || '',
+      heroImage2Link: settings['hero.image_2_link'] || '',
+      heroImage3Url: settings['hero.image_3_url'] || '',
+      heroImage3Alt: settings['hero.image_3_alt'] || '',
+      heroImage3Link: settings['hero.image_3_link'] || '',
+      heroVideoUrl: settings['hero.video_url'] || '',
+      heroVideoPoster: settings['hero.video_poster'] || '',
     };
 
     return NextResponse.json(

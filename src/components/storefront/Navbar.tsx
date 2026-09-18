@@ -114,24 +114,6 @@ export function Navbar({
       className="sticky top-0 z-40 w-full border-b border-border/40 text-white shadow-md transition-colors duration-300"
       style={{ backgroundColor: primaryColor || 'var(--primary, #042A1E)' }}
     >
-      {/* Top Announcement Bar — Fully Dynamic from Admin Settings */}
-      {announcementEnabled && (
-        <div
-          className="px-4 py-2 text-center text-xs font-semibold tracking-wide transition-colors duration-300 border-b border-black/10"
-          style={{
-            backgroundColor: announcementBgColor || '#032017',
-            color: announcementTextColor || '#A7F3D0',
-          }}
-        >
-          <div className="mx-auto flex max-w-7xl items-center justify-center gap-2 sm:gap-4 flex-wrap">
-            <span className="flex items-center gap-1.5 font-bold uppercase tracking-wider">
-              <Truck className="h-3.5 w-3.5 shrink-0" />
-              <span>{announcementText}</span>
-            </span>
-          </div>
-        </div>
-      )}
-
       <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
         {/* Brand Logo - Clear contrast on dark primary background */}
         <div className="flex items-center gap-8">

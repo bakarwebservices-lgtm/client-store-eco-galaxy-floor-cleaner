@@ -9,6 +9,7 @@ import { db } from '@/lib/db';
 import { ProductStatus } from '@prisma/client';
 import { ProductCard, ProductCardProps } from '@/components/storefront/ProductCard';
 import { HeroPackSelector } from '@/components/storefront/HeroPackSelector';
+import { HeroMediaShowcase } from '@/components/storefront/HeroMediaShowcase';
 import { UrgencyCountdown } from '@/components/storefront/UrgencyCountdown';
 import { VideoShowcase } from '@/components/storefront/VideoShowcase';
 import { HomeReviewsCarousel, HomeReviewItem } from '@/components/storefront/HomeReviewsCarousel';
@@ -113,6 +114,12 @@ export default async function HomePage() {
   let dbFaqs: HomeFaqItem[] = [];
   let storePhone = '0346 4815775';
   let primaryColor = '#042A1E';
+  let heroMediaType: 'product' | 'image' | 'video' = 'product';
+  let heroSlideInterval = 3000;
+  let heroImages: { url: string; altText?: string; link?: string }[] = [];
+  let heroVideoUrl = '';
+  let heroVideoPoster = '';
+  const heroImageMap: Record<string, { url?: string; alt?: string; link?: string }> = {};
 
   try {
     const [dbProds, reviews, faqs, settings] = await Promise.all([
@@ -143,14 +150,54 @@ export default async function HomePage() {
         orderBy: [{ sortOrder: 'asc' }, { createdAt: 'asc' }],
       }),
       db.setting.findMany({
-        where: { key: { in: ['store.phone', 'theme.primary_color'] } },
+        where: {
+          key: {
+            in: [
+              'store.name',
+              'store.phone',
+              'theme.primary_color',
+              'hero.media_type',
+              'hero.slide_interval',
+              'hero.image_1_url',
+              'hero.image_1_alt',
+              'hero.image_1_link',
+              'hero.image_2_url',
+              'hero.image_2_alt',
+              'hero.image_2_link',
+              'hero.image_3_url',
+              'hero.image_3_alt',
+              'hero.image_3_link',
+              'hero.video_url',
+              'hero.video_poster',
+            ],
+          },
+        },
       }),
     ]);
 
     for (const s of settings) {
       if (s.key === 'store.phone' && s.value) storePhone = String(s.value);
       if (s.key === 'theme.primary_color' && s.value) primaryColor = String(s.value);
+      if (s.key === 'hero.media_type' && s.value) heroMediaType = s.value as any;
+      if (s.key === 'hero.slide_interval' && s.value) heroSlideInterval = Number(s.value) || 3000;
+      if (s.key === 'hero.video_url' && s.value) heroVideoUrl = String(s.value);
+      if (s.key === 'hero.video_poster' && s.value) heroVideoPoster = String(s.value);
+
+      for (let i = 1; i <= 3; i++) {
+        if (!heroImageMap[i]) heroImageMap[i] = {};
+        if (s.key === `hero.image_${i}_url` && s.value) heroImageMap[i].url = String(s.value);
+        if (s.key === `hero.image_${i}_alt` && s.value) heroImageMap[i].alt = String(s.value);
+        if (s.key === `hero.image_${i}_link` && s.value) heroImageMap[i].link = String(s.value);
+      }
     }
+
+    heroImages = [1, 2, 3]
+      .filter((i) => heroImageMap[i]?.url)
+      .map((i) => ({
+        url: heroImageMap[i].url!,
+        altText: heroImageMap[i].alt || 'Hero Showcase',
+        link: heroImageMap[i].link || '',
+      }));
 
     if (dbProds.length > 0) {
       featuredProducts = dbProds.map((p) => {
@@ -329,8 +376,21 @@ export default async function HomePage() {
               </div>
             </div>
 
-            {/* Right Visual Column (Studio Bottle Card on Desktop) */}
+            {/* Right Visual Column (Studio Bottle Card or Dynamic Hero Showcase) */}
             <div className="hidden lg:flex relative lg:col-span-5 flex-col items-center justify-center">
+              {heroMediaType !== 'product' && (heroImages.length > 0 || heroVideoUrl) ? (
+                <div className="w-full max-w-md">
+                  <HeroMediaShowcase
+                    mediaType={heroMediaType}
+                    images={heroImages}
+                    videoUrl={heroVideoUrl}
+                    videoPoster={heroVideoPoster}
+                    slideInterval={heroSlideInterval}
+                    storeName={storeName}
+                  />
+                </div>
+              ) : (
+                <>
               <div className="absolute inset-0 -m-6 rounded-3xl bg-gradient-to-tr from-emerald-600/20 to-purple-600/20 blur-2xl -z-10" />
 
               <div className="relative w-full max-w-md overflow-hidden rounded-3xl border border-white/20 bg-black/40 p-3 shadow-2xl backdrop-blur-sm">
@@ -370,6 +430,8 @@ export default async function HomePage() {
                   </div>
                 </div>
               </div>
+                </>
+              )}
             </div>
           </div>
         </div>

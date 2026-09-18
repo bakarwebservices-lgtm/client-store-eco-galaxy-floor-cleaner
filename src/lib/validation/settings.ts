@@ -45,17 +45,6 @@ export const storeIdentitySchema = z.object({
     .string({ required_error: 'Store country is required' })
     .min(1, 'Country name cannot be empty')
     .max(100, 'Country name must be under 100 characters'),
-  // Announcement Bar
-  'announcement.enabled': z.preprocess(
-    (val) => val === true || val === 'true' || val === 1 || val === '1',
-    z.boolean().default(true)
-  ),
-  'announcement.text': z
-    .string()
-    .max(500, 'Announcement text must be under 500 characters')
-    .default('FREE DELIVERY ACROSS PAKISTAN • CASH ON DELIVERY AVAILABLE • 100% ORIGINAL FORMULA'),
-  'announcement.bg_color': hexColorSchema.default('#032017'),
-  'announcement.text_color': hexColorSchema.default('#A7F3D0'),
 });
 
 export const contactSettingsSchema = z.object({
@@ -84,6 +73,67 @@ export const themeSettingsSchema = z.object({
     .string()
     .min(1, 'Font family cannot be empty')
     .default('Inter'),
+});
+
+export const announcementSettingsSchema = z.object({
+  'announcement.enabled': z.preprocess(
+    (val) => val === true || val === 'true' || val === 1 || val === '1',
+    z.boolean().default(true)
+  ),
+  'announcement.mode': z.enum(['static', 'marquee', 'rotate']).default('static'),
+  'announcement.dismissible': z.preprocess(
+    (val) => val === true || val === 'true' || val === 1 || val === '1',
+    z.boolean().default(false)
+  ),
+  'announcement.text': z
+    .string()
+    .max(500, 'Announcement text must be under 500 characters')
+    .optional()
+    .default('FREE DELIVERY ACROSS PAKISTAN • CASH ON DELIVERY AVAILABLE • 100% ORIGINAL FORMULA'),
+  'announcement.link': z
+    .string()
+    .max(500, 'Announcement link must be under 500 characters')
+    .optional()
+    .default(''),
+  'announcement.bg_color': hexColorSchema.default('#032017'),
+  'announcement.text_color': hexColorSchema.default('#A7F3D0'),
+  // Secondary Announcement Bar (Max 2)
+  'announcement.2.enabled': z.preprocess(
+    (val) => val === true || val === 'true' || val === 1 || val === '1',
+    z.boolean().default(false)
+  ),
+  'announcement.2.text': z
+    .string()
+    .max(500, 'Announcement text must be under 500 characters')
+    .optional()
+    .default(''),
+  'announcement.2.link': z
+    .string()
+    .max(500, 'Announcement link must be under 500 characters')
+    .optional()
+    .default(''),
+  'announcement.2.bg_color': hexColorSchema.default('#063B2A'),
+  'announcement.2.text_color': hexColorSchema.default('#FFFFFF'),
+});
+
+export const heroMediaSettingsSchema = z.object({
+  'hero.media_type': z.enum(['product', 'image', 'video']).default('product'),
+  'hero.slide_interval': preprocessNumber(3000, 0, 10000),
+  // Image 1
+  'hero.image_1_url': z.string().max(1000).optional().default(''),
+  'hero.image_1_alt': z.string().max(255).optional().default(''),
+  'hero.image_1_link': z.string().max(500).optional().default(''),
+  // Image 2
+  'hero.image_2_url': z.string().max(1000).optional().default(''),
+  'hero.image_2_alt': z.string().max(255).optional().default(''),
+  'hero.image_2_link': z.string().max(500).optional().default(''),
+  // Image 3
+  'hero.image_3_url': z.string().max(1000).optional().default(''),
+  'hero.image_3_alt': z.string().max(255).optional().default(''),
+  'hero.image_3_link': z.string().max(500).optional().default(''),
+  // Video (1 Video)
+  'hero.video_url': z.string().max(1000).optional().default(''),
+  'hero.video_poster': z.string().max(1000).optional().default(''),
 });
 
 export const shippingTaxSettingsSchema = z.object({
@@ -161,10 +211,6 @@ export const notificationAndAuthSchema = z.object({
   'courier.auto_book_threshold': z.coerce.number().min(0).default(5000),
 });
 
-/**
- * Unified all-settings schema for batch update
- */
-
 export const paymentSettingsSchema = z.object({
   // Cash on Delivery (COD) Settings
   'payment.cod_enabled': z.boolean().default(true),
@@ -193,11 +239,16 @@ export const paymentSettingsSchema = z.object({
   'payment.bank_discount_value': z.coerce.number().min(0).default(5),
 });
 
+/**
+ * Unified all-settings schema for batch update
+ */
 export const allSettingsSchema = z.object({
   ...paymentSettingsSchema.shape,
   ...storeIdentitySchema.shape,
   ...contactSettingsSchema.shape,
   ...themeSettingsSchema.shape,
+  ...announcementSettingsSchema.shape,
+  ...heroMediaSettingsSchema.shape,
   ...shippingTaxSettingsSchema.shape,
   ...trackingSettingsSchema.shape,
   ...socialSettingsSchema.shape,
@@ -216,9 +267,30 @@ export const DEFAULT_SETTINGS: AllSettingsInput = {
   'store.currency': 'PKR',
   'store.country': 'Pakistan',
   'announcement.enabled': true,
+  'announcement.mode': 'static',
+  'announcement.dismissible': false,
   'announcement.text': 'FREE DELIVERY ACROSS PAKISTAN • CASH ON DELIVERY AVAILABLE • 100% ORIGINAL FORMULA',
+  'announcement.link': '',
   'announcement.bg_color': '#032017',
   'announcement.text_color': '#A7F3D0',
+  'announcement.2.enabled': false,
+  'announcement.2.text': '',
+  'announcement.2.link': '',
+  'announcement.2.bg_color': '#063B2A',
+  'announcement.2.text_color': '#FFFFFF',
+  'hero.media_type': 'product',
+  'hero.slide_interval': 3000,
+  'hero.image_1_url': '',
+  'hero.image_1_alt': '',
+  'hero.image_1_link': '',
+  'hero.image_2_url': '',
+  'hero.image_2_alt': '',
+  'hero.image_2_link': '',
+  'hero.image_3_url': '',
+  'hero.image_3_alt': '',
+  'hero.image_3_link': '',
+  'hero.video_url': '',
+  'hero.video_poster': '',
   'store.email': 'support@ecogalaxy.store',
   'store.phone': '0346 4815775',
   'store.address': 'Lahore, Punjab, Pakistan',

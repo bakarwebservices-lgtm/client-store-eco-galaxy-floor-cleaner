@@ -64,3 +64,22 @@ h1, h2, h3, h4, h5, h6, .font-heading {
 .animate-float-glow {
   animation: float-glow 4s ease-in-out infinite;
 }
+
+@keyframes marquee {
+  0% {
+    transform: translateX(0%);
+  }
+  100% {
+    transform: translateX(-50%);
+  }
+}
+
+.animate-marquee {
+  display: flex;
+  width: max-content;
+  animation: marquee 28s linear infinite;
+}
+
+.animate-marquee:hover {
+  animation-play-state: paused;
+}

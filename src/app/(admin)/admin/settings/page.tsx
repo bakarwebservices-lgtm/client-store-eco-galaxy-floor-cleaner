@@ -1,9 +1,6 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { WhatsAppAutomationCard } from '@/components/admin/WhatsAppAutomationCard';
-import { BankTransferSettingsCard } from '@/components/admin/BankTransferSettingsCard';
-import { CodSettingsCard } from '@/components/admin/CodSettingsCard';
 import Link from 'next/link';
 import Image from 'next/image';
 import {
@@ -24,17 +21,23 @@ import {
   RefreshCw,
   Sliders,
   DollarSign,
-  CreditCard,
-  Landmark,
   Sparkles,
   Mail,
   MessageSquare,
   UserCheck,
   Server,
   Lock,
+  Film,
+  Play,
+  Images,
+  CreditCard,
+  Landmark,
 } from 'lucide-react';
-import { MediaUploadModal } from '@/components/admin/MediaUploadModal';
+import { MediaUploadModal, SelectedMediaItem } from '@/components/admin/MediaUploadModal';
 import { CourierSettingsTab } from '@/components/admin/CourierSettingsTab';
+import { WhatsAppAutomationCard } from '@/components/admin/WhatsAppAutomationCard';
+import { BankTransferSettingsCard } from '@/components/admin/BankTransferSettingsCard';
+import { CodSettingsCard } from '@/components/admin/CodSettingsCard';
 import {
   allSettingsSchema,
   DEFAULT_SETTINGS,
@@ -78,6 +81,40 @@ export default function AdminSettingsPage() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [mediaModalOpen, setMediaModalOpen] = useState(false);
+  const [mediaTargetField, setMediaTargetField] = useState<keyof AllSettingsInput>('hero.image_1_url');
+
+  const openMediaPicker = (field: keyof AllSettingsInput) => {
+    setMediaTargetField(field);
+    setMediaModalOpen(true);
+  };
+
+  const handleMediaSelect = (item: SelectedMediaItem) => {
+    if (mediaTargetField) {
+      if (mediaTargetField === 'hero.video_url') {
+        handleChange('hero.video_url', item.url);
+        handleChange('hero.media_type', 'video');
+      } else if (mediaTargetField === 'hero.video_poster') {
+        // If user accidentally selects a video for poster when video_url is empty, route to video_url
+        const isVideo = item.mimeType?.startsWith('video/') || item.url.match(/\.(mp4|webm|mov|ogg|m4v)(\?.*)?$/i);
+        if (isVideo && !settings['hero.video_url']) {
+          handleChange('hero.video_url', item.url);
+          handleChange('hero.media_type', 'video');
+        } else {
+          handleChange('hero.video_poster', item.url);
+        }
+      } else {
+        handleChange(mediaTargetField, item.url);
+        if (mediaTargetField === 'hero.image_1_url' && item.altText && !settings['hero.image_1_alt']) {
+          handleChange('hero.image_1_alt', item.altText);
+        } else if (mediaTargetField === 'hero.image_2_url' && item.altText && !settings['hero.image_2_alt']) {
+          handleChange('hero.image_2_alt', item.altText);
+        } else if (mediaTargetField === 'hero.image_3_url' && item.altText && !settings['hero.image_3_alt']) {
+          handleChange('hero.image_3_alt', item.altText);
+        }
+      }
+    }
+    setMediaModalOpen(false);
+  };
 
   // Load current settings from API
   useEffect(() => {
@@ -120,7 +157,7 @@ export default function AdminSettingsPage() {
     setErrors({});
 
     // Validate settings with Zod
-    const validation = allSettingsSchema.partial().safeParse(settings);
+    const validation = allSettingsSchema.safeParse(settings);
     if (!validation.success) {
       const fieldErrors: Record<string, string> = {};
       for (const issue of validation.error.issues) {
@@ -136,23 +173,21 @@ export default function AdminSettingsPage() {
     try {
       // If saving specific section or all
       const payload = sectionKeys
-        ? sectionKeys.reduce((acc, k) => ({ ...acc, [k]: (validation.data as any)[k] ?? settings[k] }), {})
-        : (validation.data ?? settings);
+        ? sectionKeys.reduce((acc, k) => ({ ...acc, [k]: settings[k] }), {})
+        : settings;
 
-      const res = await fetch('/api/admin/settings', {
+      const { ok, data, error } = await safeFetch<any>('/api/admin/settings', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
       });
 
-      const data = await res.json().catch(() => ({}));
-
-      if (res.ok && data.settings) {
-        setSettings((prev) => ({ ...DEFAULT_SETTINGS, ...prev, ...data.settings }));
+      if (ok && data) {
+        setSettings({ ...DEFAULT_SETTINGS, ...data.settings });
         setSaveSuccess(true);
         setTimeout(() => setSaveSuccess(false), 4000);
       } else {
-        setErrorMessage(data?.error || `Failed to save store settings (${res.status}).`);
+        setErrorMessage(error || 'Failed to save store settings.');
       }
     } catch (err: any) {
       console.error('Error saving settings:', err);
@@ -384,7 +419,7 @@ export default function AdminSettingsPage() {
                       <div className="flex items-center gap-2">
                         <button
                           type="button"
-                          onClick={() => setMediaModalOpen(true)}
+                          onClick={() => openMediaPicker('store.logo_url')}
                           className="flex items-center gap-1.5 rounded-lg border border-border bg-background px-3 py-1.5 text-xs font-medium text-foreground hover:bg-muted transition-colors"
                         >
                           <Upload className="h-3.5 w-3.5" />
@@ -408,7 +443,7 @@ export default function AdminSettingsPage() {
                       <p className="text-xs text-muted-foreground">No custom logo uploaded yet.</p>
                       <button
                         type="button"
-                        onClick={() => setMediaModalOpen(true)}
+                        onClick={() => openMediaPicker('store.logo_url')}
                         className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground hover:bg-primary/90 transition-colors shadow-sm"
                       >
                         <Upload className="h-3.5 w-3.5" />
@@ -416,136 +451,6 @@ export default function AdminSettingsPage() {
                       </button>
                     </div>
                   )}
-                </div>
-              </div>
-
-              {/* Announcement Bar Settings Card */}
-              <div className="rounded-xl border border-border bg-card p-6 shadow-sm space-y-4">
-                <div className="flex items-center justify-between border-b border-border pb-3">
-                  <div>
-                    <h2 className="text-sm font-semibold text-foreground">Top Announcement Bar</h2>
-                    <p className="text-xs text-muted-foreground">Header banner text and custom background/text colors.</p>
-                  </div>
-                  <label className="relative inline-flex cursor-pointer items-center">
-                    <input
-                      type="checkbox"
-                      checked={settings['announcement.enabled'] !== false}
-                      onChange={(e) => handleChange('announcement.enabled', e.target.checked)}
-                      className="peer sr-only"
-                    />
-                    <div className="peer h-5 w-9 rounded-full bg-muted after:absolute after:left-[2px] after:top-[2px] after:h-4 after:w-4 after:rounded-full after:bg-white after:transition-all after:content-[''] peer-checked:bg-primary peer-checked:after:translate-x-full" />
-                  </label>
-                </div>
-
-                <div className="space-y-4">
-                  {/* Announcement Text */}
-                  <div>
-                    <label className="block text-xs font-medium text-foreground mb-1">
-                      Banner Content / Message
-                    </label>
-                    <input
-                      type="text"
-                      value={settings['announcement.text'] ?? 'FREE DELIVERY ACROSS PAKISTAN • CASH ON DELIVERY AVAILABLE • 100% ORIGINAL FORMULA'}
-                      onChange={(e) => handleChange('announcement.text', e.target.value)}
-                      placeholder="e.g. FREE DELIVERY ACROSS PAKISTAN • CASH ON DELIVERY AVAILABLE"
-                      className="w-full rounded-lg border border-border bg-background px-3.5 py-2 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
-                    />
-                  </div>
-
-                  {/* Colors Grid */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    {/* Background Color */}
-                    <div>
-                      <label className="block text-xs font-medium text-foreground mb-1">
-                        Banner Background
-                      </label>
-                      <div className="flex items-center gap-2">
-                        <input
-                          type="color"
-                          value={HEX_COLOR_REGEX.test(settings['announcement.bg_color']) ? (settings['announcement.bg_color'].startsWith('#') ? settings['announcement.bg_color'] : '#' + settings['announcement.bg_color']) : '#032017'}
-                          onChange={(e) => handleChange('announcement.bg_color', e.target.value.toUpperCase())}
-                          className="h-8 w-8 cursor-pointer rounded border border-border p-0.5 bg-transparent"
-                        />
-                        <input
-                          type="text"
-                          value={settings['announcement.bg_color'] ?? '#032017'}
-                          onChange={(e) => handleChange('announcement.bg_color', e.target.value.toUpperCase())}
-                          placeholder="#032017"
-                          className="w-28 rounded-lg border border-border bg-background px-2.5 py-1.5 text-xs font-mono uppercase text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
-                        />
-                      </div>
-                    </div>
-
-                    {/* Text Color */}
-                    <div>
-                      <label className="block text-xs font-medium text-foreground mb-1">
-                        Banner Text Color
-                      </label>
-                      <div className="flex items-center gap-2">
-                        <input
-                          type="color"
-                          value={HEX_COLOR_REGEX.test(settings['announcement.text_color']) ? (settings['announcement.text_color'].startsWith('#') ? settings['announcement.text_color'] : '#' + settings['announcement.text_color']) : '#A7F3D0'}
-                          onChange={(e) => handleChange('announcement.text_color', e.target.value.toUpperCase())}
-                          className="h-8 w-8 cursor-pointer rounded border border-border p-0.5 bg-transparent"
-                        />
-                        <input
-                          type="text"
-                          value={settings['announcement.text_color'] ?? '#A7F3D0'}
-                          onChange={(e) => handleChange('announcement.text_color', e.target.value.toUpperCase())}
-                          placeholder="#A7F3D0"
-                          className="w-28 rounded-lg border border-border bg-background px-2.5 py-1.5 text-xs font-mono uppercase text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
-                        />
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Live Mini Preview */}
-                  <div>
-                    <span className="block text-[11px] font-medium text-muted-foreground mb-1.5">Live Banner Preview:</span>
-                    <div
-                      className="rounded-lg px-3 py-2 text-center text-xs font-semibold tracking-wide overflow-hidden truncate shadow-sm"
-                      style={{
-                        backgroundColor: settings['announcement.bg_color'] || '#032017',
-                        color: settings['announcement.text_color'] || '#A7F3D0',
-                      }}
-                    >
-                      {settings['announcement.text'] || 'FREE DELIVERY ACROSS PAKISTAN • CASH ON DELIVERY AVAILABLE'}
-                    </div>
-                  </div>
-
-                  {/* Tab 1 Save Button */}
-                  <div className="pt-3 border-t border-border flex justify-end">
-                    <button
-                      type="button"
-                      onClick={() =>
-                        handleSave([
-                          'store.name',
-                          'store.tagline',
-                          'store.currency',
-                          'store.country',
-                          'store.logo_url',
-                          'announcement.enabled',
-                          'announcement.text',
-                          'announcement.bg_color',
-                          'announcement.text_color',
-                        ])
-                      }
-                      disabled={saving}
-                      className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-xs font-semibold text-primary-foreground shadow-sm transition-all hover:bg-primary/90 disabled:opacity-50"
-                    >
-                      {saving ? (
-                        <>
-                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                          <span>Saving...</span>
-                        </>
-                      ) : (
-                        <>
-                          <Save className="h-3.5 w-3.5" />
-                          <span>Save Identity &amp; Announcement</span>
-                        </>
-                      )}
-                    </button>
-                  </div>
                 </div>
               </div>
             </div>
@@ -746,30 +651,526 @@ export default function AdminSettingsPage() {
                       ))}
                     </select>
                   </div>
+                </div>
+              </div>
 
-                  {/* Tab 3 Save Button */}
-                  <div className="pt-3 border-t border-border flex justify-end">
-                    <button
-                      type="button"
-                      onClick={() =>
-                        handleSave(['theme.primary_color', 'theme.accent_color', 'theme.font_family'])
-                      }
-                      disabled={saving}
-                      className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-xs font-semibold text-primary-foreground shadow-sm transition-all hover:bg-primary/90 disabled:opacity-50"
-                    >
-                      {saving ? (
-                        <>
-                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                          <span>Saving...</span>
-                        </>
-                      ) : (
-                        <>
-                          <Save className="h-3.5 w-3.5" />
-                          <span>Save Theme Colors</span>
-                        </>
-                      )}
-                    </button>
+              {/* Announcement Bar Customizer Card */}
+              <div className="rounded-xl border border-border bg-card p-6 shadow-sm space-y-5">
+                <div className="border-b border-border pb-3 flex items-center justify-between">
+                  <div>
+                    <h2 className="text-sm font-semibold text-foreground">Top Announcement Bar</h2>
+                    <p className="text-xs text-muted-foreground">
+                      Display a prominent notice banner on your storefront (e.g. Free shipping, sales, promotions).
+                    </p>
                   </div>
+                  <label className="relative inline-flex items-center cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={Boolean(settings['announcement.enabled'])}
+                      onChange={(e) => handleChange('announcement.enabled', e.target.checked)}
+                      className="sr-only peer"
+                    />
+                    <div className="w-11 h-6 bg-muted peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
+                  </label>
+                </div>
+
+                {Boolean(settings['announcement.enabled']) && (
+                  <div className="space-y-5 pt-1">
+                    {/* Announcement Mode & Dismissible Controls */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 rounded-lg bg-muted/30 p-3.5 border border-border/70">
+                      <div>
+                        <label className="block text-xs font-semibold text-foreground mb-1">
+                          Display Animation Mode
+                        </label>
+                        <select
+                          value={settings['announcement.mode'] || 'static'}
+                          onChange={(e) => handleChange('announcement.mode', e.target.value)}
+                          className="w-full rounded-lg border border-border bg-background px-3 py-1.5 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                        >
+                          <option value="static">Static (Stationary)</option>
+                          <option value="marquee">Constantly Moving (Smooth Marquee Ticker)</option>
+                          <option value="rotate">Auto-Rotating Carousel (Every 4s)</option>
+                        </select>
+                        <p className="mt-1 text-[10px] text-muted-foreground">
+                          Choose whether banners remain fixed or scroll continuously.
+                        </p>
+                      </div>
+
+                      <div className="flex flex-col justify-center">
+                        <label className="text-xs font-semibold text-foreground block mb-1">
+                          Cancellable / Dismissible
+                        </label>
+                        <label className="flex items-center gap-2 text-xs text-muted-foreground cursor-pointer pt-0.5">
+                          <input
+                            type="checkbox"
+                            checked={Boolean(settings['announcement.dismissible'])}
+                            onChange={(e) => handleChange('announcement.dismissible', e.target.checked)}
+                            className="rounded border-border text-primary focus:ring-primary h-4 w-4"
+                          />
+                          <span>Allow visitors to dismiss (shows &times; close icon)</span>
+                        </label>
+                      </div>
+                    </div>
+
+                    {/* Announcement Bar 1 (Primary) */}
+                    <div className="rounded-lg border border-border p-4 space-y-3 bg-card/40">
+                      <div className="flex items-center justify-between border-b border-border/60 pb-2">
+                        <span className="text-xs font-bold text-foreground">Announcement Bar 1 (Primary)</span>
+                        <span className="text-[10px] bg-primary/10 text-primary font-semibold px-2 py-0.5 rounded">Required</span>
+                      </div>
+
+                      <div>
+                        <label className="block text-xs font-medium text-foreground mb-1">
+                          Announcement Message <span className="text-destructive">*</span>
+                        </label>
+                        <input
+                          type="text"
+                          value={settings['announcement.text'] || ''}
+                          onChange={(e) => handleChange('announcement.text', e.target.value)}
+                          placeholder="e.g. ✨ Free Nationwide Express Delivery on All Orders!"
+                          className="w-full rounded-lg border border-border bg-background px-3.5 py-2 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-xs font-medium text-foreground mb-1">
+                          Banner Target Link (Optional)
+                        </label>
+                        <input
+                          type="text"
+                          value={settings['announcement.link'] || ''}
+                          onChange={(e) => handleChange('announcement.link', e.target.value)}
+                          placeholder="e.g. /products or /collections/special-sale"
+                          className="w-full rounded-lg border border-border bg-background px-3.5 py-2 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                        />
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-1">
+                        <div>
+                          <label className="block text-xs font-medium text-foreground mb-1">
+                            Background Color
+                          </label>
+                          <div className="flex items-center gap-2.5">
+                            <input
+                              type="color"
+                              value={HEX_COLOR_REGEX.test(settings['announcement.bg_color']) ? settings['announcement.bg_color'] : '#0F172A'}
+                              onChange={(e) => handleChange('announcement.bg_color', e.target.value.toUpperCase())}
+                              className="h-8 w-10 cursor-pointer rounded border border-border bg-background p-0.5"
+                            />
+                            <input
+                              type="text"
+                              value={settings['announcement.bg_color'] || '#0F172A'}
+                              onChange={(e) => handleChange('announcement.bg_color', e.target.value)}
+                              placeholder="#0F172A"
+                              className="w-28 rounded-lg border border-border bg-background px-2.5 py-1.5 text-xs uppercase font-mono text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                            />
+                          </div>
+                        </div>
+
+                        <div>
+                          <label className="block text-xs font-medium text-foreground mb-1">
+                            Text Color
+                          </label>
+                          <div className="flex items-center gap-2.5">
+                            <input
+                              type="color"
+                              value={HEX_COLOR_REGEX.test(settings['announcement.text_color']) ? settings['announcement.text_color'] : '#FFFFFF'}
+                              onChange={(e) => handleChange('announcement.text_color', e.target.value.toUpperCase())}
+                              className="h-8 w-10 cursor-pointer rounded border border-border bg-background p-0.5"
+                            />
+                            <input
+                              type="text"
+                              value={settings['announcement.text_color'] || '#FFFFFF'}
+                              onChange={(e) => handleChange('announcement.text_color', e.target.value)}
+                              placeholder="#FFFFFF"
+                              className="w-28 rounded-lg border border-border bg-background px-2.5 py-1.5 text-xs uppercase font-mono text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Announcement Bar 2 (Secondary - Max 2) */}
+                    <div className="rounded-lg border border-border p-4 space-y-3 bg-card/40">
+                      <div className="flex items-center justify-between border-b border-border/60 pb-2">
+                        <div>
+                          <span className="text-xs font-bold text-foreground">Announcement Bar 2 (Secondary)</span>
+                          <p className="text-[10px] text-muted-foreground">Optional second announcement bar (Max 2 total)</p>
+                        </div>
+                        <label className="relative inline-flex items-center cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={Boolean(settings['announcement.2.enabled'])}
+                            onChange={(e) => handleChange('announcement.2.enabled', e.target.checked)}
+                            className="sr-only peer"
+                          />
+                          <div className="w-8 h-4.5 bg-muted peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-border after:border after:rounded-full after:h-3.5 after:w-3.5 after:transition-all peer-checked:bg-primary"></div>
+                        </label>
+                      </div>
+
+                      {Boolean(settings['announcement.2.enabled']) && (
+                        <div className="space-y-3 pt-1">
+                          <div>
+                            <label className="block text-xs font-medium text-foreground mb-1">
+                              Second Announcement Message
+                            </label>
+                            <input
+                              type="text"
+                              value={settings['announcement.2.text'] || ''}
+                              onChange={(e) => handleChange('announcement.2.text', e.target.value)}
+                              placeholder="e.g. 💳 Cash On Delivery Available Nationwide • 2-4 Days Shipping"
+                              className="w-full rounded-lg border border-border bg-background px-3.5 py-2 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                            />
+                          </div>
+
+                          <div>
+                            <label className="block text-xs font-medium text-foreground mb-1">
+                              Second Banner Target Link (Optional)
+                            </label>
+                            <input
+                              type="text"
+                              value={settings['announcement.2.link'] || ''}
+                              onChange={(e) => handleChange('announcement.2.link', e.target.value)}
+                              placeholder="e.g. /track-order or /faq"
+                              className="w-full rounded-lg border border-border bg-background px-3.5 py-2 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                            />
+                          </div>
+
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-1">
+                            <div>
+                              <label className="block text-xs font-medium text-foreground mb-1">
+                                Background Color
+                              </label>
+                              <div className="flex items-center gap-2.5">
+                                <input
+                                  type="color"
+                                  value={HEX_COLOR_REGEX.test(settings['announcement.2.bg_color']) ? settings['announcement.2.bg_color'] : '#1E293B'}
+                                  onChange={(e) => handleChange('announcement.2.bg_color', e.target.value.toUpperCase())}
+                                  className="h-8 w-10 cursor-pointer rounded border border-border bg-background p-0.5"
+                                />
+                                <input
+                                  type="text"
+                                  value={settings['announcement.2.bg_color'] || '#1E293B'}
+                                  onChange={(e) => handleChange('announcement.2.bg_color', e.target.value)}
+                                  placeholder="#1E293B"
+                                  className="w-28 rounded-lg border border-border bg-background px-2.5 py-1.5 text-xs uppercase font-mono text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                                />
+                              </div>
+                            </div>
+
+                            <div>
+                              <label className="block text-xs font-medium text-foreground mb-1">
+                                Text Color
+                              </label>
+                              <div className="flex items-center gap-2.5">
+                                <input
+                                  type="color"
+                                  value={HEX_COLOR_REGEX.test(settings['announcement.2.text_color']) ? settings['announcement.2.text_color'] : '#FFFFFF'}
+                                  onChange={(e) => handleChange('announcement.2.text_color', e.target.value.toUpperCase())}
+                                  className="h-8 w-10 cursor-pointer rounded border border-border bg-background p-0.5"
+                                />
+                                <input
+                                  type="text"
+                                  value={settings['announcement.2.text_color'] || '#FFFFFF'}
+                                  onChange={(e) => handleChange('announcement.2.text_color', e.target.value)}
+                                  placeholder="#FFFFFF"
+                                  className="w-28 rounded-lg border border-border bg-background px-2.5 py-1.5 text-xs uppercase font-mono text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                                />
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* Home Page Hero Visual Showcase Card */}
+                <div className="rounded-xl border border-border bg-card p-6 shadow-sm space-y-5">
+                  <div className="flex items-center justify-between border-b border-border pb-3">
+                    <div className="space-y-0.5">
+                      <div className="flex items-center gap-2">
+                        <Images className="h-4 w-4 text-primary" />
+                        <h2 className="text-sm font-semibold text-foreground">Hero Section Media Showcase</h2>
+                      </div>
+                      <p className="text-xs text-muted-foreground">
+                        Customize what appears on the right column of your home page hero banner.
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Media Type Selector */}
+                  <div className="space-y-2">
+                    <label className="block text-xs font-medium text-foreground">Media Display Type</label>
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                      <button
+                        type="button"
+                        onClick={() => handleChange('hero.media_type', 'product')}
+                        className={`flex flex-col items-center justify-center p-3.5 rounded-xl border text-center transition-all ${
+                          settings['hero.media_type'] === 'product'
+                            ? 'border-primary bg-primary/5 ring-2 ring-primary/20 text-foreground font-semibold'
+                            : 'border-border bg-card text-muted-foreground hover:border-primary/40 hover:bg-muted/40'
+                        }`}
+                      >
+                        <Building2 className="h-5 w-5 mb-1.5 text-primary" />
+                        <span className="text-xs">Featured Product</span>
+                        <span className="text-[10px] text-muted-foreground mt-0.5">Dynamic product card</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => handleChange('hero.media_type', 'image')}
+                        className={`flex flex-col items-center justify-center p-3.5 rounded-xl border text-center transition-all ${
+                          settings['hero.media_type'] === 'image'
+                            ? 'border-primary bg-primary/5 ring-2 ring-primary/20 text-foreground font-semibold'
+                            : 'border-border bg-card text-muted-foreground hover:border-primary/40 hover:bg-muted/40'
+                        }`}
+                      >
+                        <Images className="h-5 w-5 mb-1.5 text-primary" />
+                        <span className="text-xs">Image Slider</span>
+                        <span className="text-[10px] text-muted-foreground mt-0.5">Up to 3 images (3s auto)</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => handleChange('hero.media_type', 'video')}
+                        className={`flex flex-col items-center justify-center p-3.5 rounded-xl border text-center transition-all ${
+                          settings['hero.media_type'] === 'video'
+                            ? 'border-primary bg-primary/5 ring-2 ring-primary/20 text-foreground font-semibold'
+                            : 'border-border bg-card text-muted-foreground hover:border-primary/40 hover:bg-muted/40'
+                        }`}
+                      >
+                        <Film className="h-5 w-5 mb-1.5 text-primary" />
+                        <span className="text-xs">Video Showcase</span>
+                        <span className="text-[10px] text-muted-foreground mt-0.5">1 looping MP4/WebM</span>
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Dynamic Controls based on selected media type */}
+                  {settings['hero.media_type'] === 'product' && (
+                    <div className="rounded-lg border border-border bg-muted/20 p-4 text-xs text-muted-foreground space-y-1.5">
+                      <p className="font-semibold text-foreground">Featured Product Active</p>
+                      <p>
+                        The hero section automatically highlights your primary featured product from your catalog with dynamic live pricing, stock badges, and an instant Add to Cart action.
+                      </p>
+                    </div>
+                  )}
+
+                  {settings['hero.media_type'] === 'image' && (
+                    <div className="space-y-5 pt-2">
+                      {/* Slide Speed / Interval */}
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div>
+                          <label className="block text-xs font-medium text-foreground mb-1">
+                            Auto-Advance Interval
+                          </label>
+                          <select
+                            value={Number(settings['hero.slide_interval']) || 3000}
+                            onChange={(e) => handleChange('hero.slide_interval', Number(e.target.value))}
+                            className="w-full rounded-lg border border-border bg-background px-3.5 py-2 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                          >
+                            <option value={3000}>3 Seconds (Default / Recommended)</option>
+                            <option value={4000}>4 Seconds</option>
+                            <option value={5000}>5 Seconds</option>
+                            <option value={7000}>7 Seconds</option>
+                            <option value={0}>Manual Arrows Only (No Auto-Advance)</option>
+                          </select>
+                        </div>
+                        <div className="flex items-center text-xs text-muted-foreground pt-5">
+                          <span>Includes subtle navigation arrows &amp; pagination dots. Pauses automatically on mouse hover or touch.</span>
+                        </div>
+                      </div>
+
+                      {/* 3 Image Slots */}
+                      <div className="space-y-4">
+                        <label className="block text-xs font-semibold text-foreground">
+                          Slider Images (Up to 3)
+                        </label>
+
+                        {[1, 2, 3].map((slot) => {
+                          const urlKey = `hero.image_${slot}_url` as keyof AllSettingsInput;
+                          const altKey = `hero.image_${slot}_alt` as keyof AllSettingsInput;
+                          const linkKey = `hero.image_${slot}_link` as keyof AllSettingsInput;
+                          const currentUrl = (settings[urlKey] as string) || '';
+                          const currentAlt = (settings[altKey] as string) || '';
+                          const currentLink = (settings[linkKey] as string) || '';
+
+                          return (
+                            <div key={slot} className="rounded-xl border border-border bg-muted/10 p-4 space-y-3">
+                              <div className="flex items-center justify-between">
+                                <span className="text-xs font-bold text-foreground">Slide #{slot}</span>
+                                {currentUrl && (
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      handleChange(urlKey, '');
+                                      handleChange(altKey, '');
+                                      handleChange(linkKey, '');
+                                    }}
+                                    className="inline-flex items-center gap-1 text-[11px] font-medium text-destructive hover:underline"
+                                  >
+                                    <Trash2 className="h-3 w-3" />
+                                    <span>Remove Slide</span>
+                                  </button>
+                                )}
+                              </div>
+
+                              <div className="grid grid-cols-1 md:grid-cols-4 gap-3 items-start">
+                                {/* Thumbnail preview */}
+                                <div className="md:col-span-1">
+                                  {currentUrl ? (
+                                    <div className="relative aspect-video w-full rounded-lg overflow-hidden border border-border bg-card">
+                                      <Image
+                                        src={currentUrl}
+                                        alt={currentAlt || `Slide ${slot}`}
+                                        fill
+                                        className="object-cover"
+                                      />
+                                    </div>
+                                  ) : (
+                                    <div className="aspect-video w-full rounded-lg border border-dashed border-border bg-muted/30 flex flex-col items-center justify-center text-[10px] text-muted-foreground">
+                                      <Images className="h-5 w-5 mb-1 opacity-40" />
+                                      <span>No Image</span>
+                                    </div>
+                                  )}
+                                </div>
+
+                                {/* Inputs */}
+                                <div className="md:col-span-3 space-y-2.5">
+                                  <div className="flex gap-2">
+                                    <input
+                                      type="text"
+                                      value={currentUrl}
+                                      onChange={(e) => handleChange(urlKey, e.target.value)}
+                                      placeholder={`Slide ${slot} Image URL (Cloudinary or HTTPS)`}
+                                      className="flex-1 rounded-lg border border-border bg-background px-3 py-1.5 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                                    />
+                                    <button
+                                      type="button"
+                                      onClick={() => openMediaPicker(urlKey)}
+                                      className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-background px-3 py-1.5 text-xs font-medium text-foreground hover:bg-muted transition-colors shrink-0"
+                                    >
+                                      <Upload className="h-3.5 w-3.5" />
+                                      <span>Browse</span>
+                                    </button>
+                                  </div>
+
+                                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                    <input
+                                      type="text"
+                                      value={currentAlt}
+                                      onChange={(e) => handleChange(altKey, e.target.value)}
+                                      placeholder="Alt text / description"
+                                      className="w-full rounded-lg border border-border bg-background px-3 py-1.5 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                                    />
+                                    <input
+                                      type="text"
+                                      value={currentLink}
+                                      onChange={(e) => handleChange(linkKey, e.target.value)}
+                                      placeholder="Click link (e.g. /collections/summer)"
+                                      className="w-full rounded-lg border border-border bg-background px-3 py-1.5 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                                    />
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+
+                  {settings['hero.media_type'] === 'video' && (
+                    <div className="space-y-4 pt-2">
+                      <div>
+                        <label className="block text-xs font-medium text-foreground mb-1">
+                          Video (Direct MP4 / WebM / Cloudinary) <span className="text-destructive">*</span>
+                        </label>
+                        <div className="flex gap-2">
+                          <input
+                            type="text"
+                            value={settings['hero.video_url'] || ''}
+                            onChange={(e) => handleChange('hero.video_url', e.target.value)}
+                            placeholder="Select or upload video (MP4, WebM, MOV) or paste direct URL..."
+                            className="flex-1 rounded-lg border border-border bg-background px-3.5 py-2 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => openMediaPicker('hero.video_url')}
+                            className="inline-flex items-center gap-1.5 rounded-lg border border-primary/40 bg-primary/10 text-primary hover:bg-primary/20 px-3 py-1.5 text-xs font-semibold transition-colors shrink-0"
+                          >
+                            <Upload className="h-3.5 w-3.5" />
+                            <span>Browse / Upload</span>
+                          </button>
+                          {settings['hero.video_url'] && (
+                            <button
+                              type="button"
+                              onClick={() => handleChange('hero.video_url', '')}
+                              className="inline-flex items-center gap-1 rounded-lg border border-destructive/20 bg-destructive/10 px-2.5 py-1.5 text-xs font-medium text-destructive hover:bg-destructive/20 transition-colors shrink-0"
+                              title="Remove Video"
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </button>
+                          )}
+                        </div>
+                        <p className="mt-1 text-[11px] text-muted-foreground">
+                          Direct video upload or Cloudinary/HTTPS URL. The storefront plays this automatically muted on an infinite loop with a viewer sound unmute button.
+                        </p>
+                      </div>
+
+                      <div>
+                        <label className="block text-xs font-medium text-foreground mb-1">
+                          Video Poster Image (Thumbnail before playback)
+                        </label>
+                        <div className="flex gap-2">
+                          <input
+                            type="text"
+                            value={settings['hero.video_poster'] || ''}
+                            onChange={(e) => handleChange('hero.video_poster', e.target.value)}
+                            placeholder="https://.../poster.jpg (Optional thumbnail image)"
+                            className="flex-1 rounded-lg border border-border bg-background px-3.5 py-2 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => openMediaPicker('hero.video_poster')}
+                            className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-background px-3 py-1.5 text-xs font-medium text-foreground hover:bg-muted transition-colors shrink-0"
+                          >
+                            <Upload className="h-3.5 w-3.5" />
+                            <span>Browse</span>
+                          </button>
+                          {settings['hero.video_poster'] && (
+                            <button
+                              type="button"
+                              onClick={() => handleChange('hero.video_poster', '')}
+                              className="inline-flex items-center gap-1 rounded-lg border border-destructive/20 bg-destructive/10 px-2.5 py-1.5 text-xs font-medium text-destructive hover:bg-destructive/20 transition-colors shrink-0"
+                              title="Remove Poster"
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </button>
+                          )}
+                        </div>
+                      </div>
+
+                      {settings['hero.video_url'] && (
+                        <div className="relative aspect-video w-full max-w-md rounded-xl overflow-hidden border border-border bg-black">
+                          <video
+                            key={settings['hero.video_url']}
+                            src={settings['hero.video_url']}
+                            poster={settings['hero.video_poster'] || undefined}
+                            autoPlay
+                            muted
+                            loop
+                            playsInline
+                            className="h-full w-full object-cover"
+                          />
+                          <div className="absolute top-2 left-2 px-2 py-0.5 rounded bg-black/70 text-[10px] text-white font-medium flex items-center gap-1">
+                            <Film className="h-3 w-3" /> Live Video Preview
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
@@ -783,6 +1184,82 @@ export default function AdminSettingsPage() {
                 </div>
 
                 <div className="space-y-4 rounded-xl border border-border bg-muted/20 p-4">
+                  {/* Live Announcement Bar Preview */}
+                  {Boolean(settings['announcement.enabled']) && settings['announcement.text'] && (
+                    <div className="space-y-1 overflow-hidden rounded-lg shadow-sm">
+                      <div
+                        style={{
+                          backgroundColor: settings['announcement.bg_color'] || '#0F172A',
+                          color: settings['announcement.text_color'] || '#FFFFFF',
+                        }}
+                        className={`relative px-3 py-1.5 text-center text-[11px] font-semibold truncate ${
+                          settings['announcement.mode'] === 'marquee' ? 'animate-marquee' : ''
+                        }`}
+                      >
+                        {settings['announcement.text']}
+                        {Boolean(settings['announcement.dismissible']) && (
+                          <span className="absolute right-2 top-1.5 opacity-60">&times;</span>
+                        )}
+                      </div>
+                      {Boolean(settings['announcement.2.enabled']) && settings['announcement.2.text'] && settings['announcement.mode'] === 'static' && (
+                        <div
+                          style={{
+                            backgroundColor: settings['announcement.2.bg_color'] || '#1E293B',
+                            color: settings['announcement.2.text_color'] || '#FFFFFF',
+                          }}
+                          className="px-3 py-1 text-center text-[10px] font-medium truncate"
+                        >
+                          {settings['announcement.2.text']}
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Hero Showcase Preview Miniature */}
+                  <div className="rounded-lg border border-border bg-card p-3 shadow-sm space-y-2">
+                    <div className="flex items-center justify-between text-[11px] font-semibold text-foreground">
+                      <span className="flex items-center gap-1">
+                        <Sparkles className="h-3 w-3 text-primary" />
+                        Hero Visual Preview
+                      </span>
+                      <span className="text-[10px] text-muted-foreground uppercase">
+                        {settings['hero.media_type']}
+                      </span>
+                    </div>
+
+                    {settings['hero.media_type'] === 'video' && settings['hero.video_url'] ? (
+                      <div className="relative aspect-video w-full rounded-md overflow-hidden bg-black text-white text-[10px] flex items-center justify-center">
+                        <video
+                          src={settings['hero.video_url']}
+                          autoPlay
+                          muted
+                          loop
+                          playsInline
+                          className="h-full w-full object-cover"
+                        />
+                        <div className="absolute bottom-1 right-1 bg-black/60 px-1.5 py-0.5 rounded text-[9px]">
+                          Video Active
+                        </div>
+                      </div>
+                    ) : settings['hero.media_type'] === 'image' && (settings['hero.image_1_url'] || settings['hero.image_2_url'] || settings['hero.image_3_url']) ? (
+                      <div className="relative aspect-video w-full rounded-md overflow-hidden border border-border bg-muted">
+                        <Image
+                          src={settings['hero.image_1_url'] || settings['hero.image_2_url'] || settings['hero.image_3_url'] || ''}
+                          alt="Hero Preview"
+                          fill
+                          className="object-cover"
+                        />
+                        <div className="absolute bottom-1 right-1 bg-black/60 text-white px-1.5 py-0.5 rounded text-[9px]">
+                          {settings['hero.slide_interval'] ? `${settings['hero.slide_interval']}s auto` : 'slider'}
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="py-2 text-center text-[11px] text-muted-foreground bg-muted/30 rounded border border-dashed border-border">
+                        Featured Product Card (Default)
+                      </div>
+                    )}
+                  </div>
+
                   {/* Sample Card */}
                   <div
                     className="space-y-3 rounded-lg border border-border bg-card p-4 shadow-sm"
@@ -921,7 +1398,6 @@ export default function AdminSettingsPage() {
           </div>
         )}
 
-        
         {/* Tab: Payment Methods (COD, Direct Bank Transfer & Prepayment Incentive) */}
         {activeTab === 'payments' && (
           <div className="space-y-6 max-w-3xl">
@@ -1011,7 +1487,6 @@ export default function AdminSettingsPage() {
         {/* Tab: Email, WhatsApp & Customer Accounts */}
         {activeTab === 'notifications' && (
           <div className="max-w-3xl space-y-6">
-            {/* Meta WhatsApp Cloud API Automation & PostEx Auto-Booking Engine */}
             {/* Storefront WhatsApp Floating Support Widget */}
             <div className="rounded-xl border border-border bg-card p-6 shadow-sm space-y-5">
               <div className="flex items-center justify-between border-b border-border pb-3">
@@ -1021,7 +1496,7 @@ export default function AdminSettingsPage() {
                     <span>Storefront WhatsApp Support Button</span>
                   </h2>
                   <p className="text-xs text-muted-foreground mt-0.5">
-                    Displays a floating WhatsApp icon in the bottom-left corner of your storefront for customer chat assistance without obstructing footer links.
+                    Displays a floating WhatsApp icon in the bottom-right corner of your storefront for customer chat assistance.
                   </p>
                 </div>
                 <label className="relative inline-flex items-center cursor-pointer">
@@ -1078,6 +1553,7 @@ export default function AdminSettingsPage() {
               )}
             </div>
 
+            {/* WhatsApp Order Confirmation & PostEx Auto-Booking Engine */}
             <WhatsAppAutomationCard settings={settings} handleChange={handleChange} />
 
             {/* Customer Accounts & Authentication Layer */}
@@ -1288,10 +1764,15 @@ export default function AdminSettingsPage() {
       <MediaUploadModal
         isOpen={mediaModalOpen}
         onClose={() => setMediaModalOpen(false)}
-        onSelect={(asset) => {
-          handleChange('store.logo_url', asset.url);
-          setMediaModalOpen(false);
-        }}
+        onSelect={handleMediaSelect}
+        title={
+          mediaTargetField === 'hero.video_url'
+            ? 'Select or Upload Hero Video (MP4 / WebM / MOV)'
+            : mediaTargetField === 'hero.video_poster'
+            ? 'Select or Upload Video Poster Thumbnail'
+            : 'Select or Upload Media Asset'
+        }
+        allowMultiple={false}
       />
     </div>
   );
