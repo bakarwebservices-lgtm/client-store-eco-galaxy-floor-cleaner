@@ -61,7 +61,7 @@ export async function Footer() {
       className="border-t border-border/40 text-white mt-24 transition-colors duration-300"
       style={{ backgroundColor: primaryColor || 'var(--primary, #042A1E)' }}
     >
-      <div className="mx-auto max-w-7xl px-4 pt-12 pb-16 sm:px-6 lg:px-8 sm:pb-14">
+      <div className="mx-auto max-w-7xl px-4 pt-12 pb-20 sm:px-6 lg:px-8 sm:pb-16">
         <div className="grid grid-cols-1 gap-10 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-5">
           <div className="space-y-4 lg:col-span-2">
             <div className="flex items-center gap-3">
@@ -158,19 +158,22 @@ export async function Footer() {
           </div>
         </div>
 
-        {/* Bottom Bar with Admin Login Link */}
+        {/* Bottom Bar with Admin Login Link positioned away from bottom-right WhatsApp button */}
         <div className="mt-12 border-t border-white/15 pt-6 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-white/70">
-          <p>© {new Date().getFullYear()} {storeName}. All rights reserved.</p>
-          <div className="flex items-center gap-6">
-            <span>Cash on Delivery • Free Delivery Pakistan</span>
+          <div className="flex flex-wrap items-center justify-center sm:justify-start gap-3">
+            <p>© {new Date().getFullYear()} {storeName}. All rights reserved.</p>
+            <span className="hidden sm:inline text-white/30">•</span>
             <Link
               href="/admin/login"
-              className="inline-flex items-center gap-1.5 rounded-md bg-white/10 px-2.5 py-1 font-medium text-white/80 transition-colors hover:bg-white/20 hover:text-white"
+              className="inline-flex items-center gap-1.5 rounded-md bg-white/15 px-2.5 py-1 font-medium text-white shadow-xs transition-all hover:bg-white/25 hover:text-white border border-white/15"
               title="Admin Portal Login"
             >
-              <Lock className="h-3 w-3 text-emerald-400" />
+              <Lock className="h-3.5 w-3.5 text-emerald-400" />
               <span>Admin Login</span>
             </Link>
+          </div>
+          <div className="flex items-center gap-6 sm:pr-28">
+            <span>Cash on Delivery • Free Delivery Pakistan</span>
           </div>
         </div>
       </div>

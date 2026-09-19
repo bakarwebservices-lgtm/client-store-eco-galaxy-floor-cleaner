@@ -27,7 +27,7 @@ export function FloatingWhatsApp({
       target="_blank"
       rel="noopener noreferrer"
       aria-label="Chat with Eco Galaxy Support on WhatsApp"
-      className="fixed bottom-6 left-6 z-50 flex items-center gap-2.5 rounded-full bg-[#25D366] px-4 py-3 text-white shadow-xl transition-all duration-300 hover:scale-105 hover:bg-[#20bd5a] hover:shadow-2xl focus:outline-none focus:ring-2 focus:ring-[#25D366] focus:ring-offset-2"
+      className="fixed bottom-6 right-6 z-50 flex items-center gap-2.5 rounded-full bg-[#25D366] px-4 py-3 text-white shadow-xl transition-all duration-300 hover:scale-105 hover:bg-[#20bd5a] hover:shadow-2xl focus:outline-none focus:ring-2 focus:ring-[#25D366] focus:ring-offset-2"
     >
       <div className="relative flex items-center justify-center">
         {/* Authentic Official WhatsApp Icon */}

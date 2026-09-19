@@ -1192,8 +1192,8 @@ export default function AdminSettingsPage() {
                           backgroundColor: settings['announcement.bg_color'] || '#0F172A',
                           color: settings['announcement.text_color'] || '#FFFFFF',
                         }}
-                        className={`relative px-3 py-1.5 text-center text-[11px] font-semibold truncate ${
-                          settings['announcement.mode'] === 'marquee' ? 'animate-marquee' : ''
+                        className={`relative px-3 py-1.5 text-center text-[11px] font-semibold ${
+                          settings['announcement.mode'] === 'marquee' ? 'animate-marquee truncate' : 'break-words leading-normal'
                         }`}
                       >
                         {settings['announcement.text']}
@@ -1207,7 +1207,7 @@ export default function AdminSettingsPage() {
                             backgroundColor: settings['announcement.2.bg_color'] || '#1E293B',
                             color: settings['announcement.2.text_color'] || '#FFFFFF',
                           }}
-                          className="px-3 py-1 text-center text-[10px] font-medium truncate"
+                          className="px-3 py-1 text-center text-[10px] font-medium break-words leading-normal"
                         >
                           {settings['announcement.2.text']}
                         </div>

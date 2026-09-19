@@ -208,21 +208,23 @@ export function AnnouncementBar({
       <aside
         aria-label="Announcements"
         style={{ backgroundColor: currentBar.bgColor, color: currentBar.textColor }}
-        className="relative z-50 flex items-center justify-center px-8 py-2 text-center text-xs font-semibold tracking-wide transition-colors duration-500 shadow-xs"
+        className={`relative z-50 flex items-center justify-center py-2 text-center text-xs font-semibold tracking-wide transition-colors duration-500 shadow-xs ${
+          dismissible ? 'pl-4 pr-10 sm:px-8' : 'px-4 sm:px-8'
+        }`}
       >
-        <div className="flex items-center justify-center gap-2 max-w-7xl mx-auto transition-all duration-300">
+        <div className="flex items-center justify-center gap-1.5 max-w-7xl mx-auto w-full transition-all duration-300">
           {currentBar.link ? (
             <Link
               href={currentBar.link}
               target={currentBar.link.startsWith('http') ? '_blank' : undefined}
               rel={currentBar.link.startsWith('http') ? 'noopener noreferrer' : undefined}
-              className="inline-flex items-center gap-2 hover:underline"
+              className="inline-flex flex-wrap items-center justify-center gap-1.5 hover:underline leading-snug text-center"
             >
-              <span className="truncate">{currentBar.text}</span>
-              <ArrowRight className="h-3 w-3 shrink-0 opacity-80" />
+              <span className="break-words">{currentBar.text}</span>
+              <ArrowRight className="h-3 w-3 shrink-0 inline-block opacity-80" />
             </Link>
           ) : (
-            <span className="truncate">{currentBar.text}</span>
+            <span className="break-words leading-snug text-center">{currentBar.text}</span>
           )}
         </div>
         <CloseButton textColor={currentBar.textColor} />
@@ -230,28 +232,30 @@ export function AnnouncementBar({
     );
   }
 
-  // 3. STATIC MODE (Max 2 bars displayed cleanly)
+  // 3. STATIC MODE (Max 2 bars displayed cleanly with full text context on mobile)
   return (
     <aside aria-label="Announcements" className="relative z-50 shadow-xs">
       {activeBars.map((bar, idx) => (
         <div
           key={idx}
           style={{ backgroundColor: bar.bgColor, color: bar.textColor }}
-          className="relative flex items-center justify-center px-8 py-2 text-center text-xs font-semibold tracking-wide transition-colors"
+          className={`relative flex items-center justify-center py-2 text-center text-xs font-semibold tracking-wide transition-colors ${
+            dismissible && idx === 0 ? 'pl-4 pr-10 sm:px-8' : 'px-4 sm:px-8'
+          }`}
         >
-          <div className="flex items-center justify-center gap-2 max-w-7xl mx-auto">
+          <div className="flex items-center justify-center gap-1.5 max-w-7xl mx-auto w-full">
             {bar.link ? (
               <Link
                 href={bar.link}
                 target={bar.link.startsWith('http') ? '_blank' : undefined}
                 rel={bar.link.startsWith('http') ? 'noopener noreferrer' : undefined}
-                className="inline-flex items-center gap-2 hover:underline"
+                className="inline-flex flex-wrap items-center justify-center gap-1.5 hover:underline leading-snug text-center"
               >
-                <span className="truncate">{bar.text}</span>
-                <ArrowRight className="h-3 w-3 shrink-0 opacity-80" />
+                <span className="break-words">{bar.text}</span>
+                <ArrowRight className="h-3 w-3 shrink-0 inline-block opacity-80" />
               </Link>
             ) : (
-              <span className="truncate">{bar.text}</span>
+              <span className="break-words leading-snug text-center">{bar.text}</span>
             )}
           </div>
           {idx === 0 && <CloseButton textColor={bar.textColor} />}
